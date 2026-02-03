@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useMemo, useEffect } from 'react';
+import React, { useCallback, useRef, useMemo, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -23,8 +23,15 @@ import type { ConversationNodeData } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
+import { BranchDialog } from './BranchDialog';
+import { InheritedContextPanel } from './InheritedContextPanel';
+import { CanvasBreadcrumb } from './CanvasBreadcrumb';
+import { CanvasTreeSidebar } from './CanvasTreeSidebar';
+import { APIKeyWarningBanner } from './APIKeyWarningBanner';
+import { SettingsPanel, SettingsButton } from './SettingsPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useCanvasStore } from '@/stores/canvas-store';
+import { useCanvasStore, selectBranchDialogOpen } from '@/stores/canvas-store';
+import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 
 // =============================================================================
 // NODE TYPES
@@ -69,6 +76,9 @@ const connectionLineStyle: React.CSSProperties = {
 export function InfiniteCanvas() {
   const reactFlowInstance = useRef<ReactFlowInstance<Node<ConversationNodeData>, Edge> | null>(null);
 
+  // Settings panel state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   // Get data and actions from store
   const nodes = useCanvasStore((s) => s.nodes);
   const edges = useCanvasStore((s) => s.edges);
@@ -85,6 +95,25 @@ export function InfiniteCanvas() {
   const redo = useCanvasStore((s) => s.redo);
   const canUndo = useCanvasStore((s) => s.canUndo);
   const canRedo = useCanvasStore((s) => s.canRedo);
+
+  // Branch dialog state
+  const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
+
+  // Current canvas context
+  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
+  const getCurrentCanvas = useCanvasStore((s) => s.getCurrentCanvas);
+  const getCanvasLineage = useCanvasStore((s) => s.getCanvasLineage);
+  const currentCanvas = getCurrentCanvas();
+  const hasParent = currentCanvas?.parentCanvasId !== undefined;
+
+  // UI Preferences
+  const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
+
+  // Load preferences on mount
+  useEffect(() => {
+    loadPreferences();
+  }, [loadPreferences]);
 
   const showDevOverlay = process.env.NODE_ENV === 'development';
 
@@ -201,6 +230,35 @@ export function InfiniteCanvas() {
 
   return (
     <div style={canvasStyles}>
+      {/* Canvas Tree Sidebar (conditionally shown) */}
+      {uiPrefs.showCanvasTree && <CanvasTreeSidebar />}
+
+      {/* Main canvas area with breadcrumb and inherited context */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: 12,
+        pointerEvents: 'none',
+      }}>
+        {/* Breadcrumb navigation */}
+        <div style={{ pointerEvents: 'auto' }}>
+          <CanvasBreadcrumb />
+        </div>
+
+        {/* Inherited context panel (shown when canvas has parent and enabled) */}
+        {uiPrefs.showInheritedContext && hasParent && (
+          <div style={{ pointerEvents: 'auto' }}>
+            <InheritedContextPanel />
+          </div>
+        )}
+      </div>
+
       <ReactFlow<Node<ConversationNodeData>, Edge>
         nodes={nodes}
         edges={edges}
@@ -273,6 +331,16 @@ export function InfiniteCanvas() {
           edgeCount={edges.length}
         />
       )}
+
+      {/* Branch Dialog */}
+      <BranchDialog />
+
+      {/* API Key Warning Banner */}
+      <APIKeyWarningBanner position="bottom" />
+
+      {/* Settings Button and Panel */}
+      <SettingsButton onClick={() => setSettingsOpen(true)} />
+      <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

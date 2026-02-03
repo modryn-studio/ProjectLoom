@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { colors, typography, spacing, effects, animation, card } from '@/lib/design-tokens';
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
+import { useCanvasStore } from '@/stores/canvas-store';
+import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import type { ConversationNodeData, Message } from '@/types';
 
 // =============================================================================
@@ -81,6 +83,14 @@ function ConversationCardComponent({
   const messages = conversation.content;
   const metadata = conversation.metadata;
 
+  // Context menu state
+  const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu } = useContextMenu();
+
+  // Store actions
+  const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
+  const deleteConversation = useCanvasStore((s) => s.deleteConversation);
+  const toggleExpanded = useCanvasStore((s) => s.toggleExpanded);
+
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
     () => getTextStyles(messages[0]?.content || ''),
@@ -97,6 +107,18 @@ function ConversationCardComponent({
 
   // Preview content
   const previewContent = useMemo(() => getPreviewContent(messages), [messages]);
+
+  // Context menu items
+  const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
+    onBranch: () => openBranchDialog(conversation.id),
+    onDelete: () => deleteConversation(conversation.id),
+    onExpand: () => toggleExpanded(conversation.id),
+  }), [conversation.id, openBranchDialog, deleteConversation, toggleExpanded]);
+
+  // Handle right-click
+  const handleContextMenu = (e: React.MouseEvent) => {
+    openMenu(e);
+  };
 
   return (
     <>
@@ -147,6 +169,7 @@ function ConversationCardComponent({
             ? colors.violet.primary
             : 'rgba(102, 126, 234, 0.4)',
         }}
+        onContextMenu={handleContextMenu}
       >
         {/* Header: Title + Badge */}
         <div style={cardStyles.header}>
@@ -232,6 +255,14 @@ function ConversationCardComponent({
           </span>
         </div>
       </motion.div>
+
+      {/* Context Menu */}
+      <ContextMenu
+        isOpen={isContextMenuOpen}
+        position={menuPosition}
+        onClose={closeMenu}
+        items={menuItems}
+      />
     </>
   );
 }

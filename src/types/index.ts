@@ -187,6 +187,8 @@ export interface Canvas {
   createdFromConversationId: string | null;
   /** Canvas metadata */
   metadata: CanvasMetadata;
+  /** Branch metadata - only present on branched canvases (Phase 2) */
+  branchMetadata?: BranchMetadata;
 }
 
 // =============================================================================
@@ -300,6 +302,70 @@ export interface MessageSelection {
   excludeIds: string[];
 }
 
+/**
+ * Branch metadata for tracking lineage
+ */
+export interface BranchMetadata {
+  /** User-provided reason for branching */
+  reason: string;
+  /** ID of the conversation this branch was created from */
+  createdFromConversationId: string;
+  /** Number of messages inherited */
+  inheritedMessageCount: number;
+  /** Inheritance mode used */
+  inheritanceMode: InheritanceMode;
+  /** Timestamp when branch was created */
+  createdAt: Date;
+}
+
+/**
+ * Data required to create a branch
+ */
+export interface BranchData {
+  /** ID of the source conversation to branch from */
+  sourceConversationId: string;
+  /** User-provided reason for the branch */
+  branchReason: string;
+  /** How to inherit context */
+  inheritanceMode: InheritanceMode;
+  /** Selected message IDs (for custom mode) */
+  customMessageIds?: string[];
+}
+
+/**
+ * Truncation strategy for summary mode
+ */
+export interface TruncationStrategy {
+  /** Type of truncation */
+  type: 'recent' | 'important' | 'boundary';
+  /** Maximum number of messages to keep */
+  maxMessages: number;
+}
+
+/**
+ * Preview of truncation result
+ */
+export interface TruncationPreview {
+  /** Messages after truncation */
+  truncated: Message[];
+  /** Number of messages removed */
+  removed: number;
+  /** Estimated tokens saved */
+  tokensSaved: number;
+}
+
+/**
+ * User preferences for branching
+ */
+export interface BranchingPreferences {
+  /** Default inheritance mode */
+  defaultInheritanceMode: InheritanceMode;
+  /** Whether to always show branch dialog */
+  alwaysAskOnBranch: boolean;
+  /** Default truncation strategy for summary mode */
+  defaultTruncationStrategy: TruncationStrategy;
+}
+
 // =============================================================================
 // AI PROVIDER (Phase 2)
 // =============================================================================
@@ -404,6 +470,24 @@ export interface UserPreferences {
   showMinimap: boolean;
   /** Whether to show dev overlay */
   showDevOverlay: boolean;
+  /** Branching preferences */
+  branching: BranchingPreferences;
+}
+
+/**
+ * Canvas storage data (Phase 2 - multiple canvases)
+ */
+export interface CanvasStorageData {
+  /** All canvases */
+  canvases: Canvas[];
+  /** Currently active canvas ID */
+  activeCanvasId: string;
+  /** User settings */
+  settings: {
+    theme: 'dark';
+    showMinimap: boolean;
+    snapToGrid: boolean;
+  };
 }
 
 /**

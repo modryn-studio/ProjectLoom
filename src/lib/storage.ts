@@ -56,13 +56,16 @@ export interface StorageResult<T> {
 /**
  * Current schema version
  * Version 2: Added title field to Conversation type
+ * Version 3: Added multi-canvas support with branching
  */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export const STORAGE_KEYS = {
   CANVAS: 'projectloom:canvas',
   CANVAS_DATA: 'projectloom:canvas-data',
+  CANVASES: 'projectloom:canvases',
   PREFERENCES: 'projectloom:preferences',
+  API_KEYS: 'projectloom:api-keys',
 } as const;
 
 // =============================================================================

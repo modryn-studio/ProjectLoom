@@ -7,7 +7,19 @@ import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/rea
 
 import { VersionedStorage, STORAGE_KEYS, CURRENT_SCHEMA_VERSION } from '@/lib/storage';
 import { generateMockData } from '@/lib/mock-data';
-import type { Conversation, Position, EdgeConnection, StorageData, ConversationNodeData } from '@/types';
+import { createContextSnapshot, createBranchMetadata, selectContextMessages } from '@/lib/context-utils';
+import type { 
+  Conversation, 
+  Position, 
+  EdgeConnection, 
+  StorageData, 
+  ConversationNodeData,
+  Canvas,
+  CanvasMetadata,
+  BranchData,
+  InheritanceMode,
+  ContextSnapshot,
+} from '@/types';
 
 // Debounce helper for performance
 let saveTimeout: NodeJS.Timeout | null = null;
@@ -31,10 +43,19 @@ interface CanvasState {
   edges: Edge[];
   conversations: Map<string, Conversation>;
 
+  // Multi-Canvas (Phase 2)
+  canvases: Canvas[];
+  activeCanvasId: string;
+
   // UI State
   expandedNodeIds: Set<string>;
   selectedNodeIds: Set<string>;
   isInitialized: boolean;
+
+  // Branch Dialog State
+  branchDialogOpen: boolean;
+  branchSourceId: string | null;
+  branchSourcePosition: Position | null;
 
   // History for undo/redo
   history: HistoryState[];
@@ -67,6 +88,21 @@ interface CanvasState {
   saveToStorage: () => void;
   loadMockData: () => void;
   clearAll: () => void;
+
+  // Actions - Multi-Canvas (Phase 2)
+  createCanvas: (title: string, parentCanvasId?: string | null) => Canvas;
+  navigateToCanvas: (canvasId: string) => void;
+  getCurrentCanvas: () => Canvas | undefined;
+  getCanvasLineage: (canvasId: string) => Canvas[];
+  getChildCanvases: (canvasId: string) => Canvas[];
+  getRootCanvases: () => Canvas[];
+  updateCanvas: (canvasId: string, updates: Partial<Canvas>) => void;
+  deleteCanvas: (canvasId: string) => void;
+
+  // Actions - Branching (Phase 2)
+  openBranchDialog: (conversationId: string) => void;
+  closeBranchDialog: () => void;
+  createBranch: (data: BranchData) => Canvas | null;
 }
 
 // =============================================================================
@@ -84,6 +120,28 @@ const defaultStorageData: StorageData = {
   },
 };
 
+/**
+ * Create a default root canvas
+ */
+function createDefaultCanvas(): Canvas {
+  const now = new Date();
+  return {
+    id: nanoid(),
+    parentCanvasId: null,
+    contextSnapshot: null,
+    conversations: [],
+    branches: [],
+    tags: [],
+    createdFromConversationId: null,
+    metadata: {
+      title: 'Main Canvas',
+      createdAt: now,
+      updatedAt: now,
+      version: CURRENT_SCHEMA_VERSION,
+    },
+  };
+}
+
 // =============================================================================
 // STORAGE INSTANCE
 // =============================================================================
@@ -92,6 +150,14 @@ const storage = new VersionedStorage<StorageData>({
   key: STORAGE_KEYS.CANVAS_DATA,
   version: CURRENT_SCHEMA_VERSION,
   defaultData: defaultStorageData,
+  debug: process.env.NODE_ENV === 'development',
+});
+
+// Separate storage for multi-canvas data (Phase 2)
+const canvasStorage = new VersionedStorage<{ canvases: Canvas[]; activeCanvasId: string }>({
+  key: STORAGE_KEYS.CANVASES,
+  version: CURRENT_SCHEMA_VERSION,
+  defaultData: { canvases: [], activeCanvasId: '' },
   debug: process.env.NODE_ENV === 'development',
 });
 
@@ -150,9 +216,20 @@ export const useCanvasStore = create<CanvasState>()(
     nodes: [],
     edges: [],
     conversations: new Map(),
+    
+    // Multi-Canvas (Phase 2)
+    canvases: [],
+    activeCanvasId: '',
+    
     expandedNodeIds: new Set(),
     selectedNodeIds: new Set(),
     isInitialized: false,
+    
+    // Branch Dialog State
+    branchDialogOpen: false,
+    branchSourceId: null,
+    branchSourcePosition: null,
+    
     history: [],
     historyIndex: -1,
 
@@ -497,6 +574,7 @@ export const useCanvasStore = create<CanvasState>()(
 
     initializeFromStorage: () => {
       const result = storage.load();
+      const canvasResult = canvasStorage.load();
 
       if (!result.success || result.data.conversations.length === 0) {
         // No stored data or empty, load mock data for demo
@@ -524,10 +602,21 @@ export const useCanvasStore = create<CanvasState>()(
       // Create edges
       const edges: Edge[] = storedData.connections.map(connectionToEdge);
 
+      // Load canvases if available (Phase 2)
+      let canvases: Canvas[] = [];
+      let activeCanvasId = '';
+      
+      if (canvasResult.success && canvasResult.data.canvases.length > 0) {
+        canvases = canvasResult.data.canvases;
+        activeCanvasId = canvasResult.data.activeCanvasId || canvases[0]?.id || '';
+      }
+
       set({
         nodes,
         edges,
         conversations,
+        canvases,
+        activeCanvasId,
         expandedNodeIds,
         selectedNodeIds,
         isInitialized: true,
@@ -546,7 +635,7 @@ export const useCanvasStore = create<CanvasState>()(
       if (saveTimeout) clearTimeout(saveTimeout);
       
       saveTimeout = setTimeout(() => {
-        const { nodes, edges, conversations } = get();
+        const { nodes, edges, conversations, canvases, activeCanvasId } = get();
 
         // Build positions map
         const positions: Record<string, Position> = {};
@@ -578,6 +667,11 @@ export const useCanvasStore = create<CanvasState>()(
         };
 
         storage.save(data);
+        
+        // Also save canvases separately (Phase 2)
+        if (canvases.length > 0) {
+          canvasStorage.save({ canvases, activeCanvasId });
+        }
       }, SAVE_DEBOUNCE_MS);
     },
 
@@ -626,10 +720,275 @@ export const useCanvasStore = create<CanvasState>()(
         nodes: [],
         edges: [],
         conversations: new Map(),
+        canvases: [],
+        activeCanvasId: '',
         expandedNodeIds: new Set(),
         selectedNodeIds: new Set(),
         isInitialized: false,
+        branchDialogOpen: false,
+        branchSourceId: null,
+        branchSourcePosition: null,
       });
+    },
+
+    // =========================================================================
+    // Multi-Canvas Management (Phase 2)
+    // =========================================================================
+
+    createCanvas: (title: string, parentCanvasId: string | null = null) => {
+      const now = new Date();
+      const newCanvas: Canvas = {
+        id: nanoid(),
+        parentCanvasId,
+        contextSnapshot: null,
+        conversations: [],
+        branches: [],
+        tags: [],
+        createdFromConversationId: null,
+        metadata: {
+          title,
+          createdAt: now,
+          updatedAt: now,
+          version: CURRENT_SCHEMA_VERSION,
+        },
+      };
+
+      set((state) => {
+        const newCanvases = [...state.canvases, newCanvas];
+        
+        // If this is a child canvas, update parent's branches array
+        if (parentCanvasId) {
+          const parentIndex = newCanvases.findIndex(c => c.id === parentCanvasId);
+          if (parentIndex !== -1) {
+            newCanvases[parentIndex] = {
+              ...newCanvases[parentIndex],
+              branches: [...newCanvases[parentIndex].branches, newCanvas.id],
+            };
+          }
+        }
+        
+        return { canvases: newCanvases };
+      });
+
+      get().saveToStorage();
+      return newCanvas;
+    },
+
+    navigateToCanvas: (canvasId: string) => {
+      const canvas = get().canvases.find(c => c.id === canvasId);
+      if (!canvas) {
+        console.warn(`Canvas ${canvasId} not found`);
+        return;
+      }
+
+      // Load conversations for this canvas
+      const conversations = new Map<string, Conversation>();
+      canvas.conversations.forEach((conv) => {
+        conversations.set(conv.id, conv);
+      });
+
+      // Create nodes from conversations
+      const nodes: ConversationNode[] = canvas.conversations.map((conv) => {
+        return conversationToNode(conv, conv.position, false, false);
+      });
+
+      // Create edges (for now, empty - will be restored from storage in future)
+      const edges: Edge[] = [];
+
+      set({
+        activeCanvasId: canvasId,
+        nodes,
+        edges,
+        conversations,
+        expandedNodeIds: new Set(),
+        selectedNodeIds: new Set(),
+        history: [{
+          nodes: [...nodes],
+          edges: [...edges],
+          conversations: new Map(conversations),
+        }],
+        historyIndex: 0,
+      });
+    },
+
+    getCurrentCanvas: () => {
+      const { canvases, activeCanvasId } = get();
+      return canvases.find(c => c.id === activeCanvasId);
+    },
+
+    getCanvasLineage: (canvasId: string) => {
+      const { canvases } = get();
+      const lineage: Canvas[] = [];
+      
+      let currentId: string | null = canvasId;
+      while (currentId) {
+        const canvas = canvases.find(c => c.id === currentId);
+        if (!canvas) break;
+        lineage.unshift(canvas); // Add to beginning for parent → child order
+        currentId = canvas.parentCanvasId;
+      }
+      
+      return lineage;
+    },
+
+    getChildCanvases: (canvasId: string) => {
+      const { canvases } = get();
+      return canvases.filter(c => c.parentCanvasId === canvasId);
+    },
+
+    getRootCanvases: () => {
+      const { canvases } = get();
+      return canvases.filter(c => c.parentCanvasId === null);
+    },
+
+    updateCanvas: (canvasId: string, updates: Partial<Canvas>) => {
+      set((state) => ({
+        canvases: state.canvases.map(c => 
+          c.id === canvasId 
+            ? { ...c, ...updates, metadata: { ...c.metadata, updatedAt: new Date() } }
+            : c
+        ),
+      }));
+      get().saveToStorage();
+    },
+
+    deleteCanvas: (canvasId: string) => {
+      const { canvases, activeCanvasId, getChildCanvases } = get();
+      
+      // Don't delete if it has children
+      const children = getChildCanvases(canvasId);
+      if (children.length > 0) {
+        console.warn('Cannot delete canvas with children');
+        return;
+      }
+
+      // Remove from parent's branches array
+      const canvas = canvases.find(c => c.id === canvasId);
+      if (canvas?.parentCanvasId) {
+        const parent = canvases.find(c => c.id === canvas.parentCanvasId);
+        if (parent) {
+          set((state) => ({
+            canvases: state.canvases.map(c =>
+              c.id === canvas.parentCanvasId
+                ? { ...c, branches: c.branches.filter(id => id !== canvasId) }
+                : c
+            ),
+          }));
+        }
+      }
+
+      // Remove the canvas
+      set((state) => ({
+        canvases: state.canvases.filter(c => c.id !== canvasId),
+      }));
+
+      // If we deleted the active canvas, navigate to parent or first root
+      if (activeCanvasId === canvasId) {
+        const parent = canvas?.parentCanvasId;
+        const firstRoot = get().getRootCanvases()[0];
+        if (parent) {
+          get().navigateToCanvas(parent);
+        } else if (firstRoot) {
+          get().navigateToCanvas(firstRoot.id);
+        }
+      }
+
+      get().saveToStorage();
+    },
+
+    // =========================================================================
+    // Branching (Phase 2)
+    // =========================================================================
+
+    openBranchDialog: (conversationId: string) => {
+      const conversation = get().conversations.get(conversationId);
+      const node = get().nodes.find(n => n.id === conversationId);
+      
+      if (!conversation || !node) {
+        console.warn(`Conversation ${conversationId} not found`);
+        return;
+      }
+
+      set({
+        branchDialogOpen: true,
+        branchSourceId: conversationId,
+        branchSourcePosition: node.position,
+      });
+    },
+
+    closeBranchDialog: () => {
+      set({
+        branchDialogOpen: false,
+        branchSourceId: null,
+        branchSourcePosition: null,
+      });
+    },
+
+    createBranch: (data: BranchData) => {
+      const { sourceConversationId, branchReason, inheritanceMode, customMessageIds } = data;
+      const { conversations, activeCanvasId, canvases } = get();
+      
+      const sourceConversation = conversations.get(sourceConversationId);
+      if (!sourceConversation) {
+        console.error(`Source conversation ${sourceConversationId} not found`);
+        return null;
+      }
+
+      const parentCanvas = canvases.find(c => c.id === activeCanvasId);
+      if (!parentCanvas) {
+        console.error(`Active canvas ${activeCanvasId} not found`);
+        return null;
+      }
+
+      // Create context snapshot based on inheritance mode
+      const contextSnapshot = createContextSnapshot(
+        sourceConversation.content,
+        inheritanceMode,
+        branchReason,
+        sourceConversationId,
+        activeCanvasId,
+        customMessageIds
+      );
+
+      // Create new canvas
+      const now = new Date();
+      const newCanvas: Canvas = {
+        id: nanoid(),
+        parentCanvasId: activeCanvasId,
+        contextSnapshot,
+        conversations: [],
+        branches: [],
+        tags: [],
+        createdFromConversationId: sourceConversationId,
+        metadata: {
+          title: `Branch: ${branchReason.slice(0, 30)}${branchReason.length > 30 ? '...' : ''}`,
+          createdAt: now,
+          updatedAt: now,
+          version: CURRENT_SCHEMA_VERSION,
+        },
+      };
+
+      // Update parent canvas to include this branch
+      set((state) => ({
+        canvases: [
+          ...state.canvases.map(c => 
+            c.id === activeCanvasId 
+              ? { ...c, branches: [...c.branches, newCanvas.id] }
+              : c
+          ),
+          newCanvas,
+        ],
+        branchDialogOpen: false,
+        branchSourceId: null,
+        branchSourcePosition: null,
+      }));
+
+      get().saveToStorage();
+
+      // Navigate to the new canvas
+      get().navigateToCanvas(newCanvas.id);
+
+      return newCanvas;
     },
   }))
 );
@@ -643,3 +1002,11 @@ export const selectEdges = (state: CanvasState) => state.edges;
 export const selectIsInitialized = (state: CanvasState) => state.isInitialized;
 export const selectExpandedNodeIds = (state: CanvasState) => state.expandedNodeIds;
 export const selectSelectedNodeIds = (state: CanvasState) => state.selectedNodeIds;
+
+// Multi-Canvas selectors (Phase 2)
+export const selectCanvases = (state: CanvasState) => state.canvases;
+export const selectActiveCanvasId = (state: CanvasState) => state.activeCanvasId;
+export const selectBranchDialogOpen = (state: CanvasState) => state.branchDialogOpen;
+export const selectBranchSourceId = (state: CanvasState) => state.branchSourceId;
+export const selectBranchSourcePosition = (state: CanvasState) => state.branchSourcePosition;
+
