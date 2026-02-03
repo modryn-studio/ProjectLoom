@@ -112,7 +112,6 @@ function TreeNode({
           borderRadius: effects.border.radius.default,
           cursor: 'pointer',
           transition: 'background-color 0.15s ease',
-          minWidth: 'max-content',
         }}
         onClick={() => onSelect(canvas.id)}
       >
@@ -154,9 +153,12 @@ function TreeNode({
 
         {/* Name */}
         <span style={{
+          flex: 1,
           fontSize: typography.sizes.sm,
           fontFamily: typography.fonts.body,
           color: isActive ? colors.amber.primary : colors.contrast.white,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
         }}>
           {canvas.metadata.title}
