@@ -218,12 +218,15 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
 
     if (isOpen) {
       document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use capture phase to catch events before React Flow stops them
+      document.addEventListener('mousedown', handleClickOutside, true);
+      document.addEventListener('click', handleClickOutside, true);
     }
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('click', handleClickOutside, true);
     };
   }, [isOpen, onClose]);
 
