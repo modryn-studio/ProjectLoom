@@ -278,6 +278,7 @@ function TreeNodeContainer({
 export function CanvasTreeSidebar() {
   const [isOpen, setIsOpen] = useState(true);
 
+  const canvases = useCanvasStore((s) => s.canvases);
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   const getRootCanvases = useCanvasStore((s) => s.getRootCanvases);
   const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
