@@ -90,6 +90,7 @@ function TreeNode({
   onCreateChild,
 }: TreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
   const hasChildren = children.length > 0;
   const isRoot = !canvas.parentCanvasId;
 
@@ -100,6 +101,8 @@ function TreeNode({
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: depth * 0.05 }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -163,7 +166,7 @@ function TreeNode({
         </span>
 
         {/* Actions (shown on hover via CSS or always for active) */}
-        {isActive && (
+        {(isActive || isHovered) && (
           <div style={{ display: 'flex', gap: spacing[1] }}>
             <button
               onClick={(e) => {
@@ -176,8 +179,8 @@ function TreeNode({
                 padding: spacing[1],
                 cursor: 'pointer',
                 borderRadius: effects.border.radius.default,
-                color: colors.navy.dark,
-                backgroundColor: colors.amber.primary,
+                color: isActive ? colors.navy.dark : colors.amber.primary,
+                backgroundColor: isActive ? colors.amber.primary : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
               }}
