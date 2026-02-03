@@ -251,7 +251,10 @@ function TreeNodeContainer({
 }) {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   const getChildCanvases = useCanvasStore((s) => s.getChildCanvases);
-  const children = getChildCanvases(canvas.id);
+  const canvases = useCanvasStore((s) => s.canvases);
+  
+  // Recompute children when canvases change
+  const children = useMemo(() => getChildCanvases(canvas.id), [getChildCanvases, canvas.id, canvases.length]);
 
   return (
     <TreeNode
@@ -280,8 +283,8 @@ export function CanvasTreeSidebar() {
   const deleteCanvas = useCanvasStore((s) => s.deleteCanvas);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
 
-  // Get root canvases
-  const rootCanvases = useMemo(() => getRootCanvases(), [getRootCanvases, canvases]);
+  // Get root canvases - recompute when canvases array changes
+  const rootCanvases = useMemo(() => getRootCanvases(), [getRootCanvases, canvases.length]);
 
   // Handlers
   const handleSelect = useCallback((id: string) => {
