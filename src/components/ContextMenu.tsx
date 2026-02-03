@@ -77,9 +77,32 @@ export function useContextMenu() {
     e.preventDefault();
     e.stopPropagation();
     
-    // Position menu, avoiding viewport edges
-    const x = Math.min(e.clientX, window.innerWidth - 200);
-    const y = Math.min(e.clientY, window.innerHeight - 300);
+    // Position menu at cursor, with small offset for better UX
+    // Add slight offset so menu doesn't cover cursor
+    const offsetX = 2;
+    const offsetY = 2;
+    
+    let x = e.clientX + offsetX;
+    let y = e.clientY + offsetY;
+    
+    // Ensure menu stays within viewport bounds
+    // Estimate menu size: 200px width, 150px height (approximate)
+    const menuWidth = 200;
+    const menuHeight = 150;
+    
+    // Check right edge
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 10;
+    }
+    
+    // Check bottom edge
+    if (y + menuHeight > window.innerHeight) {
+      y = window.innerHeight - menuHeight - 10;
+    }
+    
+    // Ensure minimum distance from edges
+    x = Math.max(10, x);
+    y = Math.max(10, y);
     
     setPosition({ x, y });
     if (items) {
