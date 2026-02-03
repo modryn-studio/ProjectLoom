@@ -15,6 +15,10 @@ export interface KeyboardShortcutHandlers {
   onUndo?: () => void;
   /** Called when Ctrl+Y or Ctrl+Shift+Z is pressed */
   onRedo?: () => void;
+  /** Called when Space is pressed */
+  onExpand?: () => void;
+  /** Called when Ctrl+B is pressed */
+  onBranch?: () => void;
 }
 
 export interface UseKeyboardShortcutsOptions {
@@ -91,14 +95,27 @@ export function useKeyboardShortcuts({
           }
           break;
 
+        case ' ':
+          // Space: Expand/collapse selected card
+          // Only if not in an input field (already handled above)
+          event.preventDefault();
+          handlers.onExpand?.();
+          break;
+
+        case 'b':
+        case 'B':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Ctrl+B: Branch from selected card
+            handlers.onBranch?.();
+          }
+          break;
+
         // Phase 3 shortcuts will be added here:
-        // - Ctrl+Z: Undo
-        // - Ctrl+Shift+Z: Redo
         // - Ctrl+A: Select all
         // - Ctrl+C: Copy
         // - Ctrl+V: Paste
         // - Arrow keys: Navigate between nodes
-        // - Space: Pan mode
         // - +/-: Zoom
         // - Ctrl+F: Search
 

@@ -121,6 +121,7 @@ export function InfiniteCanvas() {
   const setSelected = useCanvasStore((s) => s.setSelected);
   const clearSelection = useCanvasStore((s) => s.clearSelection);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
+  const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const expandedNodeIds = useCanvasStore((s) => s.expandedNodeIds);
   const undo = useCanvasStore((s) => s.undo);
@@ -266,6 +267,18 @@ export function InfiniteCanvas() {
       onRedo: () => {
         if (canRedo()) {
           redo();
+        }
+      },
+      onExpand: () => {
+        // Space: Toggle expand/collapse on first selected card
+        if (firstSelectedId) {
+          toggleExpanded(firstSelectedId);
+        }
+      },
+      onBranch: () => {
+        // Ctrl+B: Open branch dialog for first selected card
+        if (firstSelectedId) {
+          openBranchDialog(firstSelectedId);
         }
       },
     },
