@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState, useEffect } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -109,6 +109,12 @@ function ConversationCardComponent({
     isSelected: isSelected || selected,
   });
 
+  // Detect OS for keyboard shortcuts
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    setIsMac(/Mac/.test(navigator.platform));
+  }, []);
+
   // Preview content
   const previewContent = useMemo(() => getPreviewContent(messages), [messages]);
 
@@ -116,7 +122,7 @@ function ConversationCardComponent({
   const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
     onDelete: () => deleteConversation(conversation.id),
     onExpand: () => toggleExpanded(conversation.id),
-  }), [conversation.id, deleteConversation, toggleExpanded]);
+  }, isMac), [conversation.id, deleteConversation, toggleExpanded, isMac]);
 
   // Handle right-click: Check if clicked item is "Branch from here"
   // If so, open dialog directly (centered modal per phase_2.md spec)
@@ -131,7 +137,7 @@ function ConversationCardComponent({
         id: 'branch',
         label: 'Branch from here',
         icon: <GitBranch size={14} />,
-        shortcut: '⌘B',
+        shortcut: isMac ? '⌘B' : 'Ctrl+B',
         onClick: () => {
           closeMenu();
           openBranchDialog(conversation.id);

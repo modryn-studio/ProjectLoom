@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Trash2, Maximize2, Copy, Edit2 } from 'lucide-react';
 
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
-import { getShortcutDisplay } from '@/hooks/useKeyboardShortcuts';
 
 // =============================================================================
 // TYPES
@@ -133,7 +132,8 @@ export function getConversationMenuItems(
     onExpand?: () => void;
     onCopy?: () => void;
     onRename?: () => void;
-  }
+  },
+  isMac = false
 ): ContextMenuItem[] {
   const items: ContextMenuItem[] = [];
 
@@ -142,7 +142,7 @@ export function getConversationMenuItems(
       id: 'expand',
       label: 'Expand',
       icon: <Maximize2 size={14} />,
-      shortcut: getShortcutDisplay(' '),
+      shortcut: 'Space',
       onClick: handlers.onExpand,
     });
   }
@@ -152,7 +152,7 @@ export function getConversationMenuItems(
       id: 'branch',
       label: 'Branch from here',
       icon: <GitBranch size={14} />,
-      shortcut: getShortcutDisplay('B', { ctrl: true }),
+      shortcut: isMac ? '⌘B' : 'Ctrl+B',
       onClick: handlers.onBranch,
     });
   }
@@ -162,7 +162,7 @@ export function getConversationMenuItems(
       id: 'copy',
       label: 'Copy content',
       icon: <Copy size={14} />,
-      shortcut: getShortcutDisplay('C', { ctrl: true }),
+      shortcut: isMac ? '⌘C' : 'Ctrl+C',
       onClick: handlers.onCopy,
     });
   }
