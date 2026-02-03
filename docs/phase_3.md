@@ -113,6 +113,27 @@ function KeyboardShortcutsPanel() {
 
 ## Future Considerations (Phase 4+)
 
+### Breadcrumb Inline Editing
+
+**Status: Low priority enhancement - consider after sidebar rename UX is validated**
+
+Canvas renaming via sidebar (double-click, right-click menu, F2) was implemented in Phase 2. Inline editing of canvas names directly in the breadcrumb trail is a potential Phase 4+ enhancement.
+
+**Implementation approach:**
+- Double-click canvas name in breadcrumb to edit inline
+- Similar UX to sidebar rename (Enter to save, Escape to cancel)
+- Reuses same `updateCanvas` function from canvas-store
+- Requires breadcrumb text wrapping/truncation consideration
+- Lower priority than sidebar editing (sidebar is primary navigation)
+
+**Rationale:**
+- Sidebar provides primary rename interface with full context
+- Breadcrumb editing is convenience feature for focused workflows
+- Implementation complexity increases due to breadcrumb space constraints
+- Wait for user feedback on sidebar rename before investing in breadcrumb variant
+
+---
+
 ### Alternative Dark Themes
 
 **Status: Optional - IF users demand it**

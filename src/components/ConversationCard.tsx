@@ -8,6 +8,7 @@ import { colors, typography, spacing, effects, animation, card } from '@/lib/des
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore, selectIsAnyNodeDragging } from '@/stores/canvas-store';
+import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import type { ConversationNodeData, Message } from '@/types';
 import { GitBranch } from 'lucide-react';
@@ -89,11 +90,17 @@ function ConversationCardComponent({
 
   // Store actions
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
+  const createBranch = useCanvasStore((s) => s.createBranch);
+  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const toggleExpanded = useCanvasStore((s) => s.toggleExpanded);
   
   // Check if any node is being dragged (to disable hover effects)
   const isAnyNodeDragging = useCanvasStore(selectIsAnyNodeDragging);
+
+  // Branching preferences
+  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
+  const uiPrefs = usePreferencesStore(selectUIPreferences);
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
@@ -120,9 +127,18 @@ function ConversationCardComponent({
 
   // Context menu items (excluding branch - it opens dialog directly)
   const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
-    onDelete: () => deleteConversation(conversation.id),
+    onDelete: () => {
+      // Check if confirmation is required
+      if (uiPrefs.confirmOnDelete) {
+        if (window.confirm('Delete this conversation?')) {
+          deleteConversation(conversation.id);
+        }
+      } else {
+        deleteConversation(conversation.id);
+      }
+    },
     onExpand: () => toggleExpanded(conversation.id),
-  }, isMac), [conversation.id, deleteConversation, toggleExpanded, isMac]);
+  }, isMac), [conversation.id, deleteConversation, toggleExpanded, isMac, uiPrefs.confirmOnDelete]);
 
   // Handle right-click: Check if clicked item is "Branch from here"
   // If so, open dialog directly (centered modal per phase_2.md spec)
@@ -131,17 +147,38 @@ function ConversationCardComponent({
     e.preventDefault();
     e.stopPropagation();
     
-    // Open context menu with Branch option that triggers dialog
+    // Handle branch action based on preferences
+    const handleBranchAction = () => {
+      closeMenu();
+      
+      // Check preference: should we show dialog or create instantly?
+      if (branchingPrefs.alwaysAskOnBranch) {
+        // Show dialog for user to configure
+        openBranchDialog(conversation.id);
+      } else {
+        // Create branch instantly with default settings
+        const newCanvas = createBranch({
+          sourceConversationId: conversation.id,
+          branchReason: 'Quick branch',
+          inheritanceMode: branchingPrefs.defaultInheritanceMode,
+          customMessageIds: undefined,
+        });
+        
+        // Navigate to the new canvas if created successfully
+        if (newCanvas) {
+          navigateToCanvas(newCanvas.id);
+        }
+      }
+    };
+    
+    // Open context menu with Branch option that respects preferences
     const menuItemsWithBranch = [
       {
         id: 'branch',
         label: 'Branch from here',
         icon: <GitBranch size={14} />,
         shortcut: isMac ? '⌘B' : 'Ctrl+B',
-        onClick: () => {
-          closeMenu();
-          openBranchDialog(conversation.id);
-        },
+        onClick: handleBranchAction,
       },
       ...menuItems,
     ];

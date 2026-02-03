@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { Home, ChevronRight, GitBranch } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -17,7 +17,9 @@ const containerStyles: React.CSSProperties = {
   padding: `${spacing[2]} ${spacing[3]}`,
   backgroundColor: colors.navy.light,
   borderRadius: effects.border.radius.default,
-  maxWidth: 'fit-content',
+  maxWidth: '80vw',
+  overflowX: 'auto',
+  scrollbarWidth: 'thin',
 };
 
 const crumbStyles: React.CSSProperties = {
@@ -57,10 +59,36 @@ export function CanvasBreadcrumb() {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   const canvases = useCanvasStore((s) => s.canvases);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // Get lineage from root to current
   const lineage = useMemo(() => {
     return getCanvasLineage(activeCanvasId);
   }, [getCanvasLineage, activeCanvasId, canvases]);
+
+  // Auto-scroll to the end (current item) when lineage changes
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
+    }
+  }, [lineage]);
+
+  // Handle horizontal scroll with mouse wheel
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Convert vertical scroll to horizontal
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
 
   // Don't render if at root (no lineage)
   if (lineage.length <= 1) {
@@ -68,7 +96,7 @@ export function CanvasBreadcrumb() {
   }
 
   return (
-    <nav style={containerStyles} aria-label="Canvas navigation">
+    <nav ref={containerRef} style={containerStyles} aria-label="Canvas navigation">
       {lineage.map((canvas, index) => {
         const isActive = canvas.id === activeCanvasId;
         const isFirst = index === 0;

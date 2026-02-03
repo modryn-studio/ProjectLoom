@@ -162,10 +162,14 @@ export function BranchDialog() {
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [rememberChoice, setRememberChoice] = useState(false);
 
-  // Sync with default inheritance mode when dialog opens
+  // Reset form when dialog opens
   useEffect(() => {
     if (branchDialogOpen) {
       setInheritanceMode(defaultInheritanceMode);
+      setBranchReason('');
+      setRememberChoice(false);
+      setValidationError(null);
+      setValidationWarning(null);
     }
   }, [branchDialogOpen, defaultInheritanceMode]);
 

@@ -13,9 +13,12 @@ import {
   PanelLeft,
   Folder,
   FolderOpen,
+  Edit2,
+  MoreVertical,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
+import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { colors, spacing, effects, typography, animation, layout } from '@/lib/design-tokens';
 import type { Canvas } from '@/types';
 
@@ -76,6 +79,9 @@ interface TreeNodeProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onCreateChild: (parentId: string) => void;
+  onRename: (id: string, newName: string) => void;
+  triggerRename?: boolean;
+  onRenameStart?: () => void;
 }
 
 function TreeNode({ 
@@ -87,11 +93,66 @@ function TreeNode({
   onSelect,
   onDelete,
   onCreateChild,
+  onRename,
+  triggerRename,
+  onRenameStart,
 }: TreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renamingValue, setRenamingValue] = useState(canvas.metadata.title);
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const inputRef = useRef<HTMLInputElement>(null);
   const hasChildren = children.length > 0;
   const isRoot = !canvas.parentCanvasId;
+
+  // Focus input when entering rename mode
+  useEffect(() => {
+    if (isRenaming && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isRenaming]);
+
+  // Trigger rename from F2 key
+  useEffect(() => {
+    if (triggerRename && isActive) {
+      handleStartRename();
+      onRenameStart?.();
+    }
+  }, [triggerRename, isActive]);
+
+  const handleStartRename = () => {
+    setRenamingValue(canvas.metadata.title);
+    setIsRenaming(true);
+    setShowContextMenu(false);
+  };
+
+  const handleFinishRename = () => {
+    const trimmed = renamingValue.trim();
+    if (trimmed && trimmed !== canvas.metadata.title) {
+      onRename(canvas.id, trimmed);
+    }
+    setIsRenaming(false);
+  };
+
+  const handleCancelRename = () => {
+    setRenamingValue(canvas.metadata.title);
+    setIsRenaming(false);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleStartRename();
+  };
+
+  const handleRightClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
+  };
 
   return (
     <div>
@@ -102,6 +163,7 @@ function TreeNode({
         transition={{ delay: depth * 0.05 }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onContextMenu={handleRightClick}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -113,7 +175,7 @@ function TreeNode({
           cursor: 'pointer',
           transition: 'background-color 0.15s ease',
         }}
-        onClick={() => onSelect(canvas.id)}
+        onClick={() => !isRenaming && onSelect(canvas.id)}
       >
         {/* Expand/collapse toggle */}
         {hasChildren ? (
@@ -151,18 +213,50 @@ function TreeNode({
           <GitBranch size={14} color={isActive ? colors.amber.primary : colors.contrast.grayDark} />
         )}
 
-        {/* Name */}
-        <span style={{
-          flex: 1,
-          fontSize: typography.sizes.sm,
-          fontFamily: typography.fonts.body,
-          color: isActive ? colors.amber.primary : colors.contrast.white,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
-          {canvas.metadata.title}
-        </span>
+        {/* Name (or rename input) */}
+        {isRenaming ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={renamingValue}
+            onChange={(e) => setRenamingValue(e.target.value)}
+            onBlur={handleFinishRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleFinishRename();
+              } else if (e.key === 'Escape') {
+                handleCancelRename();
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              flex: 1,
+              fontSize: typography.sizes.sm,
+              fontFamily: typography.fonts.body,
+              color: colors.contrast.white,
+              backgroundColor: colors.navy.dark,
+              border: `1px solid ${colors.amber.primary}`,
+              borderRadius: effects.border.radius.default,
+              padding: `2px ${spacing[1]}`,
+              outline: 'none',
+            }}
+          />
+        ) : (
+          <span
+            onDoubleClick={handleDoubleClick}
+            style={{
+              flex: 1,
+              fontSize: typography.sizes.sm,
+              fontFamily: typography.fonts.body,
+              color: isActive ? colors.amber.primary : colors.contrast.white,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {canvas.metadata.title}
+          </span>
+        )}
 
         {/* Actions (shown on hover via CSS or always for active) */}
         {(isActive || isHovered) && (
@@ -212,6 +306,117 @@ function TreeNode({
         )}
       </motion.div>
 
+      {/* Context Menu */}
+      {showContextMenu && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9998,
+            }}
+            onClick={() => setShowContextMenu(false)}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              left: contextMenuPos.x,
+              top: contextMenuPos.y,
+              backgroundColor: colors.navy.light,
+              border: `1px solid rgba(99, 102, 241, 0.3)`,
+              borderRadius: effects.border.radius.default,
+              boxShadow: effects.shadow.lg,
+              padding: spacing[1],
+              zIndex: 9999,
+              minWidth: 160,
+            }}
+          >
+            <button
+              onClick={handleStartRename}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[2]}`,
+                background: 'none',
+                border: 'none',
+                borderRadius: effects.border.radius.default,
+                color: colors.contrast.white,
+                fontSize: typography.sizes.sm,
+                fontFamily: typography.fonts.body,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${colors.violet.primary}15`}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Edit2 size={14} />
+              Rename
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowContextMenu(false);
+                onCreateChild(canvas.id);
+              }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[2]}`,
+                background: 'none',
+                border: 'none',
+                borderRadius: effects.border.radius.default,
+                color: colors.contrast.white,
+                fontSize: typography.sizes.sm,
+                fontFamily: typography.fonts.body,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${colors.violet.primary}15`}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Plus size={14} />
+              Create Child
+            </button>
+            {canDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowContextMenu(false);
+                  onDelete(canvas.id);
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `${spacing[2]} ${spacing[2]}`,
+                  background: 'none',
+                  border: 'none',
+                  borderRadius: effects.border.radius.default,
+                  color: colors.semantic.error,
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'background-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${colors.semantic.error}15`}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Children */}
       <AnimatePresence>
         {isExpanded && hasChildren && (
@@ -231,6 +436,9 @@ function TreeNode({
                 onSelect={onSelect}
                 onDelete={onDelete}
                 onCreateChild={onCreateChild}
+                onRename={onRename}
+                triggerRename={triggerRename}
+                onRenameStart={onRenameStart}
               />
             ))}
           </motion.div>
@@ -248,13 +456,19 @@ function TreeNodeContainer({
   onSelect,
   onDelete,
   onCreateChild,
+  onRename,
+  triggerRename,
+  onRenameStart,
 }: {
   canvas: Canvas;
   depth: number;
   canDelete: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, newName: string) => void;
   onCreateChild: (parentId: string) => void;
+  triggerRename?: boolean;
+  onRenameStart?: () => void;
 }) {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   // Subscribe to canvases directly for reactivity
@@ -282,6 +496,9 @@ function TreeNodeContainer({
       onSelect={onSelect}
       onDelete={onDelete}
       onCreateChild={onCreateChild}
+      onRename={onRename}
+      triggerRename={triggerRename}
+      onRenameStart={onRenameStart}
     />
   );
 }
@@ -295,6 +512,7 @@ export function CanvasTreeSidebar() {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
+  const [triggerF2Rename, setTriggerF2Rename] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
 
   // Subscribe to canvases array directly - this will trigger re-renders when canvases change
@@ -303,6 +521,10 @@ export function CanvasTreeSidebar() {
   const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
   const deleteCanvas = useCanvasStore((s) => s.deleteCanvas);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
+  const updateCanvas = useCanvasStore((s) => s.updateCanvas);
+  
+  // UI preferences
+  const uiPrefs = usePreferencesStore(selectUIPreferences);
   
   // Filter root canvases directly from the subscribed canvases array
   // This ensures reactivity since we're using the subscribed data
@@ -341,14 +563,49 @@ export function CanvasTreeSidebar() {
   }, [navigateToCanvas]);
 
   const handleDelete = useCallback((id: string) => {
-    if (confirm('Delete this canvas and all its children?')) {
+    // Check if confirmation is required
+    if (uiPrefs.confirmOnDelete) {
+      if (confirm('Delete this canvas and all its children?')) {
+        deleteCanvas(id);
+      }
+    } else {
       deleteCanvas(id);
     }
-  }, [deleteCanvas]);
+  }, [deleteCanvas, uiPrefs.confirmOnDelete]);
 
   const handleCreateChild = useCallback((parentId: string) => {
     createCanvas(`Branch ${Date.now()}`, parentId);
   }, [createCanvas]);
+
+  const handleRename = useCallback((canvasId: string, newName: string) => {
+    const canvas = canvases.find(c => c.id === canvasId);
+    if (canvas) {
+      updateCanvas(canvasId, {
+        metadata: {
+          ...canvas.metadata,
+          title: newName,
+          updatedAt: new Date(),
+        },
+      });
+    }
+  }, [canvases, updateCanvas]);
+
+  // F2 keyboard shortcut for renaming
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setTriggerF2Rename(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleRenameStart = useCallback(() => {
+    setTriggerF2Rename(false);
+  }, []);
 
   // Dynamic sidebar styles
   const sidebarStyles: React.CSSProperties = {
@@ -495,6 +752,9 @@ export function CanvasTreeSidebar() {
               onSelect={handleSelect}
               onDelete={handleDelete}
               onCreateChild={handleCreateChild}
+              onRename={handleRename}
+              triggerRename={triggerF2Rename}
+              onRenameStart={handleRenameStart}
             />
           ))
         )}

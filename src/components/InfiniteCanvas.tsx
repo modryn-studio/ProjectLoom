@@ -31,7 +31,7 @@ import { APIKeyWarningBanner } from './APIKeyWarningBanner';
 import { SettingsPanel, SettingsButton } from './SettingsPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectBranchDialogOpen } from '@/stores/canvas-store';
-import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
+import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
 
 // =============================================================================
 // NODE TYPES
@@ -135,6 +135,8 @@ export function InfiniteCanvas() {
   const clearSelection = useCanvasStore((s) => s.clearSelection);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
+  const createBranch = useCanvasStore((s) => s.createBranch);
+  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const expandedNodeIds = useCanvasStore((s) => s.expandedNodeIds);
   const undo = useCanvasStore((s) => s.undo);
@@ -154,6 +156,7 @@ export function InfiniteCanvas() {
 
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const isPrefsLoaded = usePreferencesStore((s) => s.isLoaded);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
@@ -261,7 +264,14 @@ export function InfiniteCanvas() {
     handlers: {
       onDelete: () => {
         if (firstSelectedId) {
-          deleteConversation(firstSelectedId);
+          // Check if confirmation is required
+          if (uiPrefs.confirmOnDelete) {
+            if (window.confirm('Delete this conversation?')) {
+              deleteConversation(firstSelectedId);
+            }
+          } else {
+            deleteConversation(firstSelectedId);
+          }
         }
       },
       onEscape: () => {
@@ -289,9 +299,26 @@ export function InfiniteCanvas() {
         }
       },
       onBranch: () => {
-        // Ctrl+B: Open branch dialog for first selected card
+        // Ctrl+B: Branch from first selected card
         if (firstSelectedId) {
-          openBranchDialog(firstSelectedId);
+          // Check preference: should we show dialog or create instantly?
+          if (branchingPrefs.alwaysAskOnBranch) {
+            // Show dialog for user to configure
+            openBranchDialog(firstSelectedId);
+          } else {
+            // Create branch instantly with default settings
+            const newCanvas = createBranch({
+              sourceConversationId: firstSelectedId,
+              branchReason: 'Quick branch',
+              inheritanceMode: branchingPrefs.defaultInheritanceMode,
+              customMessageIds: undefined,
+            });
+            
+            // Navigate to the new canvas if created successfully
+            if (newCanvas) {
+              navigateToCanvas(newCanvas.id);
+            }
+          }
         }
       },
     },

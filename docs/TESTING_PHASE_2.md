@@ -315,56 +315,6 @@ These scenarios combine multiple features to test realistic workflows.
 
 ---
 
-## Scenario G: Keyboard Shortcuts
-**Goal:** Verify all Phase 2 keyboard shortcuts work correctly
-
-1. **Setup:**
-   - Have 2-3 conversation nodes on canvas
-   - Select one node by clicking it
-
-2. **Test Space (Expand/Collapse):**
-   - Press **Space** → Card should expand
-   - Press **Space** again → Card should collapse
-   - **Pass:** Space toggles expansion on selected card
-
-3. **Test Ctrl+B (Branch):**
-   - Select a card
-   - Press **Ctrl+B** (or ⌘B on Mac)
-   - Branch dialog should open
-   - Cancel the dialog
-   - **Pass:** Ctrl+B opens branch dialog for selected card
-
-4. **Test Delete/Backspace:**
-   - Select a card
-   - Press **Delete** (or **Backspace**)
-   - Card should be deleted (with confirmation if enabled)
-   - **Pass:** Delete removes selected card
-
-5. **Test Escape:**
-   - Select and expand a card
-   - Press **Escape** → Card collapses
-   - Press **Escape** again → Card deselects
-   - **Pass:** Escape collapses then deselects
-
-6. **Test Undo/Redo:**
-   - Delete a card
-   - Press **Ctrl+Z** → Card should reappear
-   - Press **Ctrl+Y** (or **Ctrl+Shift+Z**) → Card should be deleted again
-   - **Pass:** Undo/redo work correctly
-
-7. **Test shortcuts don't work in text inputs:**
-   - Open branch dialog
-   - Click in the "Reason" text field
-   - Press **Space** → Should type a space, not toggle expansion
-   - Press **Delete** → Should delete text, not delete card
-   - **Pass:** Shortcuts disabled when typing
-
-**Pass criteria:** All shortcuts work as expected, no shortcuts trigger when typing in inputs
-
----
-
-
-
 
 
 
