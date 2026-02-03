@@ -58,6 +58,19 @@ const defaultEdgeOptions = {
 // CANVAS STYLES
 // =============================================================================
 
+const containerStyles: React.CSSProperties = {
+  display: 'flex',
+  width: '100%',
+  height: '100%',
+  overflow: 'hidden',
+};
+
+const mainContentStyles: React.CSSProperties = {
+  flex: 1,
+  position: 'relative',
+  overflow: 'hidden',
+};
+
 const canvasStyles: React.CSSProperties = {
   width: '100%',
   height: '100%',
@@ -289,27 +302,28 @@ export function InfiniteCanvas() {
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   return (
-    <div style={canvasStyles}>
+    <div style={containerStyles}>
       {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
       {isPrefsLoaded && uiPrefs.showCanvasTree && <CanvasTreeSidebar />}
 
-      {/* Main canvas area with breadcrumb and inherited context */}
-      <div style={{
-        ...topOverlayStyles,
-        left: isPrefsLoaded && uiPrefs.showCanvasTree ? 260 : 0,
-      }}>
-        {/* Breadcrumb navigation */}
-        <div style={pointerEventsAutoStyle}>
-          <CanvasBreadcrumb />
+      {/* Main content area */}
+      <div style={mainContentStyles}>
+        {/* Top overlay for breadcrumb and inherited context */}
+        <div style={topOverlayStyles}>
+          {/* Breadcrumb navigation */}
+          <div style={pointerEventsAutoStyle}>
+            <CanvasBreadcrumb />
+          </div>
+
+          {/* Inherited context panel (shown when canvas has parent and enabled) */}
+          {isPrefsLoaded && uiPrefs.showInheritedContext && hasParent && (
+            <div style={pointerEventsAutoStyle}>
+              <InheritedContextPanel />
+            </div>
+          )}
         </div>
 
-        {/* Inherited context panel (shown when canvas has parent and enabled) */}
-        {isPrefsLoaded && uiPrefs.showInheritedContext && hasParent && (
-          <div style={pointerEventsAutoStyle}>
-            <InheritedContextPanel />
-          </div>
-        )}
-      </div>
+        <div style={canvasStyles}>
 
       <ReactFlow<Node<ConversationNodeData>, Edge>
         nodes={nodes}
@@ -388,6 +402,7 @@ export function InfiniteCanvas() {
       {/* Settings Button and Panel */}
       <SettingsButton onClick={openSettings} />
       <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+      </div>
     </div>
   );
 }

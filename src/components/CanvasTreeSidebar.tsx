@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
+import { colors, spacing, effects, typography, animation, layout } from '@/lib/design-tokens';
 import type { Canvas } from '@/types';
 
 // =============================================================================
@@ -24,17 +24,14 @@ import type { Canvas } from '@/types';
 // =============================================================================
 
 const sidebarStyles: React.CSSProperties = {
-  position: 'absolute',
-  left: 0,
-  top: 0,
-  bottom: 0,
-  width: 260,
+  width: layout.sidebar.width,
+  flexShrink: 0,
   backgroundColor: colors.navy.light,
   borderRight: `1px solid rgba(99, 102, 241, 0.2)`,
   display: 'flex',
   flexDirection: 'column',
-  zIndex: 100,
   overflow: 'hidden',
+  height: '100%',
 };
 
 const headerStyles: React.CSSProperties = {
