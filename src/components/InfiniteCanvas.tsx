@@ -324,84 +324,84 @@ export function InfiniteCanvas() {
         </div>
 
         <div style={canvasStyles}>
+          <ReactFlow<Node<ConversationNodeData>, Edge>
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
+            onConnect={handleConnect}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            onNodeDragStart={handleNodeDragStart}
+            onNodeDragStop={handleNodeDragStop}
+            onPaneClick={handlePaneClick}
+            onInit={handleInit}
+            nodeTypes={nodeTypes}
+            defaultEdgeOptions={defaultEdgeOptions}
+            connectionLineStyle={connectionLineStyle}
+            connectionLineComponent={CustomConnectionLine}
+            minZoom={canvasConfig.viewport.minZoom}
+            maxZoom={canvasConfig.viewport.maxZoom}
+            defaultViewport={defaultViewport}
+            fitView={false}
+            onlyRenderVisibleElements={true}
+            nodesDraggable={true}
+            nodesConnectable={true}
+            panOnDrag={true}
+            panOnScroll={false}
+            zoomOnScroll={true}
+            zoomOnPinch={true}
+            zoomOnDoubleClick={false}
+            selectionOnDrag={false}
+            selectNodesOnDrag={false}
+            snapToGrid={false}
+            deleteKeyCode={null}
+            multiSelectionKeyCode={null}
+          >
+            {/* Dot grid background */}
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={canvasConfig.background.dotGap}
+              size={canvasConfig.background.dotSize}
+              color={canvasConfig.background.dotColor}
+            />
 
-      <ReactFlow<Node<ConversationNodeData>, Edge>
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={handleEdgesChange}
-        onConnect={handleConnect}
-        onNodeClick={handleNodeClick}
-        onNodeDoubleClick={handleNodeDoubleClick}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDragStop={handleNodeDragStop}
-        onPaneClick={handlePaneClick}
-        onInit={handleInit}
-        nodeTypes={nodeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        connectionLineStyle={connectionLineStyle}
-        connectionLineComponent={CustomConnectionLine}
-        minZoom={canvasConfig.viewport.minZoom}
-        maxZoom={canvasConfig.viewport.maxZoom}
-        defaultViewport={defaultViewport}
-        fitView={false}
-        onlyRenderVisibleElements={true}
-        nodesDraggable={true}
-        nodesConnectable={true}
-        panOnDrag={true}
-        panOnScroll={false}
-        zoomOnScroll={true}
-        zoomOnPinch={true}
-        zoomOnDoubleClick={false}
-        selectionOnDrag={false}
-        selectNodesOnDrag={false}
-        snapToGrid={false}
-        deleteKeyCode={null}
-        multiSelectionKeyCode={null}
-      >
-        {/* Dot grid background */}
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={canvasConfig.background.dotGap}
-          size={canvasConfig.background.dotSize}
-          color={canvasConfig.background.dotColor}
-        />
+            {/* Minimap */}
+            <MiniMap
+              style={minimapStyle}
+              nodeColor={canvasConfig.minimap.nodeColor}
+              maskColor={canvasConfig.minimap.maskColor}
+              zoomable
+              pannable
+            />
 
-        {/* Minimap */}
-        <MiniMap
-          style={minimapStyle}
-          nodeColor={canvasConfig.minimap.nodeColor}
-          maskColor={canvasConfig.minimap.maskColor}
-          zoomable
-          pannable
-        />
+            {/* Viewport controls */}
+            <Controls
+              showZoom={true}
+              showFitView={true}
+              showInteractive={false}
+              style={controlsStyle}
+            />
+          </ReactFlow>
 
-        {/* Viewport controls */}
-        <Controls
-          showZoom={true}
-          showFitView={true}
-          showInteractive={false}
-          style={controlsStyle}
-        />
-      </ReactFlow>
+          {/* Dev performance overlay */}
+          {showDevOverlay && (
+            <DevPerformanceOverlay
+              nodeCount={nodes.length}
+              edgeCount={edges.length}
+            />
+          )}
 
-      {/* Dev performance overlay */}
-      {showDevOverlay && (
-        <DevPerformanceOverlay
-          nodeCount={nodes.length}
-          edgeCount={edges.length}
-        />
-      )}
+          {/* Branch Dialog */}
+          <BranchDialog />
 
-      {/* Branch Dialog */}
-      <BranchDialog />
+          {/* API Key Warning Banner */}
+          <APIKeyWarningBanner position="bottom" />
 
-      {/* API Key Warning Banner */}
-      <APIKeyWarningBanner position="bottom" />
-
-      {/* Settings Button and Panel */}
-      <SettingsButton onClick={openSettings} />
-      <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+          {/* Settings Button and Panel */}
+          <SettingsButton onClick={openSettings} />
+          <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+        </div>
       </div>
     </div>
   );
