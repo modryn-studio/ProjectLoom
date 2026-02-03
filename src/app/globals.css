@@ -119,6 +119,28 @@ html {
   background: transparent;
 }
 
+/* Sidebar-specific scrollbar behavior */
+aside::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+aside:hover::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+aside:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
+
+aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+aside:hover::-webkit-scrollbar-track {
+  background: rgba(45, 49, 66, 0.3);
+}
+
 /* Connection line animation for drag-to-connect */
 @keyframes connectionDash {
   to {
