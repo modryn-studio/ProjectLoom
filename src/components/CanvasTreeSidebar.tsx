@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronRight, 
@@ -20,20 +20,15 @@ import { colors, spacing, effects, typography, animation, layout } from '@/lib/d
 import type { Canvas } from '@/types';
 
 // =============================================================================
-// STYLES
+// CONSTANTS
 // =============================================================================
 
-const sidebarStyles: React.CSSProperties = {
-  width: layout.sidebar.width,
-  flexShrink: 0,
-  backgroundColor: colors.navy.light,
-  borderRight: `1px solid rgba(99, 102, 241, 0.2)`,
-  display: 'flex',
-  flexDirection: 'column',
-  height: '100vh',
-  maxHeight: '100vh',
-  overflow: 'hidden',
-};
+const MIN_SIDEBAR_WIDTH = layout.sidebar.width;
+const MAX_SIDEBAR_WIDTH = 600;
+
+// =============================================================================
+// STYLES
+// =============================================================================
 
 const headerStyles: React.CSSProperties = {
   display: 'flex',
@@ -47,7 +42,7 @@ const headerStyles: React.CSSProperties = {
 const contentStyles: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
-  overflowX: 'auto',
+  overflowX: 'hidden',
   padding: spacing[2],
   minHeight: 0, // Critical for flex scrolling
 };
@@ -295,6 +290,10 @@ function TreeNodeContainer({
 
 export function CanvasTreeSidebar() {
   const [isOpen, setIsOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isResizeHovered, setIsResizeHovered] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   // Subscribe to canvases array directly - this will trigger re-renders when canvases change
   const canvases = useCanvasStore((s) => s.canvases);
@@ -306,6 +305,33 @@ export function CanvasTreeSidebar() {
   // Filter root canvases directly from the subscribed canvases array
   // This ensures reactivity since we're using the subscribed data
   const rootCanvases = canvases.filter(c => c.parentCanvasId === null);
+
+  // Resize handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = e.clientX;
+      setSidebarWidth(Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   // Handlers
   const handleSelect = useCallback((id: string) => {
@@ -322,6 +348,36 @@ export function CanvasTreeSidebar() {
     createCanvas(`Branch ${Date.now()}`, parentId);
   }, [createCanvas]);
 
+  // Dynamic sidebar styles
+  const sidebarStyles: React.CSSProperties = {
+    width: sidebarWidth,
+    minWidth: MIN_SIDEBAR_WIDTH,
+    maxWidth: MAX_SIDEBAR_WIDTH,
+    flexShrink: 0,
+    backgroundColor: colors.navy.light,
+    borderRight: 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    maxHeight: '100vh',
+    overflow: 'hidden',
+    position: 'relative',
+    userSelect: isResizing ? 'none' : 'auto',
+  };
+
+  // Resize handle styles
+  const resizeHandleStyles: React.CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 4,
+    height: '100%',
+    cursor: 'ew-resize',
+    backgroundColor: isResizing || isResizeHovered ? colors.amber.primary : 'rgba(99, 102, 241, 0.2)',
+    transition: isResizing ? 'none' : 'background-color 0.15s ease',
+    zIndex: 10,
+  };
+
   // Toggle button when closed
   if (!isOpen) {
     return (
@@ -337,12 +393,20 @@ export function CanvasTreeSidebar() {
 
   return (
     <motion.aside
-      initial={{ x: -260 }}
+      ref={sidebarRef}
+      initial={{ x: -MIN_SIDEBAR_WIDTH }}
       animate={{ x: 0 }}
-      exit={{ x: -260 }}
+      exit={{ x: -sidebarWidth }}
       transition={animation.spring.gentle}
       style={sidebarStyles}
     >
+      {/* Resize handle */}
+      <div
+        style={resizeHandleStyles}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={() => setIsResizeHovered(true)}
+        onMouseLeave={() => setIsResizeHovered(false)}
+      />
       {/* Header */}
       <div style={headerStyles}>
         <span style={{
