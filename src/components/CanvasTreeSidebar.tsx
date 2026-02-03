@@ -251,10 +251,12 @@ function TreeNodeContainer({
 }) {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   const getChildCanvases = useCanvasStore((s) => s.getChildCanvases);
-  const canvases = useCanvasStore((s) => s.canvases);
+  
+  // Subscribe to canvases to trigger re-renders on changes
+  const canvasIds = useCanvasStore((s) => s.canvases.map(c => c.id).join(','));
   
   // Recompute children when canvases change
-  const children = useMemo(() => getChildCanvases(canvas.id), [getChildCanvases, canvas.id, canvases.length]);
+  const children = useMemo(() => getChildCanvases(canvas.id), [getChildCanvases, canvas.id, canvasIds]);
 
   return (
     <TreeNode
@@ -276,15 +278,17 @@ function TreeNodeContainer({
 export function CanvasTreeSidebar() {
   const [isOpen, setIsOpen] = useState(true);
 
-  const canvases = useCanvasStore((s) => s.canvases);
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
   const getRootCanvases = useCanvasStore((s) => s.getRootCanvases);
   const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
   const deleteCanvas = useCanvasStore((s) => s.deleteCanvas);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
-
-  // Get root canvases - recompute when canvases array changes
-  const rootCanvases = useMemo(() => getRootCanvases(), [getRootCanvases, canvases.length]);
+  
+  // Subscribe to canvases array directly to trigger re-renders
+  const canvasIds = useCanvasStore((s) => s.canvases.map(c => c.id).join(','));
+  
+  // Get root canvases - recompute when canvasIds change
+  const rootCanvases = useMemo(() => getRootCanvases(), [getRootCanvases, canvasIds]);
 
   // Handlers
   const handleSelect = useCallback((id: string) => {
