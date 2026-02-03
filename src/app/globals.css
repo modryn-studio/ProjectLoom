@@ -119,26 +119,30 @@ html {
   background: transparent;
 }
 
-/* Sidebar-specific scrollbar behavior */
+/* Sidebar-specific scrollbar behavior - hidden by default, shows on hover */
 aside::-webkit-scrollbar-thumb {
   background: transparent;
-  transition: background 0.2s ease;
-}
-
-aside:hover::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.6);
-}
-
-aside:hover::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
 }
 
 aside::-webkit-scrollbar-track {
   background: transparent;
 }
 
-aside:hover::-webkit-scrollbar-track {
+/* Show scrollbar when sidebar is hovered */
+aside.sidebar-hovered::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.6);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+aside.sidebar-hovered::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
+
+aside.sidebar-hovered::-webkit-scrollbar-track {
   background: rgba(45, 49, 66, 0.3);
+  border-radius: 4px;
 }
 
 /* Connection line animation for drag-to-connect */

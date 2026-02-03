@@ -293,6 +293,7 @@ export function CanvasTreeSidebar() {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
 
   // Subscribe to canvases array directly - this will trigger re-renders when canvases change
@@ -394,11 +395,14 @@ export function CanvasTreeSidebar() {
   return (
     <motion.aside
       ref={sidebarRef}
+      className={isSidebarHovered ? 'sidebar-hovered' : ''}
       initial={{ x: -MIN_SIDEBAR_WIDTH }}
       animate={{ x: 0 }}
       exit={{ x: -sidebarWidth }}
       transition={animation.spring.gentle}
       style={sidebarStyles}
+      onMouseEnter={() => setIsSidebarHovered(true)}
+      onMouseLeave={() => setIsSidebarHovered(false)}
     >
       {/* Resize handle */}
       <div
