@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Trash2, Maximize2, Copy, Edit2 } from 'lucide-react';
 
@@ -194,6 +195,12 @@ export function getConversationMenuItems(
 
 export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure we're on client-side for portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Handle escape key and click outside
   useEffect(() => {
@@ -220,7 +227,12 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
     };
   }, [isOpen, onClose]);
 
-  return (
+  // Don't render until mounted (for SSR compatibility)
+  if (!mounted) return null;
+
+  // Use portal to render menu at document body level
+  // This ensures the menu is not affected by canvas transforms
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -295,7 +307,8 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
           ))}
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
