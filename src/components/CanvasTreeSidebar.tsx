@@ -355,7 +355,7 @@ export function CanvasTreeSidebar() {
     maxWidth: MAX_SIDEBAR_WIDTH,
     flexShrink: 0,
     backgroundColor: colors.navy.light,
-    borderRight: 'none',
+    borderRight: `1px solid rgba(99, 102, 241, 0.2)`,
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
@@ -369,12 +369,12 @@ export function CanvasTreeSidebar() {
   const resizeHandleStyles: React.CSSProperties = {
     position: 'absolute',
     top: 0,
-    right: 0,
-    width: 4,
+    right: -2,
+    width: isResizing || isResizeHovered ? 4 : 4,
     height: '100%',
     cursor: 'ew-resize',
-    backgroundColor: isResizing || isResizeHovered ? colors.amber.primary : 'rgba(99, 102, 241, 0.2)',
-    transition: isResizing ? 'none' : 'background-color 0.15s ease',
+    backgroundColor: isResizing || isResizeHovered ? colors.amber.primary : 'transparent',
+    transition: isResizing ? 'none' : 'background-color 0.15s ease, width 0.15s ease',
     zIndex: 10,
   };
 
