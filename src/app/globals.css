@@ -119,30 +119,6 @@ html {
   background: transparent;
 }
 
-/* Sidebar content scrollbar - hidden by default */
-.sidebar-content::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-
-.sidebar-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Show scrollbar when sidebar is hovered */
-.sidebar-content-hovered::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.6);
-  border-radius: 4px;
-}
-
-.sidebar-content-hovered::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
-}
-
-.sidebar-content-hovered::-webkit-scrollbar-track {
-  background: rgba(45, 49, 66, 0.3);
-  border-radius: 4px;
-}
-
 /* Connection line animation for drag-to-connect */
 @keyframes connectionDash {
   to {
