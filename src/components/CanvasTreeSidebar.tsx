@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronRight, 
@@ -73,6 +73,7 @@ interface TreeNodeProps {
   depth: number;
   isActive: boolean;
   children: Canvas[];
+  canDelete: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onCreateChild: (parentId: string) => void;
@@ -82,7 +83,8 @@ function TreeNode({
   canvas, 
   depth, 
   isActive, 
-  children, 
+  children,
+  canDelete,
   onSelect,
   onDelete,
   onCreateChild,
@@ -183,7 +185,7 @@ function TreeNode({
             >
               <Plus size={12} />
             </button>
-            {!isRoot && (
+            {canDelete && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -223,6 +225,7 @@ function TreeNode({
                 key={child.id}
                 canvas={child}
                 depth={depth + 1}
+                canDelete={true}
                 onSelect={onSelect}
                 onDelete={onDelete}
                 onCreateChild={onCreateChild}
@@ -239,22 +242,33 @@ function TreeNode({
 function TreeNodeContainer({
   canvas,
   depth,
+  canDelete,
   onSelect,
   onDelete,
   onCreateChild,
 }: {
   canvas: Canvas;
   depth: number;
+  canDelete: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onCreateChild: (parentId: string) => void;
 }) {
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const getChildCanvases = useCanvasStore((s) => s.getChildCanvases);
+  // Subscribe to canvases directly for reactivity
   const canvases = useCanvasStore((s) => s.canvases);
   
-  // Recompute children on every render to ensure reactivity
-  const children = getChildCanvases(canvas.id);
+  // Filter children directly from the subscribed canvases array
+  const children = canvases.filter(c => c.parentCanvasId === canvas.id);
+  
+  // Root canvases count - needed to prevent deleting the last one
+  const rootCount = canvases.filter(c => c.parentCanvasId === null).length;
+  
+  // Determine if this canvas can be deleted:
+  // - Branches (non-root) can always be deleted
+  // - Root canvases can be deleted if there's more than one root AND it's not active
+  const isRoot = canvas.parentCanvasId === null;
+  const canDeleteThis = canDelete && (!isRoot || (rootCount > 1 && canvas.id !== activeCanvasId));
 
   return (
     <TreeNode
@@ -262,6 +276,7 @@ function TreeNodeContainer({
       depth={depth}
       isActive={canvas.id === activeCanvasId}
       children={children}
+      canDelete={canDeleteThis}
       onSelect={onSelect}
       onDelete={onDelete}
       onCreateChild={onCreateChild}
@@ -276,15 +291,16 @@ function TreeNodeContainer({
 export function CanvasTreeSidebar() {
   const [isOpen, setIsOpen] = useState(true);
 
+  // Subscribe to canvases array directly - this will trigger re-renders when canvases change
   const canvases = useCanvasStore((s) => s.canvases);
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const getRootCanvases = useCanvasStore((s) => s.getRootCanvases);
   const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
   const deleteCanvas = useCanvasStore((s) => s.deleteCanvas);
   const createCanvas = useCanvasStore((s) => s.createCanvas);
   
-  // Get root canvases - recompute on every render to ensure reactivity
-  const rootCanvases = getRootCanvases();
+  // Filter root canvases directly from the subscribed canvases array
+  // This ensures reactivity since we're using the subscribed data
+  const rootCanvases = canvases.filter(c => c.parentCanvasId === null);
 
   // Handlers
   const handleSelect = useCallback((id: string) => {
@@ -334,7 +350,7 @@ export function CanvasTreeSidebar() {
         </span>
         <div style={{ display: 'flex', gap: spacing[1] }}>
           <button
-            onClick={() => createCanvas(`New Canvas ${canvases.length + 1}`)}
+            onClick={() => createCanvas(`New Canvas ${rootCanvases.length + 1}`)}
             style={{
               background: 'none',
               border: 'none',
@@ -404,6 +420,7 @@ export function CanvasTreeSidebar() {
               key={canvas.id}
               canvas={canvas}
               depth={0}
+              canDelete={true}
               onSelect={handleSelect}
               onDelete={handleDelete}
               onCreateChild={handleCreateChild}
