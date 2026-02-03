@@ -920,12 +920,19 @@ export const useCanvasStore = create<CanvasState>()(
     deleteCanvas: (canvasId: string) => {
       const { canvases, activeCanvasId, getChildCanvases } = get();
       
-      // Don't delete if it has children
-      const children = getChildCanvases(canvasId);
-      if (children.length > 0) {
-        logger.warn('Cannot delete canvas with children');
-        return;
-      }
+      // Collect all descendant IDs (recursive)
+      const getAllDescendants = (id: string): string[] => {
+        const children = getChildCanvases(id);
+        const descendants: string[] = [];
+        for (const child of children) {
+          descendants.push(child.id);
+          descendants.push(...getAllDescendants(child.id));
+        }
+        return descendants;
+      };
+      
+      const descendantIds = getAllDescendants(canvasId);
+      const idsToDelete = new Set([canvasId, ...descendantIds]);
 
       // Remove from parent's branches array
       const canvas = canvases.find(c => c.id === canvasId);
@@ -942,13 +949,13 @@ export const useCanvasStore = create<CanvasState>()(
         }
       }
 
-      // Remove the canvas
+      // Remove the canvas and all descendants
       set((state) => ({
-        canvases: state.canvases.filter(c => c.id !== canvasId),
+        canvases: state.canvases.filter(c => !idsToDelete.has(c.id)),
       }));
 
       // If we deleted the active canvas, navigate to parent or first root
-      if (activeCanvasId === canvasId) {
+      if (idsToDelete.has(activeCanvasId || '')) {
         const parent = canvas?.parentCanvasId;
         const firstRoot = get().getRootCanvases()[0];
         if (parent) {
