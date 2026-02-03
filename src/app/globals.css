@@ -79,6 +79,46 @@ body {
   border-radius: 2px;
 }
 
+/* Global custom scrollbar styling */
+* {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.6) transparent;
+}
+
+/* Webkit browsers (Chrome, Edge, Safari) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(45, 49, 66, 0.3);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.6);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: rgba(99, 102, 241, 1);
+  background-clip: padding-box;
+}
+
+/* Scrollbar corner for when both scrollbars appear */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Connection line animation for drag-to-connect */
 @keyframes connectionDash {
   to {
