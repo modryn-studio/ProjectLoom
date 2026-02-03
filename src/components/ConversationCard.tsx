@@ -10,6 +10,7 @@ import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import type { ConversationNodeData, Message } from '@/types';
+import { GitBranch } from 'lucide-react';
 
 // =============================================================================
 // TYPES
@@ -84,7 +85,7 @@ function ConversationCardComponent({
   const metadata = conversation.metadata;
 
   // Context menu state
-  const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu } = useContextMenu();
+  const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu, dynamicItems } = useContextMenu();
 
   // Store actions
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
@@ -108,16 +109,35 @@ function ConversationCardComponent({
   // Preview content
   const previewContent = useMemo(() => getPreviewContent(messages), [messages]);
 
-  // Context menu items
+  // Context menu items (excluding branch - it opens dialog directly)
   const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
-    onBranch: () => openBranchDialog(conversation.id),
     onDelete: () => deleteConversation(conversation.id),
     onExpand: () => toggleExpanded(conversation.id),
-  }), [conversation.id, openBranchDialog, deleteConversation, toggleExpanded]);
+  }), [conversation.id, deleteConversation, toggleExpanded]);
 
-  // Handle right-click
+  // Handle right-click: Check if clicked item is "Branch from here"
+  // If so, open dialog directly (centered modal per phase_2.md spec)
+  // Otherwise show context menu for other actions
   const handleContextMenu = (e: React.MouseEvent) => {
-    openMenu(e);
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Open context menu with Branch option that triggers dialog
+    const menuItemsWithBranch = [
+      {
+        id: 'branch',
+        label: 'Branch from here',
+        icon: <GitBranch size={14} />,
+        shortcut: '⌘B',
+        onClick: () => {
+          closeMenu();
+          openBranchDialog(conversation.id);
+        },
+      },
+      ...menuItems,
+    ];
+    
+    openMenu(e, menuItemsWithBranch);
   };
 
   return (
@@ -261,7 +281,7 @@ function ConversationCardComponent({
         isOpen={isContextMenuOpen}
         position={menuPosition}
         onClose={closeMenu}
-        items={menuItems}
+        items={dynamicItems.length > 0 ? dynamicItems : menuItems}
       />
     </>
   );

@@ -71,8 +71,9 @@ const separatorStyles: React.CSSProperties = {
 export function useContextMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dynamicItems, setDynamicItems] = useState<ContextMenuItem[]>([]);
 
-  const openMenu = useCallback((e: React.MouseEvent) => {
+  const openMenu = useCallback((e: React.MouseEvent, items?: ContextMenuItem[]) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -81,14 +82,18 @@ export function useContextMenu() {
     const y = Math.min(e.clientY, window.innerHeight - 300);
     
     setPosition({ x, y });
+    if (items) {
+      setDynamicItems(items);
+    }
     setIsOpen(true);
   }, []);
 
   const closeMenu = useCallback(() => {
     setIsOpen(false);
+    setDynamicItems([]);
   }, []);
 
-  return { isOpen, position, openMenu, closeMenu };
+  return { isOpen, position, openMenu, closeMenu, dynamicItems };
 }
 
 // =============================================================================
