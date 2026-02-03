@@ -55,6 +55,7 @@ interface CanvasState {
   expandedNodeIds: Set<string>;
   selectedNodeIds: Set<string>;
   isInitialized: boolean;
+  isAnyNodeDragging: boolean;
 
   // Branch Dialog State
   branchDialogOpen: boolean;
@@ -107,6 +108,9 @@ interface CanvasState {
   openBranchDialog: (conversationId: string) => void;
   closeBranchDialog: () => void;
   createBranch: (data: BranchData) => Canvas | null;
+
+  // Actions - Drag State
+  setIsAnyNodeDragging: (isDragging: boolean) => void;
 }
 
 // =============================================================================
@@ -229,6 +233,7 @@ export const useCanvasStore = create<CanvasState>()(
     expandedNodeIds: new Set(),
     selectedNodeIds: new Set(),
     isInitialized: false,
+    isAnyNodeDragging: false,
     
     // Branch Dialog State
     branchDialogOpen: false,
@@ -1009,6 +1014,14 @@ export const useCanvasStore = create<CanvasState>()(
 
       return newCanvas;
     },
+
+    // =========================================================================
+    // Drag State Management
+    // =========================================================================
+
+    setIsAnyNodeDragging: (isDragging: boolean) => {
+      set({ isAnyNodeDragging: isDragging });
+    },
   }))
 );
 
@@ -1021,6 +1034,7 @@ export const selectEdges = (state: CanvasState) => state.edges;
 export const selectIsInitialized = (state: CanvasState) => state.isInitialized;
 export const selectExpandedNodeIds = (state: CanvasState) => state.expandedNodeIds;
 export const selectSelectedNodeIds = (state: CanvasState) => state.selectedNodeIds;
+export const selectIsAnyNodeDragging = (state: CanvasState) => state.isAnyNodeDragging;
 
 // Multi-Canvas selectors (Phase 2)
 export const selectCanvases = (state: CanvasState) => state.canvases;

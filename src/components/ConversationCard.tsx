@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { colors, typography, spacing, effects, animation, card } from '@/lib/design-tokens';
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
-import { useCanvasStore } from '@/stores/canvas-store';
+import { useCanvasStore, selectIsAnyNodeDragging } from '@/stores/canvas-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import type { ConversationNodeData, Message } from '@/types';
 import { GitBranch } from 'lucide-react';
@@ -91,6 +91,9 @@ function ConversationCardComponent({
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const toggleExpanded = useCanvasStore((s) => s.toggleExpanded);
+  
+  // Check if any node is being dragged (to disable hover effects)
+  const isAnyNodeDragging = useCanvasStore(selectIsAnyNodeDragging);
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
@@ -168,10 +171,13 @@ function ConversationCardComponent({
             ? effects.glow.cardActive
             : effects.shadow.card,
         }}
-        whileHover={{
-          y: card.hover.lift,
-          boxShadow: effects.glow.cardHover,
-        }}
+        whileHover={
+          // Disable hover effect when ANY node is being dragged
+          isAnyNodeDragging ? {} : {
+            y: card.hover.lift,
+            boxShadow: effects.glow.cardHover,
+          }
+        }
         transition={{
           width: animation.spring.gentle,
           minHeight: animation.spring.gentle,

@@ -220,6 +220,16 @@ export function InfiniteCanvas() {
     }, 100);
   }, []);
 
+  // Handle node drag start
+  const handleNodeDragStart = useCallback(() => {
+    useCanvasStore.getState().setIsAnyNodeDragging(true);
+  }, []);
+
+  // Handle node drag stop
+  const handleNodeDragStop = useCallback(() => {
+    useCanvasStore.getState().setIsAnyNodeDragging(false);
+  }, []);
+
   // Get first selected ID for keyboard shortcut handling
   const firstSelectedId = useMemo(() => {
     const ids = Array.from(selectedNodeIds);
@@ -293,6 +303,8 @@ export function InfiniteCanvas() {
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStop={handleNodeDragStop}
         onPaneClick={handlePaneClick}
         onInit={handleInit}
         nodeTypes={nodeTypes}
