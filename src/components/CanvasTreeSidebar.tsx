@@ -459,7 +459,10 @@ export function CanvasTreeSidebar() {
       </div>
 
       {/* Tree content */}
-      <div style={contentStyles}>
+      <div 
+        className={isSidebarHovered ? 'sidebar-content-hovered' : 'sidebar-content'}
+        style={contentStyles}
+      >
         {rootCanvases.length === 0 ? (
           <div style={{
             textAlign: 'center',

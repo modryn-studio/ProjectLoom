@@ -119,28 +119,26 @@ html {
   background: transparent;
 }
 
-/* Sidebar-specific scrollbar behavior - hidden by default, shows on hover */
-aside::-webkit-scrollbar-thumb {
+/* Sidebar content scrollbar - hidden by default */
+.sidebar-content::-webkit-scrollbar-thumb {
   background: transparent;
 }
 
-aside::-webkit-scrollbar-track {
+.sidebar-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
 /* Show scrollbar when sidebar is hovered */
-aside.sidebar-hovered::-webkit-scrollbar-thumb {
+.sidebar-content-hovered::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.6);
   border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
 }
 
-aside.sidebar-hovered::-webkit-scrollbar-thumb:hover {
+.sidebar-content-hovered::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.8);
 }
 
-aside.sidebar-hovered::-webkit-scrollbar-track {
+.sidebar-content-hovered::-webkit-scrollbar-track {
   background: rgba(45, 49, 66, 0.3);
   border-radius: 4px;
 }
