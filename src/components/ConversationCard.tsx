@@ -179,9 +179,10 @@ function ConversationCardComponent({
           }
         }
         transition={{
-          width: animation.spring.gentle,
-          minHeight: animation.spring.gentle,
-          maxHeight: animation.spring.gentle,
+          // Use smooth easing for dimensions instead of spring to prevent getting stuck
+          width: { duration: 0.25, ease: 'easeInOut' },
+          minHeight: { duration: 0.25, ease: 'easeInOut' },
+          maxHeight: { duration: 0.25, ease: 'easeInOut' },
           scale: { duration: 0.2, ease: 'easeOut' },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
           y: { duration: 0.15, ease: 'easeOut' },
