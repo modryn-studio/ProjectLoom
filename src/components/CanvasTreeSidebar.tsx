@@ -47,7 +47,7 @@ const headerStyles: React.CSSProperties = {
 const contentStyles: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
-  overflowX: 'hidden',
+  overflowX: 'auto',
   padding: spacing[2],
   minHeight: 0, // Critical for flex scrolling
 };
