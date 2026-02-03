@@ -3,6 +3,8 @@
 ## Summary
 Applied critical performance optimizations to ensure smooth 60 FPS during canvas interactions.
 
+**Last Updated:** February 3, 2026
+
 ## Changes Made
 
 ### 1. Debounced Storage Writes (canvas-store.ts)
@@ -21,20 +23,50 @@ saveToStorage: () => {
 ```
 **Impact:** Reduced localStorage writes from ~60/sec to ~3/sec during drag operations
 
-### 2. React Flow Virtualization (InfiniteCanvas.tsx)
+### 2. Memoized Style Objects (InfiniteCanvas.tsx)
+**Problem:** Inline style objects recreated on every render
+**Solution:** Extracted to module-level constants
+```typescript
+// Before (BAD - creates new object every render)
+<MiniMap style={{ backgroundColor: config.bg, width: 200 }} />
+
+// After (GOOD - stable reference)
+const minimapStyle: React.CSSProperties = { backgroundColor: config.bg, width: 200 };
+<MiniMap style={minimapStyle} />
+```
+**Extracted styles:**
+- `minimapStyle` - MiniMap configuration
+- `controlsStyle` - Controls styling
+- `defaultViewport` - ReactFlow default viewport
+- `topOverlayStyles` - Breadcrumb/context overlay
+- `pointerEventsAutoStyle` - Common pointer-events pattern
+
+### 3. Memoized Callbacks (InfiniteCanvas.tsx)
+**Problem:** Inline arrow functions create new references on every render
+**Solution:** useCallback for settings handlers
+```typescript
+// Before (BAD)
+<SettingsButton onClick={() => setSettingsOpen(true)} />
+
+// After (GOOD)
+const openSettings = useCallback(() => setSettingsOpen(true), []);
+<SettingsButton onClick={openSettings} />
+```
+
+### 4. React Flow Virtualization (InfiniteCanvas.tsx)
 **Already Optimized:**
 - `onlyRenderVisibleElements={true}` ✅
 - Only visible nodes are rendered
 - Off-screen nodes don't re-render
 
-### 3. Component Memoization
+### 5. Component Memoization
 **Already Optimized:**
 - ConversationCard wrapped in `memo()` ✅
 - textStyles computed with `useMemo` ✅  
 - previewContent computed with `useMemo` ✅
 - All event handlers wrapped in `useCallback` ✅
 
-### 4. Zustand Selectors
+### 6. Zustand Selectors
 **Already Optimized:**
 - Using `subscribeWithSelector` middleware ✅
 - Individual selectors prevent unnecessary re-renders ✅
@@ -43,16 +75,41 @@ const nodes = useCanvasStore((s) => s.nodes);
 const edges = useCanvasStore((s) => s.edges);
 ```
 
-### 5. Framer Motion Optimizations
+### 7. Framer Motion Optimizations
 **Already Optimized:**
 - `layout` prop for smooth resize ✅
 - `willChange: 'border-color'` for GPU acceleration ✅
 - Explicit transition timings ✅
 
-### 6. Discrete Scrollbar (ConversationCard.tsx)
+### 8. Discrete Scrollbar (ConversationCard.tsx)
 **Already Optimized:**
 - `scrollbarWidth: 'thin'` ✅
 - Transparent scrollbar reduces paint operations ✅
+
+### 9. Preferences Auto-Loading (preferences-store.ts)
+**Optimization:** Preferences now auto-load on store initialization
+- Prevents redundant `loadPreferences()` calls
+- Avoids multiple components calling load simultaneously
+- `isLoaded` guard prevents duplicate work
+```typescript
+// Auto-load on store creation (runs once)
+const initialState = loadInitialPreferences();
+
+loadPreferences: () => {
+  if (get().isLoaded) return; // Guard against redundant calls
+  // ...
+}
+```
+
+### 10. Logger Utility (lib/logger.ts)
+**Optimization:** Environment-aware logging
+- Suppresses warnings in production
+- Reduces console pollution and GC pressure
+```typescript
+if (isDev) {
+  console.warn('[ProjectLoom]', ...args);
+}
+```
 
 ## Current Performance Metrics
 

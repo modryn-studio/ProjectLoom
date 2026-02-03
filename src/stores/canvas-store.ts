@@ -20,10 +20,14 @@ import type {
   InheritanceMode,
   ContextSnapshot,
 } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Debounce helper for performance
 let saveTimeout: NodeJS.Timeout | null = null;
 const SAVE_DEBOUNCE_MS = 300;
+
+// History configuration
+const MAX_HISTORY_LENGTH = 50;
 
 // =============================================================================
 // TYPES
@@ -130,6 +134,7 @@ function createDefaultCanvas(): Canvas {
     parentCanvasId: null,
     contextSnapshot: null,
     conversations: [],
+    edges: [],
     branches: [],
     tags: [],
     createdFromConversationId: null,
@@ -334,8 +339,8 @@ export const useCanvasStore = create<CanvasState>()(
       const newHistory = history.slice(0, historyIndex + 1);
       newHistory.push(newState);
 
-      // Limit history to last 50 states
-      if (newHistory.length > 50) {
+      // Limit history to last N states
+      if (newHistory.length > MAX_HISTORY_LENGTH) {
         newHistory.shift();
       }
 
@@ -669,8 +674,20 @@ export const useCanvasStore = create<CanvasState>()(
         storage.save(data);
         
         // Also save canvases separately (Phase 2)
+        // Update active canvas with current conversations and edges before saving
         if (canvases.length > 0) {
-          canvasStorage.save({ canvases, activeCanvasId });
+          const updatedCanvases = canvases.map(c => {
+            if (c.id === activeCanvasId) {
+              return {
+                ...c,
+                conversations: Array.from(conversations.values()),
+                edges: connections,
+                metadata: { ...c.metadata, updatedAt: new Date() },
+              };
+            }
+            return c;
+          });
+          canvasStorage.save({ canvases: updatedCanvases, activeCanvasId });
         }
       }, SAVE_DEBOUNCE_MS);
     },
@@ -742,6 +759,7 @@ export const useCanvasStore = create<CanvasState>()(
         parentCanvasId,
         contextSnapshot: null,
         conversations: [],
+        edges: [],
         branches: [],
         tags: [],
         createdFromConversationId: null,
@@ -777,7 +795,7 @@ export const useCanvasStore = create<CanvasState>()(
     navigateToCanvas: (canvasId: string) => {
       const canvas = get().canvases.find(c => c.id === canvasId);
       if (!canvas) {
-        console.warn(`Canvas ${canvasId} not found`);
+        logger.warn(`Canvas ${canvasId} not found`);
         return;
       }
 
@@ -792,8 +810,8 @@ export const useCanvasStore = create<CanvasState>()(
         return conversationToNode(conv, conv.position, false, false);
       });
 
-      // Create edges (for now, empty - will be restored from storage in future)
-      const edges: Edge[] = [];
+      // Restore edges from canvas (with fallback for legacy data)
+      const edges: Edge[] = (canvas.edges || []).map(connectionToEdge);
 
       set({
         activeCanvasId: canvasId,
@@ -858,7 +876,7 @@ export const useCanvasStore = create<CanvasState>()(
       // Don't delete if it has children
       const children = getChildCanvases(canvasId);
       if (children.length > 0) {
-        console.warn('Cannot delete canvas with children');
+        logger.warn('Cannot delete canvas with children');
         return;
       }
 
@@ -905,7 +923,7 @@ export const useCanvasStore = create<CanvasState>()(
       const node = get().nodes.find(n => n.id === conversationId);
       
       if (!conversation || !node) {
-        console.warn(`Conversation ${conversationId} not found`);
+        logger.warn(`Conversation ${conversationId} not found`);
         return;
       }
 
@@ -929,14 +947,14 @@ export const useCanvasStore = create<CanvasState>()(
       const { conversations, activeCanvasId, canvases } = get();
       
       const sourceConversation = conversations.get(sourceConversationId);
-      if (!sourceConversation) {
-        console.error(`Source conversation ${sourceConversationId} not found`);
+      if (!sourceConversation || !Array.isArray(sourceConversation.content)) {
+        logger.error(`Invalid source conversation ${sourceConversationId}`);
         return null;
       }
 
       const parentCanvas = canvases.find(c => c.id === activeCanvasId);
       if (!parentCanvas) {
-        console.error(`Active canvas ${activeCanvasId} not found`);
+        logger.error(`Active canvas ${activeCanvasId} not found`);
         return null;
       }
 
@@ -957,6 +975,7 @@ export const useCanvasStore = create<CanvasState>()(
         parentCanvasId: activeCanvasId,
         contextSnapshot,
         conversations: [],
+        edges: [],
         branches: [],
         tags: [],
         createdFromConversationId: sourceConversationId,

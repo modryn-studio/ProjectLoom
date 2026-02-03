@@ -69,6 +69,38 @@ const connectionLineStyle: React.CSSProperties = {
   strokeWidth: 2,
 };
 
+// Memoized styles to prevent re-creation on every render
+const minimapStyle: React.CSSProperties = {
+  backgroundColor: canvasConfig.minimap.backgroundColor,
+  width: canvasConfig.minimap.width,
+  height: canvasConfig.minimap.height,
+};
+
+const controlsStyle: React.CSSProperties = {
+  backgroundColor: colors.navy.light,
+  borderColor: colors.navy.hover,
+};
+
+const defaultViewport = { x: 0, y: 0, zoom: canvasConfig.viewport.defaultZoom };
+
+// Top overlay for breadcrumb and inherited context
+const topOverlayStyles: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: 10,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: 12,
+  pointerEvents: 'none',
+};
+
+const pointerEventsAutoStyle: React.CSSProperties = {
+  pointerEvents: 'auto',
+};
+
 // =============================================================================
 // INFINITE CANVAS COMPONENT
 // =============================================================================
@@ -108,6 +140,7 @@ export function InfiniteCanvas() {
 
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const isPrefsLoaded = usePreferencesStore((s) => s.isLoaded);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
   // Load preferences on mount
@@ -228,32 +261,25 @@ export function InfiniteCanvas() {
     },
   });
 
+  // Settings panel handlers (memoized to prevent re-renders)
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+
   return (
     <div style={canvasStyles}>
-      {/* Canvas Tree Sidebar (conditionally shown) */}
-      {uiPrefs.showCanvasTree && <CanvasTreeSidebar />}
+      {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
+      {isPrefsLoaded && uiPrefs.showCanvasTree && <CanvasTreeSidebar />}
 
       {/* Main canvas area with breadcrumb and inherited context */}
-      <div style={{ 
-        position: 'absolute', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        zIndex: 10,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: 12,
-        pointerEvents: 'none',
-      }}>
+      <div style={topOverlayStyles}>
         {/* Breadcrumb navigation */}
-        <div style={{ pointerEvents: 'auto' }}>
+        <div style={pointerEventsAutoStyle}>
           <CanvasBreadcrumb />
         </div>
 
         {/* Inherited context panel (shown when canvas has parent and enabled) */}
-        {uiPrefs.showInheritedContext && hasParent && (
-          <div style={{ pointerEvents: 'auto' }}>
+        {isPrefsLoaded && uiPrefs.showInheritedContext && hasParent && (
+          <div style={pointerEventsAutoStyle}>
             <InheritedContextPanel />
           </div>
         )}
@@ -275,7 +301,7 @@ export function InfiniteCanvas() {
         connectionLineComponent={CustomConnectionLine}
         minZoom={canvasConfig.viewport.minZoom}
         maxZoom={canvasConfig.viewport.maxZoom}
-        defaultViewport={{ x: 0, y: 0, zoom: canvasConfig.viewport.defaultZoom }}
+        defaultViewport={defaultViewport}
         fitView={false}
         onlyRenderVisibleElements={true}
         nodesDraggable={true}
@@ -301,11 +327,7 @@ export function InfiniteCanvas() {
 
         {/* Minimap */}
         <MiniMap
-          style={{
-            backgroundColor: canvasConfig.minimap.backgroundColor,
-            width: canvasConfig.minimap.width,
-            height: canvasConfig.minimap.height,
-          }}
+          style={minimapStyle}
           nodeColor={canvasConfig.minimap.nodeColor}
           maskColor={canvasConfig.minimap.maskColor}
           zoomable
@@ -317,10 +339,7 @@ export function InfiniteCanvas() {
           showZoom={true}
           showFitView={true}
           showInteractive={false}
-          style={{
-            backgroundColor: colors.navy.light,
-            borderColor: colors.navy.hover,
-          }}
+          style={controlsStyle}
         />
       </ReactFlow>
 
@@ -339,8 +358,8 @@ export function InfiniteCanvas() {
       <APIKeyWarningBanner position="bottom" />
 
       {/* Settings Button and Panel */}
-      <SettingsButton onClick={() => setSettingsOpen(true)} />
-      <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsButton onClick={openSettings} />
+      <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
     </div>
   );
 }

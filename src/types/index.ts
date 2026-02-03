@@ -179,6 +179,8 @@ export interface Canvas {
   contextSnapshot: ContextSnapshot | null;
   /** Conversations on this canvas */
   conversations: Conversation[];
+  /** Edge connections between conversations */
+  edges: EdgeConnection[];
   /** IDs of child canvas branches (Phase 2) */
   branches: string[];
   /** Tags for the canvas (Phase 2) */

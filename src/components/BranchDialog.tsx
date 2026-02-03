@@ -231,10 +231,18 @@ export function BranchDialog() {
     setValidationWarning(validation.warning || null);
   }, [inheritanceMode, customSelection, messages]);
 
+  // Constants for validation
+  const MAX_REASON_LENGTH = 200;
+
   // Handle submit
   const handleSubmit = () => {
     if (!branchReason.trim()) {
       setValidationError('Please provide a reason for this branch');
+      return;
+    }
+
+    if (branchReason.length > MAX_REASON_LENGTH) {
+      setValidationError(`Reason must be less than ${MAX_REASON_LENGTH} characters`);
       return;
     }
 
@@ -245,12 +253,20 @@ export function BranchDialog() {
       setBranchingPreferences({ defaultInheritanceMode: inheritanceMode });
     }
 
-    createBranch({
+    const newCanvas = createBranch({
       sourceConversationId: branchSourceId!,
       branchReason: branchReason.trim(),
       inheritanceMode,
       customMessageIds: inheritanceMode === 'custom' ? Array.from(customSelection) : undefined,
     });
+
+    // Check if branch creation succeeded
+    if (!newCanvas) {
+      setValidationError('Failed to create branch. Please try again.');
+      return;
+    }
+
+    handleClose();
   };
 
   // Handle close

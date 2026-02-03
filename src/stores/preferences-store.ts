@@ -95,37 +95,66 @@ const preferencesStorage = new VersionedStorage<UserPreferences>({
 });
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Merge loaded preferences with defaults to ensure all fields exist
+ */
+function mergeWithDefaults(loadedPrefs: Partial<UserPreferences>): UserPreferences {
+  return {
+    branching: {
+      ...DEFAULT_BRANCHING_PREFERENCES,
+      ...loadedPrefs.branching,
+    },
+    ui: {
+      ...DEFAULT_UI_PREFERENCES,
+      ...loadedPrefs.ui,
+    },
+  };
+}
+
+/**
+ * Load preferences from storage (used for initialization)
+ */
+function loadInitialPreferences(): { preferences: UserPreferences; isLoaded: boolean } {
+  // Only run in browser environment
+  if (typeof window === 'undefined') {
+    return { preferences: DEFAULT_PREFERENCES, isLoaded: false };
+  }
+  
+  const result = preferencesStorage.load();
+  if (result.success) {
+    return { preferences: mergeWithDefaults(result.data), isLoaded: true };
+  }
+  return { preferences: DEFAULT_PREFERENCES, isLoaded: true };
+}
+
+// Auto-load preferences on store creation
+const initialState = loadInitialPreferences();
+
+// =============================================================================
 // STORE
 // =============================================================================
 
 export const usePreferencesStore = create<PreferencesState & PreferencesActions>()(
   subscribeWithSelector((set, get) => ({
-    // Initial state
-    preferences: DEFAULT_PREFERENCES,
-    isLoaded: false,
+    // Initial state (auto-loaded)
+    preferences: initialState.preferences,
+    isLoaded: initialState.isLoaded,
 
     // =========================================================================
     // Actions
     // =========================================================================
 
     loadPreferences: () => {
+      // Skip if already loaded (prevents redundant calls)
+      if (get().isLoaded) return;
+      
       const result = preferencesStorage.load();
       
       if (result.success) {
-        // Merge with defaults to ensure all fields exist
-        const loadedPrefs = result.data;
-        const merged: UserPreferences = {
-          branching: {
-            ...DEFAULT_BRANCHING_PREFERENCES,
-            ...loadedPrefs.branching,
-          },
-          ui: {
-            ...DEFAULT_UI_PREFERENCES,
-            ...loadedPrefs.ui,
-          },
-        };
-        
-        set({ preferences: merged, isLoaded: true });
+        set({ preferences: mergeWithDefaults(result.data), isLoaded: true });
       } else {
         set({ preferences: DEFAULT_PREFERENCES, isLoaded: true });
       }
