@@ -619,6 +619,27 @@ export const useCanvasStore = create<CanvasState>()(
       if (canvasResult.success && canvasResult.data.canvases.length > 0) {
         canvases = canvasResult.data.canvases;
         activeCanvasId = canvasResult.data.activeCanvasId || canvases[0]?.id || '';
+      } else {
+        // No canvas data yet (legacy Phase 1 data) - create main canvas
+        const now = new Date();
+        const mainCanvas: Canvas = {
+          id: nanoid(),
+          parentCanvasId: null,
+          contextSnapshot: null,
+          conversations: Array.from(conversations.values()),
+          edges: storedData.connections,
+          branches: [],
+          tags: [],
+          createdFromConversationId: null,
+          metadata: {
+            title: 'Main Canvas',
+            createdAt: now,
+            updatedAt: now,
+            version: CURRENT_SCHEMA_VERSION,
+          },
+        };
+        canvases = [mainCanvas];
+        activeCanvasId = mainCanvas.id;
       }
 
       set({
@@ -715,10 +736,31 @@ export const useCanvasStore = create<CanvasState>()(
       // Create edges
       const edges: Edge[] = mockEdges.map(connectionToEdge);
 
+      // Create main canvas for mock data
+      const now = new Date();
+      const mainCanvas: Canvas = {
+        id: nanoid(),
+        parentCanvasId: null,
+        contextSnapshot: null,
+        conversations: Array.from(conversations.values()),
+        edges: mockEdges,
+        branches: [],
+        tags: [],
+        createdFromConversationId: null,
+        metadata: {
+          title: 'Main Canvas',
+          createdAt: now,
+          updatedAt: now,
+          version: CURRENT_SCHEMA_VERSION,
+        },
+      };
+
       set({
         nodes,
         edges,
         conversations,
+        canvases: [mainCanvas],
+        activeCanvasId: mainCanvas.id,
         expandedNodeIds: new Set(),
         selectedNodeIds: new Set(),
         isInitialized: true,
