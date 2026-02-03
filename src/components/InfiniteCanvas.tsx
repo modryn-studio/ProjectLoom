@@ -294,7 +294,10 @@ export function InfiniteCanvas() {
       {isPrefsLoaded && uiPrefs.showCanvasTree && <CanvasTreeSidebar />}
 
       {/* Main canvas area with breadcrumb and inherited context */}
-      <div style={topOverlayStyles}>
+      <div style={{
+        ...topOverlayStyles,
+        left: isPrefsLoaded && uiPrefs.showCanvasTree ? 260 : 0,
+      }}>
         {/* Breadcrumb navigation */}
         <div style={pointerEventsAutoStyle}>
           <CanvasBreadcrumb />
