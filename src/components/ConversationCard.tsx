@@ -120,12 +120,6 @@ function ConversationCardComponent({
           width: isExpanded ? card.size.maxWidth : card.size.minWidth,
           minHeight: isExpanded ? card.size.expandedMinHeight : card.size.collapsedHeight,
           maxHeight: isExpanded ? card.size.expandedMaxHeight : card.size.collapsedHeight,
-          borderColor: isSelected || selected
-            ? colors.amber.primary
-            : isExpanded
-            ? colors.violet.primary
-            : 'rgba(102, 126, 234, 0.4)',
-          borderRadius: effects.border.radius.md,
           boxShadow: isExpanded
             ? effects.shadow.cardExpanded
             : selected || isSelected
@@ -135,21 +129,23 @@ function ConversationCardComponent({
         whileHover={{
           y: card.hover.lift,
           boxShadow: effects.glow.cardHover,
-          borderRadius: effects.border.radius.md,
         }}
         transition={{
-          width: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
-          minHeight: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
-          maxHeight: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+          width: animation.spring.gentle,
+          minHeight: animation.spring.gentle,
+          maxHeight: animation.spring.gentle,
           scale: { duration: 0.2, ease: 'easeOut' },
-          borderColor: { duration: 0.2, ease: 'easeInOut' },
-          borderRadius: { duration: 0 },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
           y: { duration: 0.15, ease: 'easeOut' },
         }}
         style={{
           ...cardStyles.container,
           zIndex: cardZIndex,
+          borderColor: isSelected || selected
+            ? colors.amber.primary
+            : isExpanded
+            ? colors.violet.primary
+            : 'rgba(102, 126, 234, 0.4)',
         }}
       >
         {/* Header: Title + Badge */}
@@ -176,7 +172,7 @@ function ConversationCardComponent({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                transition={animation.spring.gentle}
                 style={cardStyles.expandedContent}
               >
                 {/* Full message list */}
@@ -220,7 +216,7 @@ function ConversationCardComponent({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                transition={animation.spring.gentle}
                 style={cardStyles.preview}
               >
                 <p style={cardStyles.previewText}>{previewContent}</p>
