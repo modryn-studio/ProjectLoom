@@ -30,8 +30,9 @@ const sidebarStyles: React.CSSProperties = {
   borderRight: `1px solid rgba(99, 102, 241, 0.2)`,
   display: 'flex',
   flexDirection: 'column',
+  height: '100vh',
+  maxHeight: '100vh',
   overflow: 'hidden',
-  height: '100%',
 };
 
 const headerStyles: React.CSSProperties = {
@@ -40,12 +41,15 @@ const headerStyles: React.CSSProperties = {
   justifyContent: 'space-between',
   padding: spacing[3],
   borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+  flexShrink: 0,
 };
 
 const contentStyles: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
+  overflowX: 'hidden',
   padding: spacing[2],
+  minHeight: 0, // Critical for flex scrolling
 };
 
 const toggleButtonStyles: React.CSSProperties = {
@@ -439,6 +443,7 @@ export function CanvasTreeSidebar() {
         fontSize: typography.sizes.xs,
         color: colors.contrast.grayDark,
         fontFamily: typography.fonts.body,
+        flexShrink: 0,
       }}>
         {canvases.length} canvas{canvases.length !== 1 ? 'es' : ''}
       </div>
