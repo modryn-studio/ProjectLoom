@@ -43,39 +43,19 @@ const ICONS: Record<ActionType, React.ReactNode> = {
 // COMPONENT
 // =============================================================================
 
-// Selector for conversation count and latest conversation info (avoids subscribing to entire Map)
-const selectConversationInfo = (s: { conversations: Map<string, { id: string; isMergeNode: boolean; parentCardIds: string[]; branchPoint?: { messageIndex: number }; metadata: { createdAt: Date } }> }) => {
-  const arr = Array.from(s.conversations.values());
-  // Only get newest if there are conversations
-  const newest = arr.length > 0 
-    ? arr.reduce((latest, conv) => 
-        (!latest || new Date(conv.metadata.createdAt) > new Date(latest.metadata.createdAt)) ? conv : latest
-      , arr[0])
-    : null;
-  return {
-    count: arr.length,
-    newest: newest ? {
-      id: newest.id,
-      isMergeNode: newest.isMergeNode,
-      parentCardIds: newest.parentCardIds,
-      branchPointIndex: newest.branchPoint?.messageIndex ?? 0,
-    } : null,
-  };
-};
-
 export function UndoToast() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Store state - use selector to minimize rerenders
+  // Store state - use primitive selectors to avoid infinite loops
   const undo = useCanvasStore((s) => s.undo);
   const canUndo = useCanvasStore((s) => s.canUndo);
-  const conversationInfo = useCanvasStore(selectConversationInfo);
+  const conversations = useCanvasStore((s) => s.conversations);
+  const conversationCount = conversations.size;
   const edgeCount = useCanvasStore((s) => s.edges.length);
   
   // Track previous counts to detect changes
-  const prevConversationCount = useRef(conversationInfo.count);
-  const prevNewestId = useRef(conversationInfo.newest?.id ?? null);
+  const prevConversationCount = useRef(conversationCount);
   const prevEdgeCount = useRef(edgeCount);
 
   const showToast = useCallback((newToast: ToastState) => {
@@ -92,14 +72,17 @@ export function UndoToast() {
     }, AUTO_HIDE_MS);
   }, []);
 
-  // Detect branch/merge creation (optimized - only triggers on count/id changes)
+  // Detect branch/merge creation (simplified - checks count changes only)
   useEffect(() => {
-    const currentCount = conversationInfo.count;
-    const currentNewestId = conversationInfo.newest?.id ?? null;
+    const currentCount = conversationCount;
     
-    // Check if a new conversation was added (count increased AND newest id changed)
-    if (currentCount > prevConversationCount.current && currentNewestId !== prevNewestId.current) {
-      const newest = conversationInfo.newest;
+    // Check if a new conversation was added
+    if (currentCount > prevConversationCount.current) {
+      // Find the newest conversation by createdAt timestamp
+      const convArray = Array.from(conversations.values());
+      const newest = convArray.reduce((latest, conv) => 
+        (!latest || new Date(conv.metadata.createdAt) > new Date(latest.metadata.createdAt)) ? conv : latest
+      , convArray[0]);
       
       if (newest) {
         if (newest.isMergeNode) {
@@ -112,7 +95,7 @@ export function UndoToast() {
         } else if (newest.parentCardIds?.length > 0) {
           showToast({
             type: 'branch',
-            message: `Branch created from message ${newest.branchPointIndex + 1}`,
+            message: `Branch created from message ${(newest.branchPoint?.messageIndex ?? 0) + 1}`,
             timestamp: new Date(),
             canUndo: canUndo(),
           });
@@ -131,9 +114,8 @@ export function UndoToast() {
     }
     
     prevConversationCount.current = currentCount;
-    prevNewestId.current = currentNewestId;
     prevEdgeCount.current = edgeCount;
-  }, [conversationInfo.count, conversationInfo.newest?.id, edgeCount, canUndo, showToast]);
+  }, [conversationCount, edgeCount, canUndo, showToast, conversations]);
 
   const handleUndo = useCallback(() => {
     undo();
