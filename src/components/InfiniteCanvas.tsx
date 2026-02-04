@@ -19,7 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { colors, canvas as canvasConfig, animation } from '@/lib/design-tokens';
-import type { ConversationNodeData } from '@/types';
+import type { ConversationNodeData, Conversation, Message } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
@@ -29,9 +29,11 @@ import { CanvasBreadcrumb } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { APIKeyWarningBanner } from './APIKeyWarningBanner';
 import { SettingsPanel, SettingsButton } from './SettingsPanel';
+import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectBranchDialogOpen } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
+import { nanoid } from 'nanoid';
 
 // =============================================================================
 // NODE TYPES
@@ -124,6 +126,10 @@ export function InfiniteCanvas() {
   // Settings panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Canvas context menu
+  const canvasContextMenu = useContextMenu();
+  const [canvasClickPosition, setCanvasClickPosition] = useState<{ x: number; y: number } | null>(null);
+
   // Get data and actions from store
   const nodes = useCanvasStore((s) => s.nodes);
   const edges = useCanvasStore((s) => s.edges);
@@ -137,6 +143,7 @@ export function InfiniteCanvas() {
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const createBranch = useCanvasStore((s) => s.createBranch);
   const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
+  const addConversation = useCanvasStore((s) => s.addConversation);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const expandedNodeIds = useCanvasStore((s) => s.expandedNodeIds);
   const undo = useCanvasStore((s) => s.undo);
@@ -223,6 +230,84 @@ export function InfiniteCanvas() {
   const handlePaneClick = useCallback(() => {
     clearSelection();
   }, [clearSelection]);
+
+  // Handle creating a new conversation
+  const handleAddConversation = useCallback((explicitPosition?: { x: number; y: number }) => {
+    let position = explicitPosition || canvasClickPosition;
+
+    // If no click position (keyboard shortcut), use center of viewport
+    if (!position && reactFlowInstance.current) {
+      const viewport = reactFlowInstance.current.getViewport();
+      const centerX = -viewport.x / viewport.zoom + (window.innerWidth / 2) / viewport.zoom;
+      const centerY = -viewport.y / viewport.zoom + (window.innerHeight / 2) / viewport.zoom;
+      position = { x: centerX, y: centerY };
+    }
+
+    const finalPosition = position || { x: 0, y: 0 };
+
+    // Create a new empty conversation
+    const newConversation: Conversation = {
+      id: nanoid(),
+      canvasId: activeCanvasId,
+      position: finalPosition,
+      content: [
+        {
+          id: nanoid(),
+          role: 'user',
+          content: 'New conversation - click to edit',
+          timestamp: new Date(),
+        } as Message,
+      ],
+      connections: [],
+      metadata: {
+        title: 'New Conversation',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messageCount: 1,
+        tags: [],
+        isExpanded: false,
+      },
+    };
+
+    addConversation(newConversation, finalPosition);
+    setCanvasClickPosition(null);
+  }, [canvasClickPosition, activeCanvasId, addConversation]);
+
+  // Handle canvas right-click (context menu)
+  const handlePaneContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+
+      // Get the canvas position where the user clicked
+      let clickPosition: { x: number; y: number } | null = null;
+      if (reactFlowInstance.current) {
+        const flowPosition = reactFlowInstance.current.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        clickPosition = { x: flowPosition.x, y: flowPosition.y };
+        setCanvasClickPosition(clickPosition);
+      }
+
+      // Open context menu with canvas options
+      const menuItems: ContextMenuItem[] = [
+        {
+          id: 'add-conversation',
+          label: 'Add Conversation',
+          shortcut: 'N',
+          onClick: () => {
+            if (clickPosition) {
+              handleAddConversation(clickPosition);
+            }
+            canvasContextMenu.closeMenu();
+          },
+        },
+      ];
+
+      canvasContextMenu.openMenu(event, menuItems);
+    },
+    [canvasContextMenu, handleAddConversation]
+  );
 
   // Handle React Flow initialization
   const handleInit = useCallback((instance: ReactFlowInstance<Node<ConversationNodeData>, Edge>) => {
@@ -321,6 +406,10 @@ export function InfiniteCanvas() {
           }
         }
       },
+      onAddConversation: () => {
+        // N: Add new conversation at center of viewport
+        handleAddConversation();
+      },
     },
   });
 
@@ -362,6 +451,7 @@ export function InfiniteCanvas() {
             onNodeDragStart={handleNodeDragStart}
             onNodeDragStop={handleNodeDragStop}
             onPaneClick={handlePaneClick}
+            onPaneContextMenu={handlePaneContextMenu}
             onInit={handleInit}
             nodeTypes={nodeTypes}
             defaultEdgeOptions={defaultEdgeOptions}
@@ -428,6 +518,14 @@ export function InfiniteCanvas() {
           {/* Settings Button and Panel */}
           <SettingsButton onClick={openSettings} />
           <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+
+          {/* Canvas Context Menu */}
+          <ContextMenu
+            isOpen={canvasContextMenu.isOpen}
+            position={canvasContextMenu.position}
+            items={canvasContextMenu.dynamicItems}
+            onClose={canvasContextMenu.closeMenu}
+          />
         </div>
       </div>
     </div>

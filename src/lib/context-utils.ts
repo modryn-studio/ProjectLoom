@@ -278,13 +278,11 @@ export function createContextSnapshot(
  * Create branch metadata
  */
 export function createBranchMetadata(
-  branchReason: string,
   sourceConversationId: string,
   inheritedMessageCount: number,
   inheritanceMode: InheritanceMode
 ): BranchMetadata {
   return {
-    reason: branchReason,
     createdFromConversationId: sourceConversationId,
     inheritedMessageCount,
     inheritanceMode,

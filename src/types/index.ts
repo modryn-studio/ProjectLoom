@@ -308,8 +308,6 @@ export interface MessageSelection {
  * Branch metadata for tracking lineage
  */
 export interface BranchMetadata {
-  /** User-provided reason for branching */
-  reason: string;
   /** ID of the conversation this branch was created from */
   createdFromConversationId: string;
   /** Number of messages inherited */

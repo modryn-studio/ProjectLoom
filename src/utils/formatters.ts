@@ -34,6 +34,25 @@ export function formatRelativeTime(date: Date | string): string {
 }
 
 /**
+ * Smart truncate text at word boundary
+ * Avoids cutting words in half by truncating at the last space
+ */
+export function smartTruncate(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text;
+  
+  const truncated = text.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(' ');
+  
+  // If there's a space within reasonable distance (70% of max), truncate there
+  if (lastSpace > maxLength * 0.7) {
+    return truncated.slice(0, lastSpace) + '...';
+  }
+  
+  // Otherwise just truncate at max length
+  return truncated + '...';
+}
+
+/**
  * Format timestamp for display with optional time
  */
 export function formatTimestamp(date: Date | string, includeTime = false): string {

@@ -190,31 +190,6 @@ export function InheritedContextPanel() {
             style={{ overflow: 'hidden' }}
           >
             <div style={contentStyles}>
-              {/* Branch reason */}
-              {branchMetadata.reason && (
-                <div style={{ marginBottom: spacing[3] }}>
-                  <div style={{ 
-                    fontSize: typography.sizes.xs, 
-                    color: colors.contrast.grayDark,
-                    marginBottom: spacing[1],
-                    fontFamily: typography.fonts.body,
-                  }}>
-                    Branch reason:
-                  </div>
-                  <div style={{
-                    padding: spacing[2],
-                    backgroundColor: colors.navy.dark,
-                    borderRadius: effects.border.radius.default,
-                    fontSize: typography.sizes.sm,
-                    color: colors.contrast.gray,
-                    fontStyle: 'italic',
-                    fontFamily: typography.fonts.body,
-                  }}>
-                    "{branchMetadata.reason}"
-                  </div>
-                </div>
-              )}
-
               {/* Inherited messages preview */}
               <div>
                 <div style={{ 

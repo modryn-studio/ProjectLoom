@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
 
 import { VersionedStorage, STORAGE_KEYS, CURRENT_SCHEMA_VERSION } from '@/lib/storage';
+import { smartTruncate } from '@/utils/formatters';
 import { generateMockData } from '@/lib/mock-data';
 import { createContextSnapshot, createBranchMetadata, selectContextMessages } from '@/lib/context-utils';
 import type { 
@@ -1043,13 +1044,12 @@ export const useCanvasStore = create<CanvasState>()(
         tags: [],
         createdFromConversationId: sourceConversationId,
         metadata: {
-          title: `Branch: ${branchReason.slice(0, 30)}${branchReason.length > 30 ? '...' : ''}`,
+          title: smartTruncate(branchReason.trim(), 60),
           createdAt: now,
           updatedAt: now,
           version: CURRENT_SCHEMA_VERSION,
         },
         branchMetadata: {
-          reason: branchReason,
           createdFromConversationId: sourceConversationId,
           inheritedMessageCount: contextSnapshot.messages.length,
           inheritanceMode,

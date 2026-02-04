@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCanvasStore, selectBranchDialogOpen, selectBranchSourceId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectDefaultInheritanceMode } from '@/stores/preferences-store';
 import { colors, spacing, effects, animation, typography } from '@/lib/design-tokens';
+import { smartTruncate } from '@/utils/formatters';
 import { 
   getTruncationPreview, 
   estimateTokens, 
@@ -370,8 +371,9 @@ export function BranchDialog() {
                 id="branch-reason"
                 value={branchReason}
                 onChange={(e) => setBranchReason(e.target.value)}
-                placeholder="e.g., Explore alternative implementation, Try different approach..."
-                rows={3}
+                placeholder="e.g., Explore alternative implementation..."
+                rows={1}
+                maxLength={60}
                 style={{
                   width: '100%',
                   padding: spacing[2],
@@ -381,10 +383,19 @@ export function BranchDialog() {
                   color: colors.contrast.white,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
-                  resize: 'vertical',
+                  resize: 'none',
                   outline: 'none',
                 }}
               />
+              {/* Character counter and preview */}
+              <div style={{ 
+                marginTop: spacing[1], 
+                fontSize: typography.sizes.xs, 
+                color: colors.contrast.grayDark,
+                fontFamily: typography.fonts.body,
+              }}>
+                {branchReason.length}/60 characters
+              </div>
             </div>
 
             {/* Inheritance Mode Selection */}

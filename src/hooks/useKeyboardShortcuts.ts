@@ -19,6 +19,8 @@ export interface KeyboardShortcutHandlers {
   onExpand?: () => void;
   /** Called when Ctrl+B is pressed */
   onBranch?: () => void;
+  /** Called when N is pressed */
+  onAddConversation?: () => void;
 }
 
 export interface UseKeyboardShortcutsOptions {
@@ -109,6 +111,13 @@ export function useKeyboardShortcuts({
             // Ctrl+B: Branch from selected card
             handlers.onBranch?.();
           }
+          break;
+
+        case 'n':
+        case 'N':
+          event.preventDefault();
+          // N: Add new conversation
+          handlers.onAddConversation?.();
           break;
 
         // Phase 3 shortcuts will be added here:
