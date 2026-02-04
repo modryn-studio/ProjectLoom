@@ -47,8 +47,11 @@ export function DevPerformanceOverlay({ nodeCount, edgeCount }: Props) {
     return null;
   }
 
-  // FPS counter
+  // FPS counter - only runs when overlay is visible (pauses when collapsed)
   useEffect(() => {
+    // Don't run FPS counter when collapsed - saves CPU cycles
+    if (isCollapsed) return;
+    
     let animationId: number;
     
     const measureFPS = (currentTime: number) => {
@@ -80,12 +83,16 @@ export function DevPerformanceOverlay({ nodeCount, edgeCount }: Props) {
       animationId = requestAnimationFrame(measureFPS);
     };
     
+    // Reset refs when becoming visible again
+    lastTimeRef.current = performance.now();
+    framesRef.current = 0;
+    
     animationId = requestAnimationFrame(measureFPS);
     
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [nodeCount, edgeCount]);
+  }, [nodeCount, edgeCount, isCollapsed]);
 
   const getFPSColor = (fps: number): string => {
     if (fps >= 55) return colors.semantic.success;

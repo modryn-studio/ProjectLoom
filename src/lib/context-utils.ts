@@ -275,15 +275,17 @@ export function createContextSnapshot(
 }
 
 /**
- * Create branch metadata
+ * Create branch metadata (v4 - card level)
  */
 export function createBranchMetadata(
-  sourceConversationId: string,
+  parentCardId: string,
+  messageIndex: number,
   inheritedMessageCount: number,
   inheritanceMode: InheritanceMode
 ): BranchMetadata {
   return {
-    createdFromConversationId: sourceConversationId,
+    parentCardId,
+    messageIndex,
     inheritedMessageCount,
     inheritanceMode,
     createdAt: new Date(),

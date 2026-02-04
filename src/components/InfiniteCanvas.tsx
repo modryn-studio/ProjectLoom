@@ -23,6 +23,7 @@ import type { ConversationNodeData, Conversation, Message } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
+import { UndoToast } from './UndoToast';
 import { BranchDialog } from './BranchDialog';
 import { InheritedContextPanel } from './InheritedContextPanel';
 import { CanvasBreadcrumb } from './CanvasBreadcrumb';
@@ -141,8 +142,10 @@ export function InfiniteCanvas() {
   const clearSelection = useCanvasStore((s) => s.clearSelection);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
-  const createBranch = useCanvasStore((s) => s.createBranch);
-  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
+  const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
+  const createMergeNode = useCanvasStore((s) => s.createMergeNode);
+  const conversations = useCanvasStore((s) => s.conversations);
+  const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
   const addConversation = useCanvasStore((s) => s.addConversation);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const expandedNodeIds = useCanvasStore((s) => s.expandedNodeIds);
@@ -154,12 +157,10 @@ export function InfiniteCanvas() {
   // Branch dialog state
   const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
 
-  // Current canvas context
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const canvases = useCanvasStore((s) => s.canvases);
-  const getCanvasLineage = useCanvasStore((s) => s.getCanvasLineage);
-  const currentCanvas = canvases.find(c => c.id === activeCanvasId);
-  const hasParent = currentCanvas?.parentCanvasId != null && currentCanvas?.branchMetadata != null;
+  // Current workspace context (v4 - flat)
+  const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
+  const workspaces = useCanvasStore((s) => s.workspaces);
+  const currentWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
 
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -202,12 +203,41 @@ export function InfiniteCanvas() {
     [onEdgesChange]
   );
 
-  // Handle new connections
+  // Handle new connections (v4: supports merge creation)
   const handleConnect: OnConnect = useCallback(
     (connection: Connection) => {
-      onConnect(connection);
+      if (!connection.source || !connection.target) return;
+      
+      const targetConversation = conversations.get(connection.target);
+      const sourceConversation = conversations.get(connection.source);
+      
+      if (!targetConversation || !sourceConversation) {
+        // Fallback to regular edge if conversations not found
+        onConnect(connection);
+        return;
+      }
+      
+      // v4: If target is an existing conversation, offer to create merge node
+      // For now, create a merge node when connecting two existing cards
+      if (targetConversation.isMergeNode) {
+        // Target is already a merge node - try to add source as parent
+        // This is handled by creating an edge of type 'merge'
+        const store = useCanvasStore.getState();
+        if (store.canAddMergeParent(connection.target)) {
+          const edge = store.createEdge(connection.source, connection.target, 'merge');
+          if (!edge) {
+            console.warn('Cannot add parent to merge node - would create cycle or already exists');
+          }
+        } else {
+          // Max parents reached
+          console.warn('Cannot add more parents to merge node - max reached');
+        }
+      } else {
+        // Normal connection - create a standard reference edge
+        onConnect(connection);
+      }
     },
-    [onConnect]
+    [onConnect, conversations]
   );
 
   // Handle node selection
@@ -245,10 +275,10 @@ export function InfiniteCanvas() {
 
     const finalPosition = position || { x: 0, y: 0 };
 
-    // Create a new empty conversation
+    // Create a new empty conversation (v4 with card-level branching fields)
     const newConversation: Conversation = {
       id: nanoid(),
-      canvasId: activeCanvasId,
+      canvasId: activeWorkspaceId,
       position: finalPosition,
       content: [
         {
@@ -259,6 +289,10 @@ export function InfiniteCanvas() {
         } as Message,
       ],
       connections: [],
+      // v4 card-level branching
+      parentCardIds: [],
+      inheritedContext: {},
+      isMergeNode: false,
       metadata: {
         title: 'New Conversation',
         createdAt: new Date(),
@@ -271,19 +305,23 @@ export function InfiniteCanvas() {
 
     addConversation(newConversation, finalPosition);
     setCanvasClickPosition(null);
-  }, [canvasClickPosition, activeCanvasId, addConversation]);
+  }, [canvasClickPosition, activeWorkspaceId, addConversation]);
 
   // Handle canvas right-click (context menu)
   const handlePaneContextMenu = useCallback(
-    (event: React.MouseEvent) => {
+    (event: React.MouseEvent | MouseEvent) => {
       event.preventDefault();
+
+      // Cast to get client coordinates - both MouseEvent types have these properties
+      const clientX = event.clientX;
+      const clientY = event.clientY;
 
       // Get the canvas position where the user clicked
       let clickPosition: { x: number; y: number } | null = null;
       if (reactFlowInstance.current) {
         const flowPosition = reactFlowInstance.current.screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
+          x: clientX,
+          y: clientY,
         });
         clickPosition = { x: flowPosition.x, y: flowPosition.y };
         setCanvasClickPosition(clickPosition);
@@ -304,7 +342,8 @@ export function InfiniteCanvas() {
         },
       ];
 
-      canvasContextMenu.openMenu(event, menuItems);
+      // Create a synthetic React.MouseEvent-like object for the openMenu call
+      canvasContextMenu.openMenu({ clientX, clientY, preventDefault: () => {} } as React.MouseEvent, menuItems);
     },
     [canvasContextMenu, handleAddConversation]
   );
@@ -391,18 +430,14 @@ export function InfiniteCanvas() {
             // Show dialog for user to configure
             openBranchDialog(firstSelectedId);
           } else {
-            // Create branch instantly with default settings
-            const newCanvas = createBranch({
-              sourceConversationId: firstSelectedId,
-              branchReason: 'Quick branch',
+            // Create branch instantly with default settings using v4 API
+            branchFromMessage({
+              sourceCardId: firstSelectedId,
+              messageIndex: 0, // Branch from first message by default
               inheritanceMode: branchingPrefs.defaultInheritanceMode,
               customMessageIds: undefined,
+              branchReason: 'Quick branch',
             });
-            
-            // Navigate to the new canvas if created successfully
-            if (newCanvas) {
-              navigateToCanvas(newCanvas.id);
-            }
           }
         }
       },
@@ -431,8 +466,8 @@ export function InfiniteCanvas() {
             <CanvasBreadcrumb />
           </div>
 
-          {/* Inherited context panel (shown when canvas has parent and enabled) */}
-          {isPrefsLoaded && uiPrefs.showInheritedContext && hasParent && (
+          {/* Inherited context panel (shown when enabled - cards handle their own parent check) */}
+          {isPrefsLoaded && uiPrefs.showInheritedContext && (
             <div style={pointerEventsAutoStyle}>
               <InheritedContextPanel />
             </div>
@@ -526,6 +561,9 @@ export function InfiniteCanvas() {
             items={canvasContextMenu.dynamicItems}
             onClose={canvasContextMenu.closeMenu}
           />
+
+          {/* Undo Toast for branch/merge actions */}
+          <UndoToast />
         </div>
       </div>
     </div>

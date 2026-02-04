@@ -1,61 +1,93 @@
 # ProjectLoom Architecture Documentation
 
-> **Version:** 1.0.0 (Phase 1 MVP)  
-> **Last Updated:** February 2, 2026  
-> **Status:** Phase 1 Implementation, Phase 2 Architecture Documented
+> **Version:** 4.0.0 (Card-Level Branching)  
+> **Last Updated:** February 4, 2026  
+> **Status:** v4 Card-Level Branching Implemented (see GitHub issue #5)  
+> **Previous Architecture:** v1-v3 used canvas-level branching (deprecated)
 
 ## Overview
 
-ProjectLoom is a visual canvas tool that transforms linear AI conversations into spatial, branching project trees. This document defines the complete architecture, including Phase 2 features documented for forward compatibility.
+ProjectLoom is a visual canvas tool that transforms linear AI conversations into spatial, branching project trees with DAG (Directed Acyclic Graph) support.
+
+**v4 Architecture Change:** Branching happens at the **card level** within a flat workspace, not at the canvas level. Cards can have multiple parents via merge nodes, forming a DAG structure.
 
 ---
 
 ## Core Concept
 
-**"Git for AI conversations"** - A node-based canvas system where:
-- Each conversation = a visual node on an infinite canvas
-- Conversations can branch to new canvases (like git branches)
-- Context flows forward from parent to child (never backward)
+**"Git for AI conversations with merge support"** - A node-based canvas system where:
+- Each conversation = a visual card on an infinite canvas
+- Cards can branch from any message in a parent card
+- Cards can merge multiple sources into a synthesis node (DAG structure)
+- Context flows forward from parents to children (never backward)
 - Spatial organization provides relationship visibility at a glance
+- All cards live in a **flat workspace** (no canvas hierarchy)
 
 ---
 
 ## Data Architecture
 
-### Canvas Object
+### Workspace Object (v4 - Flat Structure)
+
+**Key Change:** Workspaces are flat containers. Branching happens at the card level.
 
 ```typescript
-interface Canvas {
+interface Workspace {
   id: string;
-  parentCanvasId: string | null;
-  contextSnapshot: ContextSnapshot | null;  // State at branch time
-  conversations: Conversation[];
-  branches: string[];  // IDs of child canvases
+  title: string;
+  conversations: Conversation[];  // All cards in this workspace
+  edges: EdgeConnection[];        // Visual connections
   tags: string[];
-  createdFromConversationId: string | null;
-  metadata: CanvasMetadata;
+  metadata: WorkspaceMetadata;
 }
 
-interface CanvasMetadata {
+interface WorkspaceMetadata {
   title: string;
   createdAt: Date;
   updatedAt: Date;
   color?: string;
-  version: number;  // Schema version for migrations
+  schemaVersion: number;  // Current: 4
 }
 ```
 
-### Conversation Node
+### Conversation Card (v4 - With Branching Support)
+
+**Key Change:** Cards track their parents and inherited context internally.
 
 ```typescript
 interface Conversation {
   id: string;
-  canvasId: string;
+  canvasId: string;  // Workspace ID
   position: Position;
   content: Message[];
   summary?: string;
-  connections: string[];  // IDs of connected conversations
+  connections: string[];  // Reference edges (non-hierarchical)
   metadata: ConversationMetadata;
+  
+  // === v4 Card-Level Branching ===
+  parentCardIds: string[];  // Supports multiple parents (for merge nodes)
+  branchPoint?: BranchPoint;  // Where this branched from
+  inheritedContext: Record<string, InheritedContextEntry>;  // Context per parent
+  isMergeNode: boolean;  // Whether this is a synthesis merge node
+  mergeMetadata?: MergeMetadata;  // Merge-specific data
+}
+
+interface BranchPoint {
+  parentCardId: string;
+  messageIndex: number;  // 0-indexed message where branch occurred
+}
+
+interface InheritedContextEntry {
+  mode: InheritanceMode;  // 'full' | 'summary' | 'custom' | 'none'
+  messages: Message[];
+  timestamp: Date;
+  totalParentMessages: number;
+}
+
+interface MergeMetadata {
+  sourceCardIds: string[];  // IDs of cards being merged
+  synthesisPrompt?: string;
+  createdAt: Date;
 }
 
 interface Position {
@@ -64,11 +96,13 @@ interface Position {
 }
 
 interface ConversationMetadata {
+  title: string;
   createdAt: Date;
   updatedAt: Date;
   messageCount: number;
   tags: string[];
   isExpanded: boolean;
+  language?: LanguageCode;
 }
 ```
 
@@ -94,9 +128,9 @@ type LanguageCode = 'en' | 'ja' | 'es' | 'ar' | 'zh' | 'fr' | 'de' | 'ko' | 'ru'
 
 ---
 
-## Context Inheritance Architecture (Phase 2)
+## Context Inheritance Architecture (v4 Implemented)
 
-> **Implementation Status:** Documented for Phase 2, data structures designed for forward compatibility
+> **Implementation Status:** ✅ Implemented in v4 (Feb 2026) - see GitHub issue #5
 
 ### Core Rules
 
@@ -122,106 +156,57 @@ type LanguageCode = 'en' | 'ja' | 'es' | 'ar' | 'zh' | 'fr' | 'de' | 'ko' | 'ru'
    - Option: Custom selection of what to inherit
    - Can prune inherited context after branch creation
 
-### Context Snapshot Interface
+### Card-Level Context Storage (v4)
+
+Each card stores its inherited context per parent:
 
 ```typescript
-interface ContextSnapshot {
-  /** Complete conversation history at branch time */
-  messages: Message[];
-  
-  /** Metadata about the context state */
-  metadata: ContextMetadata;
-  
-  /** When this snapshot was created */
-  timestamp: Date;
-  
-  /** Parent canvas this was branched from */
-  parentCanvasId: string;
-  
-  /** ID of conversation that triggered the branch */
-  sourceConversationId: string;
-}
-
-interface ContextMetadata {
-  /** Recorded decisions in the conversation */
-  decisions: Decision[];
-  
-  /** Assumptions made during the conversation */
-  assumptions: Assumption[];
-  
-  /** User-provided reason for creating this branch */
-  branchReason: string;
-  
-  /** Total message count at branch time */
-  messageCount: number;
-  
-  /** Estimated token count */
-  tokenCount?: number;
-}
-
-interface Decision {
-  id: string;
-  description: string;
-  madeAt: Date;
-  messageId: string;  // Reference to the message where decision was made
-}
-
-interface Assumption {
-  id: string;
-  description: string;
-  createdAt: Date;
-  status: 'active' | 'invalidated' | 'confirmed';
-}
+// Example: Card with 2 parents (merge node)
+conversation.inheritedContext = {
+  'parent-card-1': {
+    mode: 'full',
+    messages: [...],  // Full history from parent 1
+    timestamp: new Date('2026-02-04'),
+    totalParentMessages: 15
+  },
+  'parent-card-2': {
+    mode: 'summary',
+    messages: [...],  // Summarized from parent 2
+    timestamp: new Date('2026-02-04'),
+    totalParentMessages: 42
+  }
+};
 ```
 
-### Branched Canvas Interface
+### Merge Node Configuration
 
 ```typescript
-interface BranchedCanvas extends Canvas {
-  /** Parent canvas ID (required for branched canvases) */
-  parentCanvasId: string;
-  
-  /** Context inherited from parent */
-  contextSnapshot: ContextSnapshot;
-  
-  /** How context was inherited */
-  inheritanceMode: InheritanceMode;
-  
-  /** User can inspect and manage inherited context */
-  inheritanceControls: ContextInheritanceControls;
-}
-
-type InheritanceMode = 'full' | 'summary' | 'custom';
-
-interface ContextInheritanceControls {
-  /** View the inherited context */
-  inspect(): ContextSnapshot;
-  
-  /** Remove specific messages from inherited context */
-  prune(messageIds: string[]): void;
-  
-  /** Select specific messages to keep */
-  customize(selection: MessageSelection): void;
-  
-  /** Get summary of inherited context */
-  getSummary(): string;
-}
-
-interface MessageSelection {
-  includeIds: string[];
-  excludeIds: string[];
-}
+const MERGE_NODE_CONFIG = {
+  MAX_PARENTS: 5,           // Hard limit on parent count
+  WARNING_THRESHOLD: 3,     // Show amber warning at 3+ parents
+  BUNDLE_THRESHOLD: 4,      // Bundle edges visually at 4+ parents
+};
 ```
 
-### Visual Design for Context Inheritance
+### Visual Indicators (v4 Implemented)
 
 ```
-[Parent Canvas] 
-    ↓ (pulsing flow animation)
-[Branch Point - Inherited Context Badge: "127 messages"]
-    ↓
-[Child Canvas - Inherited panel collapsed by default]
+[Parent Card] ─branch edge (amber)→ [Child Card with GitBranch icon]
+              ↘
+                merge edge (emerald)→ [Merge Node with ⚡ icon + count badge]
+              ↗
+[Parent Card 2] ─merge edge (emerald)→
+
+Inherited Context Panel: Shows parent tree and inherited messages
 ```
+
+**Visual Cues:**
+- 🌿 **GitBranch icon** on branched cards (amber border)
+- ⚡ **Zap icon** on merge nodes (green/amber/red based on parent count)
+- **Amber edges** for branch relationships
+- **Emerald edges** for merge relationships
+- **Parent count badge** on merge nodes (color-coded by threshold)
+- **Edge bundling** at 4+ parents (reduced opacity)
 
 ---
 
@@ -360,82 +345,101 @@ const migrations: Migration[] = [
 
 ---
 
-## Edge Connections
+## Edge Connections (v4)
 
-### Connection Interface
+### Typed Relationships
+
+**v4 introduces semantic edge types:**
 
 ```typescript
 interface EdgeConnection {
   id: string;
-  source: string;  // Conversation ID
-  target: string;  // Conversation ID
-  type: 'bezier';  // Simple curves in Phase 1
+  source: string;  // Source card ID
+  target: string;  // Target card ID
+  curveType: 'smoothstep' | 'bezier' | 'straight';  // Visual curve
+  relationType: EdgeRelationType;  // Semantic relationship
   animated?: boolean;
   style?: EdgeStyle;
+  label?: string;
 }
+
+type EdgeRelationType = 'branch' | 'merge' | 'reference';
 
 interface EdgeStyle {
-  stroke?: string;
-  strokeWidth?: number;
+  stroke: string;      // Color based on relationType
+  strokeWidth: number; // Thickness (merge = 3px, branch = 2px, ref = 1px)
+  strokeDasharray?: string;  // Dashed for reference edges
 }
 ```
 
-### Phase 2 Edge Enhancements
+### Edge Color Coding
 
-```typescript
-// Directional edges with context flow indicators
-interface DirectionalEdge extends EdgeConnection {
-  type: 'directional';
-  direction: 'forward' | 'branch';
-  label?: string;
-  showContextFlow?: boolean;  // Animated particles
-}
-```
+- **Branch edges:** `#f59e0b` (amber) - Parent → child branching
+- **Merge edges:** `#10b981` (emerald) - Source → synthesis merge node
+- **Reference edges:** `#8b5cf6` (violet, dashed) - Non-hierarchical links
 
 ---
 
 ## Phase Implementation Roadmap
 
-### Phase 1: Single Canvas MVP (Current)
+### ✅ Phase 1: Single Canvas MVP (Completed)
 - ✅ Basic infinite canvas with React Flow
 - ✅ Conversation cards with mock data
 - ✅ Visual connections (simple Bezier curves)
 - ✅ Local storage persistence with versioning
 - ✅ Pan/zoom with virtualization
 - ✅ Inline card expansion
-- ✅ Essential keyboard shortcuts (Delete, Escape)
+- ✅ Essential keyboard shortcuts (Delete, Escape, Space, Ctrl+B, N)
 - ✅ Language detection and font mapping
 - ✅ Dev performance overlay
+- ✅ Performance optimizations (debounced saves, O(n+m) handlers)
 
-### Phase 2: Branching System
-- [ ] Right-click conversation → "Branch to new canvas"
-- [ ] Context inheritance with clear rules
-- [ ] "Inherited Context" inspection panel
-- [ ] Branch reason tagging
-- [ ] Visual inheritance flow indicators
-- [ ] Canvas tree view (sidebar)
-- [ ] Breadcrumb navigation
+### ✅ v4: Card-Level Branching (Completed Feb 2026)
+**Architecture:** See GitHub issue #5 for full spec
+
+- ✅ Branch from any message in a card (keyboard/mouse workflow)
+- ✅ Context inheritance with 4 modes (full/summary/custom/none)
+- ✅ Inherited Context panel (shows parent tree + messages)
+- ✅ Merge nodes (multi-parent DAG support, max 5 parents)
+- ✅ Visual indicators (GitBranch/Zap icons, color-coded edges)
+- ✅ Cycle prevention (canConnect validation)
+- ✅ Edge bundling at 4+ parents
+- ✅ Warning indicators at 3+ parents (amber/red colors)
+- ✅ Canvas tree sidebar with DAG display
+- ✅ Breadcrumb navigation
+- ✅ Undo/redo with toast notifications
+- ✅ Drag-to-merge workflow
+- ✅ Branch dialog (keyboard workflow)
+- ✅ Settings panel with branching preferences
+
+### Phase 3: AI Integration & Intelligence
 - [ ] AI provider integration (Claude, OpenAI, Local)
+- [ ] Live conversation with AI within cards
+- [ ] Auto-generate summaries
+- [ ] Smart merge synthesis (AI combines multiple sources)
 
-### Phase 3: Intelligence & Polish
+### Phase 4: Polish & Export
 - [ ] Suggest Layout (opt-in, not auto)
-- [ ] Export/Import canvases
-- [ ] Search across canvases
-- [ ] Conversation summaries on hover
-- [ ] Branch diff view
+- [ ] Export/Import workspaces (JSON format)
+- [ ] Search across cards in workspace
+- [ ] Card summaries on hover
+- [ ] Branch comparison view
 - [ ] Decision ancestry tracking
 - [ ] Color coding by category/tag
+- [ ] Collaborative features (if demanded)
 
 ---
 
 ## Design Principles
 
-1. **Context flows forward, never backward** - Immutable snapshots at branch time
-2. **Always inspectable** - Users must see what context they inherited
+1. **Context flows forward, never backward** - Immutable context at branch time
+2. **Always inspectable** - Users can see inherited context per parent
 3. **Manual control wins** - No auto-repositioning, user decides layout
-4. **Provider agnostic** - Abstract AI integration from day 1
-5. **Dark-only identity** - Deep navy aesthetic is the brand
-6. **Solo-first** - No collaboration until users demand it
+4. **DAG over tree** - Cards can have multiple parents via merge nodes
+5. **Visual semantics** - Edge colors indicate relationship type (branch/merge/reference)
+6. **Performance first** - 60 FPS target, debounced saves, O(n) operations
+7. **Dark-only identity** - Deep navy aesthetic is the brand
+8. **Solo-first** - No collaboration until users demand it
 
 ---
 
@@ -450,23 +454,34 @@ src/
 ├── components/
 │   ├── InfiniteCanvas.tsx
 │   ├── ConversationCard.tsx
+│   ├── CanvasTreeSidebar.tsx        # v4: DAG tree view
+│   ├── CanvasBreadcrumb.tsx         # v4: Navigation
+│   ├── InheritedContextPanel.tsx    # v4: Context inspection
+│   ├── BranchDialog.tsx             # v4: Keyboard workflow
+│   ├── InlineBranchPanel.tsx        # v4: Mouse workflow
+│   ├── UndoToast.tsx                # v4: Undo notifications
+│   ├── SettingsPanel.tsx            # v4: Preferences UI
 │   ├── ErrorBoundary.tsx
 │   └── DevPerformanceOverlay.tsx
 ├── hooks/
 │   └── useKeyboardShortcuts.ts
 ├── stores/
-│   └── canvas-store.ts
+│   ├── canvas-store.ts              # v4: With branching logic
+│   └── preferences-store.ts         # v4: User settings
 ├── lib/
 │   ├── design-tokens.ts
 │   ├── language-utils.ts
-│   ├── storage.ts
-│   └── mock-data.ts
+│   ├── storage.ts                   # v4: Schema version 4
+│   ├── context-utils.ts             # v4: Context selection
+│   ├── mock-data.ts
+│   └── logger.ts
 ├── utils/
-│   └── layoutGenerator.ts
+│   ├── layoutGenerator.ts
+│   └── formatters.ts
 ├── constants/
 │   └── zIndex.ts
 ├── types/
-│   └── index.ts
+│   └── index.ts                     # v4: Full type definitions
 └── __tests__/
     ├── storage.test.ts
     ├── layoutGenerator.test.ts
@@ -477,18 +492,35 @@ src/
 
 ## Success Metrics
 
-### Phase 1 (Week 2)
+### \u2705 Phase 1 (Completed Week 1)
 - Can organize 5+ conversations spatially
 - Smooth pan/zoom experience
 - Visual appeal matches design system
 - All tests passing
 
-### Phase 2 (Week 4)
-- Can branch from any conversation
-- Context flows correctly between canvases
-- Can navigate 3 levels deep in canvas tree
+### \u2705 v4 Card-Level Branching (Completed Week 2)
+- Can branch from any message in any card
+- Context flows correctly between cards
+- Merge nodes support up to 5 parents
+- Visual indicators for all relationship types
+- Cycle prevention working
+- 60 FPS maintained at current scale
 
-### Phase 3 (Week 6)
-- 10 beta users can export/share their canvases
+### Phase 3 (Week 4 Target)
+- AI integration with 2+ providers
+- Live conversation within cards
+- Auto-summarization working
+
+### Phase 4 (Week 6 Target)
+- 10 beta users can export/share workspaces
 - Suggest layout working
-- Search across conversations functional
+- Search across cards functional
+
+---
+
+## References
+
+- **GitHub Issue #5:** v4 Card-Level Branching Spec (comprehensive architecture document)
+- **PERFORMANCE_OPTIMIZATIONS.md:** Performance tuning applied (Feb 4, 2026)
+- **phase_2.md:** Original Phase 2 planning (superseded by v4)
+- **future-features.md:** Phase 3+ roadmap

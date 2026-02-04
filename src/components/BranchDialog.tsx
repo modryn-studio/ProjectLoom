@@ -147,8 +147,9 @@ export function BranchDialog() {
   // Store state
   const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
   const branchSourceId = useCanvasStore(selectBranchSourceId);
+  const branchMessageIndex = useCanvasStore((s) => s.branchMessageIndex);
   const closeBranchDialog = useCanvasStore((s) => s.closeBranchDialog);
-  const createBranch = useCanvasStore((s) => s.createBranch);
+  const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const conversations = useCanvasStore((s) => s.conversations);
 
   // Preferences
@@ -258,15 +259,17 @@ export function BranchDialog() {
       setBranchingPreferences({ defaultInheritanceMode: inheritanceMode });
     }
 
-    const newCanvas = createBranch({
-      sourceConversationId: branchSourceId!,
-      branchReason: branchReason.trim(),
+    // Use the new v4 branchFromMessage API
+    const newConversation = branchFromMessage({
+      sourceCardId: branchSourceId!,
+      messageIndex: branchMessageIndex ?? messages.length - 1,
       inheritanceMode,
       customMessageIds: inheritanceMode === 'custom' ? Array.from(customSelection) : undefined,
+      branchReason: branchReason.trim(),
     });
 
     // Check if branch creation succeeded
-    if (!newCanvas) {
+    if (!newConversation) {
       setValidationError('Failed to create branch. Please try again.');
       return;
     }
@@ -329,7 +332,7 @@ export function BranchDialog() {
                 color: colors.contrast.white,
                 fontFamily: typography.fonts.heading,
               }}>
-                Branch from "{sourceConversation.title}"
+                Branch from "{sourceConversation.metadata.title}"
               </h2>
             </div>
             <button

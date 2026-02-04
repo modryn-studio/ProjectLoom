@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect } from 'react';
-import { Home, ChevronRight, GitBranch } from 'lucide-react';
+import React from 'react';
+import { Folder } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
@@ -18,123 +18,51 @@ const containerStyles: React.CSSProperties = {
   backgroundColor: colors.navy.light,
   borderRadius: effects.border.radius.default,
   maxWidth: '80vw',
-  overflowX: 'auto',
-  scrollbarWidth: 'thin',
 };
 
-const crumbStyles: React.CSSProperties = {
+const labelStyles: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: spacing[1],
   padding: `${spacing[1]} ${spacing[2]}`,
-  background: 'transparent',
-  border: 'none',
-  borderRadius: effects.border.radius.default,
-  color: colors.contrast.grayDark,
+  color: colors.amber.primary,
   fontSize: typography.sizes.sm,
   fontFamily: typography.fonts.body,
-  cursor: 'pointer',
-  transition: 'all 0.15s ease',
-};
-
-const activeCrumbStyles: React.CSSProperties = {
-  ...crumbStyles,
-  color: colors.amber.primary,
-  cursor: 'default',
-};
-
-const separatorStyles: React.CSSProperties = {
-  color: colors.contrast.grayDark,
-  display: 'flex',
-  alignItems: 'center',
 };
 
 // =============================================================================
 // CANVAS BREADCRUMB COMPONENT
 // =============================================================================
 
+/**
+ * CanvasBreadcrumb - v4 Simplified Version
+ * 
+ * In v4, workspaces are flat (no hierarchy), so this just shows
+ * the current workspace name. No navigation lineage needed.
+ */
 export function CanvasBreadcrumb() {
-  const getCanvasLineage = useCanvasStore((s) => s.getCanvasLineage);
-  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const canvases = useCanvasStore((s) => s.canvases);
+  const getCurrentWorkspace = useCanvasStore((s) => s.getCurrentWorkspace);
+  
+  const currentWorkspace = getCurrentWorkspace();
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Get lineage from root to current
-  const lineage = useMemo(() => {
-    return getCanvasLineage(activeCanvasId);
-  }, [getCanvasLineage, activeCanvasId, canvases]);
-
-  // Auto-scroll to the end (current item) when lineage changes
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollLeft = containerRef.current.scrollWidth;
-    }
-  }, [lineage]);
-
-  // Handle horizontal scroll with mouse wheel
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // Convert vertical scroll to horizontal
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        container.scrollLeft += e.deltaY;
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  // Don't render if at root (no lineage)
-  if (lineage.length <= 1) {
+  // Don't render if no workspace
+  if (!currentWorkspace) {
     return null;
   }
 
   return (
-    <nav ref={containerRef} style={containerStyles} aria-label="Canvas navigation">
-      {lineage.map((canvas, index) => {
-        const isActive = canvas.id === activeCanvasId;
-        const isFirst = index === 0;
-        const isLast = index === lineage.length - 1;
-
-        return (
-          <React.Fragment key={canvas.id}>
-            {/* Separator */}
-            {!isFirst && (
-              <span style={separatorStyles}>
-                <ChevronRight size={14} />
-              </span>
-            )}
-
-            {/* Crumb button */}
-            <button
-              onClick={() => !isActive && navigateToCanvas(canvas.id)}
-              style={isActive ? activeCrumbStyles : crumbStyles}
-              disabled={isActive}
-              title={canvas.metadata.title}
-            >
-              {isFirst ? (
-                <Home size={14} />
-              ) : (
-                <GitBranch size={14} />
-              )}
-              <span style={{
-                maxWidth: isLast ? 200 : 100,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {canvas.metadata.title}
-              </span>
-            </button>
-          </React.Fragment>
-        );
-      })}
+    <nav style={containerStyles} aria-label="Workspace indicator">
+      <div style={labelStyles}>
+        <Folder size={14} />
+        <span style={{
+          maxWidth: 200,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {currentWorkspace.metadata.title}
+        </span>
+      </div>
     </nav>
   );
 }

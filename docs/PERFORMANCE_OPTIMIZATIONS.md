@@ -3,7 +3,7 @@
 ## Summary
 Applied critical performance optimizations to ensure smooth 60 FPS during canvas interactions.
 
-**Last Updated:** February 3, 2026
+**Last Updated:** February 4, 2026
 
 ## Changes Made
 
@@ -23,7 +23,32 @@ saveToStorage: () => {
 ```
 **Impact:** Reduced localStorage writes from ~60/sec to ~3/sec during drag operations
 
-### 2. Memoized Style Objects (InfiniteCanvas.tsx)
+### 2. Optimized onNodesChange Handler (canvas-store.ts)
+**Problem:** O(n*m) complexity - nested loops through nodes × changes
+**Solution:** Pre-index changes into Maps for O(1) lookup
+```typescript
+onNodesChange: (changes) => {
+  // PERFORMANCE: Pre-index changes by id for O(1) lookup instead of O(n*m)
+  const positionChanges = new Map<string, { x: number; y: number }>();
+  const selectChanges = new Map<string, boolean>();
+  const removeIds = new Set<string>();
+  
+  for (const change of changes) {
+    if (change.type === 'position' && change.position) {
+      positionChanges.set(change.id, change.position);
+    } // ...
+  }
+  
+  // Single pass through nodes with O(1) lookups
+  const newNodes = state.nodes.map((node) => {
+    const newPosition = positionChanges.get(node.id);
+    // ...
+  });
+}
+```
+**Impact:** Reduced complexity from O(n*m) to O(n+m) during drag operations
+
+### 3. Memoized Style Objects (InfiniteCanvas.tsx)
 **Problem:** Inline style objects recreated on every render
 **Solution:** Extracted to module-level constants
 ```typescript
@@ -41,7 +66,7 @@ const minimapStyle: React.CSSProperties = { backgroundColor: config.bg, width: 2
 - `topOverlayStyles` - Breadcrumb/context overlay
 - `pointerEventsAutoStyle` - Common pointer-events pattern
 
-### 3. Memoized Callbacks (InfiniteCanvas.tsx)
+### 4. Memoized Callbacks (InfiniteCanvas.tsx)
 **Problem:** Inline arrow functions create new references on every render
 **Solution:** useCallback for settings handlers
 ```typescript
@@ -53,20 +78,78 @@ const openSettings = useCallback(() => setSettingsOpen(true), []);
 <SettingsButton onClick={openSettings} />
 ```
 
-### 4. React Flow Virtualization (InfiniteCanvas.tsx)
+### 5. UndoToast Selector Optimization (UndoToast.tsx)
+**Problem:** Subscribed to entire `conversations` Map - triggered on every update, ran expensive `Array.from()` + `reduce()`
+**Solution:** Created a custom selector that extracts only count and newest conversation info
+```typescript
+const selectConversationInfo = (s) => {
+  const arr = Array.from(s.conversations.values());
+  const newest = arr.length > 0 
+    ? arr.reduce((latest, conv) => 
+        (!latest || new Date(conv.metadata.createdAt) > new Date(latest.metadata.createdAt)) ? conv : latest
+      , arr[0])
+    : null;
+  return { count: arr.length, newest: newest ? { id, isMergeNode, parentCardIds } : null };
+};
+```
+**Impact:** Component now only re-renders when conversation count or newest ID changes, not on every conversation update
+
+### 6. DevPerformanceOverlay FPS Counter (DevPerformanceOverlay.tsx)
+**Problem:** requestAnimationFrame loop running even when overlay collapsed
+**Solution:** Conditional FPS measurement based on collapsed state
+```typescript
+useEffect(() => {
+  // Don't run FPS counter when collapsed - saves CPU cycles
+  if (isCollapsed) return;
+  // ...animation frame loop
+}, [nodeCount, edgeCount, isCollapsed]);
+```
+**Impact:** Zero CPU overhead when performance overlay is collapsed
+
+### 7. ConversationCard Platform Detection (ConversationCard.tsx)
+**Problem:** useEffect on mount caused extra render for platform detection
+**Solution:** Changed to useMemo for static SSR-safe detection
+```typescript
+// Before (caused re-render)
+const [isMac, setIsMac] = useState(false);
+useEffect(() => { setIsMac(/Mac/.test(navigator.platform)); }, []);
+
+// After (no re-render)
+const isMac = useMemo(() => {
+  if (typeof navigator === 'undefined') return false;
+  return /Mac/.test(navigator.platform);
+}, []);
+```
+**Impact:** Eliminates 1 unnecessary re-render per ConversationCard mount
+
+### 8. CanvasTreeSidebar Tree Building (CanvasTreeSidebar.tsx)
+**Problem:** Tree structure rebuilt on every conversation Map change (even title edits)
+**Solution:** Structural selector that only triggers on tree-relevant changes
+```typescript
+const createWorkspaceTreeSelector = (workspaceId: string) => 
+  (state) => {
+    const arr = Array.from(state.conversations.values())
+      .filter(c => c.canvasId === workspaceId)
+      .map(c => ({ id, title, parentCardIds, isMergeNode }));
+    return JSON.stringify(arr);  // Stable string for comparison
+  };
+```
+**Impact:** Tree only rebuilds when structure (parents, merge status) changes, not on content edits
+
+### 9. React Flow Virtualization (InfiniteCanvas.tsx)
 **Already Optimized:**
 - `onlyRenderVisibleElements={true}` ✅
 - Only visible nodes are rendered
 - Off-screen nodes don't re-render
 
-### 5. Component Memoization
+### 10. Component Memoization
 **Already Optimized:**
 - ConversationCard wrapped in `memo()` ✅
 - textStyles computed with `useMemo` ✅  
 - previewContent computed with `useMemo` ✅
 - All event handlers wrapped in `useCallback` ✅
 
-### 6. Zustand Selectors
+### 11. Zustand Selectors
 **Already Optimized:**
 - Using `subscribeWithSelector` middleware ✅
 - Individual selectors prevent unnecessary re-renders ✅
@@ -75,18 +158,18 @@ const nodes = useCanvasStore((s) => s.nodes);
 const edges = useCanvasStore((s) => s.edges);
 ```
 
-### 7. Framer Motion Optimizations
+### 12. Framer Motion Optimizations
 **Already Optimized:**
 - `layout` prop for smooth resize ✅
 - `willChange: 'border-color'` for GPU acceleration ✅
 - Explicit transition timings ✅
 
-### 8. Discrete Scrollbar (ConversationCard.tsx)
+### 13. Discrete Scrollbar (ConversationCard.tsx)
 **Already Optimized:**
 - `scrollbarWidth: 'thin'` ✅
 - Transparent scrollbar reduces paint operations ✅
 
-### 9. Preferences Auto-Loading (preferences-store.ts)
+### 14. Preferences Auto-Loading (preferences-store.ts)
 **Optimization:** Preferences now auto-load on store initialization
 - Prevents redundant `loadPreferences()` calls
 - Avoids multiple components calling load simultaneously

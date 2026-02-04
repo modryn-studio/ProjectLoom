@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, GitBranch, MessageSquare, ExternalLink, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, GitBranch, MessageSquare, FileText } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, spacing, effects, animation, typography } from '@/lib/design-tokens';
-import type { InheritanceMode } from '@/types';
+import { colors, spacing, effects, typography } from '@/lib/design-tokens';
+import type { InheritanceMode, Message, Conversation } from '@/types';
 
 // =============================================================================
 // STYLES
@@ -64,32 +64,63 @@ function getModeColor(mode: InheritanceMode): string {
 }
 
 // =============================================================================
-// INHERITED CONTEXT PANEL COMPONENT
+// INHERITED CONTEXT PANEL COMPONENT (v4 - Card-Level Branching)
 // =============================================================================
 
+/**
+ * InheritedContextPanel - v4 Version
+ * 
+ * In v4, branching happens at the card level, not canvas level.
+ * This panel shows inherited context for cards that have parent cards.
+ */
 export function InheritedContextPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Get current canvas and its parent
-  const getCurrentCanvas = useCanvasStore((s) => s.getCurrentCanvas);
-  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
-  const canvases = useCanvasStore((s) => s.canvases);
+  // Get current workspace and selected node to find inherited context
+  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
+  const conversations = useCanvasStore((s) => s.conversations);
   
-  const currentCanvas = getCurrentCanvas();
-  
-  // Get parent canvas
-  const parentCanvas = useMemo(() => {
-    if (!currentCanvas?.parentCanvasId) return null;
-    return canvases.find(c => c.id === currentCanvas.parentCanvasId);
-  }, [currentCanvas, canvases]);
+  // Get the first selected conversation that has inherited context
+  const selectedConversation = useMemo<Conversation | null>(() => {
+    const selectedIds = Array.from(selectedNodeIds);
+    if (selectedIds.length === 0) return null;
+    
+    const conv = conversations.get(selectedIds[0]);
+    if (!conv) return null;
+    
+    // Check if this conversation has any inherited context
+    if (conv.parentCardIds.length === 0) return null;
+    
+    return conv;
+  }, [selectedNodeIds, conversations]);
 
-  // Don't render if no parent (not a branched canvas)
-  if (!currentCanvas?.parentCanvasId || !currentCanvas.branchMetadata) {
+  // Get parent conversation title
+  const parentTitle = useMemo(() => {
+    if (!selectedConversation || selectedConversation.parentCardIds.length === 0) {
+      return 'Parent Card';
+    }
+    const parentId = selectedConversation.parentCardIds[0];
+    const parent = conversations.get(parentId);
+    return parent?.metadata.title || 'Parent Card';
+  }, [selectedConversation, conversations]);
+
+  // Get inherited messages from the first parent
+  const inheritedContext = useMemo(() => {
+    if (!selectedConversation) return null;
+    
+    const firstParentId = selectedConversation.parentCardIds[0];
+    if (!firstParentId) return null;
+    
+    return selectedConversation.inheritedContext[firstParentId];
+  }, [selectedConversation]);
+
+  // Don't render if no inherited context
+  if (!selectedConversation || !inheritedContext) {
     return null;
   }
 
-  const { branchMetadata, contextSnapshot } = currentCanvas;
-  const inheritedMessages = contextSnapshot?.messages || [];
+  const inheritedMessages: Message[] = inheritedContext.messages || [];
+  const inheritanceMode: InheritanceMode = inheritedContext.mode;
 
   return (
     <motion.div
@@ -110,16 +141,16 @@ export function InheritedContextPanel() {
             color: colors.contrast.white,
             fontFamily: typography.fonts.body,
           }}>
-            Inherited from "{parentCanvas?.metadata.title || 'Parent Canvas'}"
+            Inherited from "{parentTitle}"
           </span>
 
           {/* Mode badge */}
           <span style={{
             ...badgeStyles,
-            backgroundColor: `${getModeColor(branchMetadata.inheritanceMode)}20`,
-            color: getModeColor(branchMetadata.inheritanceMode),
+            backgroundColor: `${getModeColor(inheritanceMode)}20`,
+            color: getModeColor(inheritanceMode),
           }}>
-            {getModeLabel(branchMetadata.inheritanceMode)}
+            {getModeLabel(inheritanceMode)}
           </span>
 
           {/* Message count badge */}
@@ -134,32 +165,6 @@ export function InheritedContextPanel() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-          {/* View parent link */}
-          {parentCanvas && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigateToCanvas(parentCanvas.id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: `${spacing[1]} ${spacing[2]}`,
-                background: 'transparent',
-                border: `1px solid rgba(99, 102, 241, 0.3)`,
-                borderRadius: effects.border.radius.default,
-                fontSize: typography.sizes.xs,
-                color: colors.violet.primary,
-                cursor: 'pointer',
-                fontFamily: typography.fonts.body,
-              }}
-            >
-              <ExternalLink size={12} />
-              View Parent
-            </button>
-          )}
-
           {/* Expand/collapse toggle */}
           <button
             style={{
@@ -214,7 +219,7 @@ export function InheritedContextPanel() {
                   backgroundColor: colors.navy.dark,
                   borderRadius: effects.border.radius.default,
                 }}>
-                  {inheritedMessages.slice(0, 5).map((msg, index) => (
+                  {inheritedMessages.slice(0, 5).map((msg: Message) => (
                     <div
                       key={msg.id}
                       style={{
@@ -269,7 +274,7 @@ export function InheritedContextPanel() {
                 color: colors.contrast.grayDark,
                 fontFamily: typography.fonts.body,
               }}>
-                Created: {new Date(branchMetadata.createdAt).toLocaleString()}
+                Inherited: {new Date(inheritedContext.timestamp).toLocaleString()}
               </div>
             </div>
           </motion.div>

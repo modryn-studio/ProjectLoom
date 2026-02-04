@@ -4,7 +4,7 @@
  * Provides localStorage persistence with schema versioning,
  * migration handlers, and error recovery.
  * 
- * @version 1.0.0
+ * @version 4.0.0 - Card-level branching architecture
  */
 
 // =============================================================================
@@ -57,16 +57,68 @@ export interface StorageResult<T> {
  * Current schema version
  * Version 2: Added title field to Conversation type
  * Version 3: Added multi-canvas support with branching
+ * Version 4: Card-level branching architecture (fresh start)
+ *            - Workspaces are flat (no hierarchy)
+ *            - Cards have parentCardIds for branching
+ *            - Support for merge nodes with multiple parents
  */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export const STORAGE_KEYS = {
+  /** @deprecated Use WORKSPACES */
   CANVAS: 'projectloom:canvas',
+  /** @deprecated Use WORKSPACES */
   CANVAS_DATA: 'projectloom:canvas-data',
+  /** @deprecated Use WORKSPACES */
   CANVASES: 'projectloom:canvases',
+  /** v4 - Flat workspaces with card-level branching */
+  WORKSPACES: 'projectloom:workspaces',
+  /** User preferences */
   PREFERENCES: 'projectloom:preferences',
+  /** API keys */
   API_KEYS: 'projectloom:api-keys',
+  /** v4 migration notice dismissed */
+  V4_NOTICE_DISMISSED: 'projectloom:v4-notice-dismissed',
 } as const;
+
+/**
+ * Clear all legacy storage keys for v4 fresh start
+ */
+export function clearLegacyStorage(): void {
+  if (typeof window === 'undefined') return;
+  
+  const legacyKeys = [
+    STORAGE_KEYS.CANVAS,
+    STORAGE_KEYS.CANVAS_DATA,
+    STORAGE_KEYS.CANVASES,
+  ];
+  
+  legacyKeys.forEach(key => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Ignore errors during cleanup
+    }
+  });
+  
+  console.log('🔄 ProjectLoom v4: Cleared legacy storage');
+}
+
+/**
+ * Check if v4 migration notice was dismissed
+ */
+export function isV4NoticeDismissed(): boolean {
+  if (typeof window === 'undefined') return true;
+  return window.localStorage.getItem(STORAGE_KEYS.V4_NOTICE_DISMISSED) === 'true';
+}
+
+/**
+ * Dismiss v4 migration notice
+ */
+export function dismissV4Notice(): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(STORAGE_KEYS.V4_NOTICE_DISMISSED, 'true');
+}
 
 // =============================================================================
 // STORAGE CLASS

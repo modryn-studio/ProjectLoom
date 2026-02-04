@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo, useState, useEffect } from 'react';
+import React, { memo, useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,8 +10,9 @@ import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore, selectIsAnyNodeDragging } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
+import { InlineBranchPanel } from './InlineBranchPanel';
 import type { ConversationNodeData, Message } from '@/types';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Zap } from 'lucide-react';
 
 // =============================================================================
 // TYPES
@@ -84,14 +85,20 @@ function ConversationCardComponent({
   const isSelected = data.isSelected;
   const messages = conversation.content;
   const metadata = conversation.metadata;
+  
+  // v4: Detect merge and branch state for visual styling
+  const isMergeNode = conversation.isMergeNode;
+  const isBranchedCard = conversation.parentCardIds.length > 0 && !isMergeNode;
+  const mergeSourceCount = isMergeNode ? conversation.parentCardIds.length : 0;
+  const isComplexMerge = mergeSourceCount >= 3; // WARNING_THRESHOLD
+  const isAtMaxMerge = mergeSourceCount >= 5; // MAX_PARENTS
 
   // Context menu state
   const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu, dynamicItems } = useContextMenu();
 
   // Store actions
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
-  const createBranch = useCanvasStore((s) => s.createBranch);
-  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
+  const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const toggleExpanded = useCanvasStore((s) => s.toggleExpanded);
   
@@ -101,6 +108,28 @@ function ConversationCardComponent({
   // Branching preferences
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
+
+  // Inline branch panel state (mouse workflow)
+  const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
+  const [pendingBranchMessageIndex, setPendingBranchMessageIndex] = useState<number | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Handle branch icon click - show inline panel
+  const handleBranchClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingBranchMessageIndex(messageIndex);
+  }, []);
+
+  // Close inline branch panel
+  const handleCloseBranchPanel = useCallback(() => {
+    setPendingBranchMessageIndex(null);
+  }, []);
+
+  // Handle branch completion
+  const handleBranchComplete = useCallback(() => {
+    setPendingBranchMessageIndex(null);
+    // Optionally select the new card or give feedback
+  }, []);
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
@@ -116,10 +145,10 @@ function ConversationCardComponent({
     isSelected: isSelected || selected,
   });
 
-  // Detect OS for keyboard shortcuts
-  const [isMac, setIsMac] = useState(false);
-  useEffect(() => {
-    setIsMac(/Mac/.test(navigator.platform));
+  // Platform detection (cached at module level to avoid re-computation)
+  const isMac = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Mac/.test(navigator.platform);
   }, []);
 
   // Preview content
@@ -156,18 +185,14 @@ function ConversationCardComponent({
         // Show dialog for user to configure
         openBranchDialog(conversation.id);
       } else {
-        // Create branch instantly with default settings
-        const newCanvas = createBranch({
-          sourceConversationId: conversation.id,
-          branchReason: 'Quick branch',
+        // Create branch instantly with default settings using v4 API
+        branchFromMessage({
+          sourceCardId: conversation.id,
+          messageIndex: messages.length - 1,
           inheritanceMode: branchingPrefs.defaultInheritanceMode,
           customMessageIds: undefined,
+          branchReason: 'Quick branch',
         });
-        
-        // Navigate to the new canvas if created successfully
-        if (newCanvas) {
-          navigateToCanvas(newCanvas.id);
-        }
       }
     };
     
@@ -202,6 +227,7 @@ function ConversationCardComponent({
 
       {/* Card container with layout animation */}
       <motion.div
+        ref={cardRef}
         initial={false}
         animate={{
           scale: dragging ? 1.02 : 1,
@@ -233,17 +259,91 @@ function ConversationCardComponent({
         style={{
           ...cardStyles.container,
           zIndex: cardZIndex,
-          borderColor: isSelected || selected
+          // v4: Visual indicators for merge nodes and branched cards
+          borderColor: isMergeNode
+            ? (isAtMaxMerge 
+                ? colors.semantic.error     // Red at max (5 parents)
+                : isComplexMerge 
+                  ? colors.semantic.warning  // Amber warning at 3+ parents
+                  : colors.semantic.success) // Green for healthy merge (2 parents)
+            : isBranchedCard
+            ? colors.amber.dark        // Amber for branched cards
+            : isSelected || selected
             ? colors.amber.primary
             : isExpanded
             ? colors.violet.primary
             : 'rgba(102, 126, 234, 0.4)',
+          borderWidth: isMergeNode || isBranchedCard ? 2 : 1,
         }}
         onContextMenu={handleContextMenu}
       >
-        {/* Header: Title + Badge */}
+        {/* Header: Title + Badge + Merge/Branch Indicator */}
         <div style={cardStyles.header}>
-          <h3 style={cardStyles.title}>{conversation.title}</h3>
+          {/* Merge indicator icon */}
+          {isMergeNode && (
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginRight: spacing[1],
+              }}
+              title={`Merged from ${mergeSourceCount} cards`}
+            >
+              <Zap 
+                size={14} 
+                color={isAtMaxMerge 
+                  ? colors.semantic.error 
+                  : isComplexMerge 
+                    ? colors.semantic.warning 
+                    : colors.semantic.success
+                } 
+              />
+            </span>
+          )}
+          {/* Branch indicator icon */}
+          {isBranchedCard && !isMergeNode && (
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginRight: spacing[1],
+              }}
+              title="Branched card"
+            >
+              <GitBranch size={14} color={colors.amber.dark} />
+            </span>
+          )}
+          <h3 style={cardStyles.title}>{metadata.title}</h3>
+          {/* Merge source count badge with warning/error colors */}
+          {isMergeNode && mergeSourceCount > 0 && (
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                color: isAtMaxMerge 
+                  ? colors.semantic.error 
+                  : isComplexMerge 
+                    ? colors.semantic.warning 
+                    : colors.semantic.success,
+                backgroundColor: isAtMaxMerge
+                  ? `${colors.semantic.error}20`
+                  : isComplexMerge
+                    ? `${colors.semantic.warning}20`
+                    : `${colors.semantic.success}20`,
+                padding: `2px ${spacing[1]}`,
+                borderRadius: effects.border.radius.default,
+                marginLeft: 'auto',
+                marginRight: spacing[1],
+              }}
+              title={isAtMaxMerge
+                ? `⚠️ Maximum sources (${mergeSourceCount}/5) - Consider hierarchical merging`
+                : isComplexMerge
+                  ? `⚠️ Complex merge (${mergeSourceCount} sources) - May reduce AI quality`
+                  : `Merged from ${mergeSourceCount} cards`}
+            >
+              {mergeSourceCount}
+              {isComplexMerge && ' ⚠️'}
+            </span>
+          )}
           <span style={cardStyles.badge}>
             {metadata.messageCount} msgs
           </span>
@@ -268,15 +368,18 @@ function ConversationCardComponent({
                 transition={animation.spring.gentle}
                 style={cardStyles.expandedContent}
               >
-                {/* Full message list */}
-                {messages.map((message: Message) => (
+                {/* Full message list with branch icons */}
+                {messages.map((message: Message, index: number) => (
                   <div
                     key={message.id}
                     style={{
                       display: 'flex',
                       flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
                       width: '100%',
+                      position: 'relative',
                     }}
+                    onMouseEnter={() => setHoveredMessageIndex(index)}
+                    onMouseLeave={() => setHoveredMessageIndex(null)}
                   >
                     <div
                       style={{
@@ -300,6 +403,26 @@ function ConversationCardComponent({
                         {message.content.length > 500 && '...'}
                       </div>
                     </div>
+                    
+                    {/* Branch icon - appears on hover */}
+                    <AnimatePresence>
+                      {hoveredMessageIndex === index && (
+                        <motion.button
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: 0.1 }}
+                          onClick={(e) => handleBranchClick(index, e)}
+                          style={{
+                            ...cardStyles.branchIcon,
+                            [message.role === 'user' ? 'left' : 'right']: '-28px',
+                          }}
+                          title={`Branch from message ${index + 1}`}
+                        >
+                          <GitBranch size={14} />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
                   </div>
                 ))}
               </motion.div>
@@ -333,6 +456,18 @@ function ConversationCardComponent({
         onClose={closeMenu}
         items={dynamicItems.length > 0 ? dynamicItems : menuItems}
       />
+
+      {/* Inline Branch Panel (mouse workflow) */}
+      {pendingBranchMessageIndex !== null && (
+        <InlineBranchPanel
+          parentCardId={conversation.id}
+          messageIndex={pendingBranchMessageIndex}
+          totalMessages={messages.length}
+          position="right"
+          onClose={handleCloseBranchPanel}
+          onComplete={handleBranchComplete}
+        />
+      )}
     </>
   );
 }
@@ -449,6 +584,23 @@ const cardStyles: Record<string, React.CSSProperties> = {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
   },
+
+  branchIcon: {
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: 24,
+    height: 24,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    border: '1px solid rgba(245, 158, 11, 0.4)',
+    borderRadius: '50%',
+    color: '#f59e0b',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  } as React.CSSProperties,
 
   footer: {
     marginTop: 'auto',

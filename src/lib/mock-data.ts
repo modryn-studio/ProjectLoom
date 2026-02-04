@@ -5,7 +5,10 @@
  * project story. Includes diverse content: multiple languages,
  * code snippets, markdown, and varied conversation lengths.
  * 
- * @version 1.0.0
+ * v4 Card-Level Branching: Demonstrates branch points, inherited
+ * context, and merge nodes.
+ * 
+ * @version 4.0.0
  */
 
 import { nanoid } from 'nanoid';
@@ -15,6 +18,10 @@ import type {
   EdgeConnection,
   ConversationMetadata,
   Position,
+  BranchPoint,
+  InheritedContextEntry,
+  InheritanceMode,
+  EdgeRelationType,
 } from '@/types';
 import { generateTreeLayout } from '@/utils/layoutGenerator';
 
@@ -48,25 +55,34 @@ function createConversation(
   title: string,
   messages: Message[],
   position: Position,
-  connections: string[] = []
+  connections: string[] = [],
+  parentCardIds: string[] = [],
+  branchPoint?: BranchPoint,
+  inheritedContext?: Record<string, InheritedContextEntry>,
+  isMergeNode: boolean = false
 ): Conversation {
   const now = new Date();
   const firstMessageTime = messages[0]?.timestamp || now;
   
   return {
     id: nanoid(),
-    title,
     canvasId: 'main',
     position,
     content: messages,
     connections,
+    // v4 card-level branching
+    parentCardIds,
+    branchPoint,
+    inheritedContext: inheritedContext || {},
+    isMergeNode,
     metadata: {
+      title,
       createdAt: firstMessageTime,
       updatedAt: now,
       messageCount: messages.length,
       tags: [],
       isExpanded: false,
-    } as ConversationMetadata,
+    },
   };
 }
 
@@ -863,66 +879,281 @@ You're all set for a professional CI/CD workflow! 🎉`, 0),
  * 
  * Creates 10 logically connected conversations forming a coherent
  * project story from initial idea through deployment.
+ * 
+ * v4 Branching Demo:
+ * - Card 0 (Kickoff) is root with no parents
+ * - Card 1 (Database) branches from Kickoff at message 3 (full context)
+ * - Card 2 (Japanese i18n) branches from Kickoff at message 2 (summary)
+ * - Card 3 (Arabic RTL) branches from Kickoff at message 2 (summary)
+ * - Card 4 (API) branches from Database (full context)
+ * - Card 10 (i18n Synthesis) is a MERGE NODE combining Japanese + Arabic + Spanish
  */
 export function generateMockData(): MockDataResult {
   // Create conversations with temporary positions (will be updated)
   const tempPosition: Position = { x: 0, y: 0 };
   
-  const conversationsData = [
-    { title: 'Project Kickoff', messages: projectKickoffMessages },
-    { title: 'Database Design', messages: databaseDesignMessages },
-    { title: 'Japanese i18n', messages: japaneseLocalizationMessages },
-    { title: 'Arabic RTL', messages: arabicRTLMessages },
-    { title: 'API Implementation', messages: apiImplementationMessages },
-    { title: 'Debugging Session', messages: debuggingSessionMessages },
-    { title: 'Performance', messages: performanceMessages },
-    { title: 'Rust Exploration', messages: rustExplorationMessages },
-    { title: 'Spanish i18n', messages: spanishUIMessages },
-    { title: 'Deployment', messages: deploymentMessages },
-  ];
+  // Helper to create branch point
+  const makeBranchPoint = (parentCardId: string, messageIndex: number): BranchPoint => ({
+    parentCardId,
+    messageIndex,
+  });
   
-  // Create conversations with placeholder positions
-  const conversations = conversationsData.map((data, index) =>
-    createConversation(data.title, data.messages, tempPosition)
+  // Helper to create inherited context entry with sample messages
+  const makeInheritedContext = (
+    mode: InheritanceMode,
+    messages: Message[],
+    totalParentMessages: number
+  ): InheritedContextEntry => ({
+    mode,
+    messages,
+    timestamp: new Date(),
+    totalParentMessages,
+  });
+  
+  // Step 1: Create root conversation (no parents)
+  const kickoff = createConversation(
+    'Project Kickoff',
+    projectKickoffMessages,
+    tempPosition,
+    [], // connections filled later
+    [], // no parents - root
+    undefined, // no branch point
+    {}, // no inherited context
+    false
   );
   
-  // Define logical connections (source → target)
-  // This forms a coherent story tree
-  const connectionPairs = [
-    [0, 1],  // Kickoff → Database
-    [0, 2],  // Kickoff → Japanese i18n
-    [0, 3],  // Kickoff → Arabic RTL (branches from kickoff)
-    [1, 4],  // Database → API Implementation
-    [4, 5],  // API → Debugging
-    [5, 6],  // Debugging → Performance
-    [6, 7],  // Performance → Rust Exploration
-    [2, 8],  // Japanese → Spanish (i18n branch)
-    [6, 9],  // Performance → Deployment
+  // Step 2: Create branched conversations with proper v4 metadata
+  const database = createConversation(
+    'Database Design',
+    databaseDesignMessages,
+    tempPosition,
+    [],
+    [kickoff.id], // branched from kickoff
+    makeBranchPoint(kickoff.id, 2), // branched after 3rd message
+    {
+      [kickoff.id]: makeInheritedContext('full', projectKickoffMessages.slice(0, 3), projectKickoffMessages.length),
+    },
+    false
+  );
+  
+  const japaneseI18n = createConversation(
+    'Japanese i18n',
+    japaneseLocalizationMessages,
+    tempPosition,
+    [],
+    [kickoff.id],
+    makeBranchPoint(kickoff.id, 1),
+    {
+      [kickoff.id]: makeInheritedContext('summary', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
+    },
+    false
+  );
+  
+  const arabicRTL = createConversation(
+    'Arabic RTL',
+    arabicRTLMessages,
+    tempPosition,
+    [],
+    [kickoff.id],
+    makeBranchPoint(kickoff.id, 1),
+    {
+      [kickoff.id]: makeInheritedContext('summary', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
+    },
+    false
+  );
+  
+  const apiImpl = createConversation(
+    'API Implementation',
+    apiImplementationMessages,
+    tempPosition,
+    [],
+    [database.id],
+    makeBranchPoint(database.id, 3),
+    {
+      [database.id]: makeInheritedContext('full', databaseDesignMessages.slice(0, 4), databaseDesignMessages.length),
+    },
+    false
+  );
+  
+  const debugging = createConversation(
+    'Debugging Session',
+    debuggingSessionMessages,
+    tempPosition,
+    [],
+    [apiImpl.id],
+    makeBranchPoint(apiImpl.id, 5),
+    {
+      [apiImpl.id]: makeInheritedContext('full', apiImplementationMessages.slice(0, 6), apiImplementationMessages.length),
+    },
+    false
+  );
+  
+  const performance = createConversation(
+    'Performance',
+    performanceMessages,
+    tempPosition,
+    [],
+    [debugging.id],
+    makeBranchPoint(debugging.id, 7),
+    {
+      [debugging.id]: makeInheritedContext('summary', debuggingSessionMessages.slice(0, 8), debuggingSessionMessages.length),
+    },
+    false
+  );
+  
+  const rustExploration = createConversation(
+    'Rust Exploration',
+    rustExplorationMessages,
+    tempPosition,
+    [],
+    [performance.id],
+    makeBranchPoint(performance.id, 3),
+    {
+      [performance.id]: makeInheritedContext('custom', performanceMessages.slice(0, 2), performanceMessages.length),
+    },
+    false
+  );
+  
+  const spanishUI = createConversation(
+    'Spanish i18n',
+    spanishUIMessages,
+    tempPosition,
+    [],
+    [japaneseI18n.id],
+    makeBranchPoint(japaneseI18n.id, 3),
+    {
+      [japaneseI18n.id]: makeInheritedContext('summary', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
+    },
+    false
+  );
+  
+  const deployment = createConversation(
+    'Deployment',
+    deploymentMessages,
+    tempPosition,
+    [],
+    [performance.id],
+    makeBranchPoint(performance.id, 4),
+    {
+      [performance.id]: makeInheritedContext('full', performanceMessages.slice(0, 5), performanceMessages.length),
+    },
+    false
+  );
+  
+  // Step 3: Create a MERGE NODE that synthesizes i18n work
+  // This demonstrates the v4 multi-parent merge capability
+  const i18nSynthesis = createConversation(
+    '🔀 i18n Synthesis',
+    [
+      createMessage('user', 'Can you synthesize our internationalization approach based on the Japanese, Arabic, and Spanish implementations?', 2),
+      createMessage('assistant', `## i18n Strategy Synthesis
+
+Based on our exploration across three languages, here's our unified approach:
+
+### Key Patterns Identified
+
+| Language | Key Challenge | Solution |
+|----------|--------------|----------|
+| Japanese | Character width | Dynamic layout + \`clamp()\` |
+| Arabic | RTL + numerals | \`dir="rtl"\` + logical properties |
+| Spanish | Text expansion | Flexible containers + truncation |
+
+### Recommended Stack
+
+\`\`\`typescript
+// Unified i18n configuration
+const i18nConfig = {
+  fallbackLocale: 'en',
+  locales: ['en', 'ja', 'ar', 'es'],
+  defaultDirection: 'ltr',
+  rtlLocales: ['ar', 'he'],
+};
+\`\`\`
+
+This synthesis combines the best practices from each language exploration! 🌍`, 1),
+    ],
+    tempPosition,
+    [],
+    [japaneseI18n.id, arabicRTL.id, spanishUI.id], // THREE parents - merge node
+    undefined, // merge nodes don't have a single branch point
+    {
+      [japaneseI18n.id]: makeInheritedContext('summary', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
+      [arabicRTL.id]: makeInheritedContext('summary', arabicRTLMessages.slice(0, 4), arabicRTLMessages.length),
+      [spanishUI.id]: makeInheritedContext('summary', spanishUIMessages.slice(0, 4), spanishUIMessages.length),
+    },
+    true // IS a merge node
+  );
+  
+  // Collect all conversations in order
+  const conversations = [
+    kickoff,      // 0
+    database,     // 1
+    japaneseI18n, // 2
+    arabicRTL,    // 3
+    apiImpl,      // 4
+    debugging,    // 5
+    performance,  // 6
+    rustExploration, // 7
+    spanishUI,    // 8
+    deployment,   // 9
+    i18nSynthesis, // 10 - merge node
   ];
   
-  // Generate tree layout
+  // Define edges with v4 relation types
+  const edgeDefinitions: Array<{
+    sourceIdx: number;
+    targetIdx: number;
+    relationType: EdgeRelationType;
+  }> = [
+    { sourceIdx: 0, targetIdx: 1, relationType: 'branch' },  // Kickoff → Database
+    { sourceIdx: 0, targetIdx: 2, relationType: 'branch' },  // Kickoff → Japanese
+    { sourceIdx: 0, targetIdx: 3, relationType: 'branch' },  // Kickoff → Arabic
+    { sourceIdx: 1, targetIdx: 4, relationType: 'branch' },  // Database → API
+    { sourceIdx: 4, targetIdx: 5, relationType: 'branch' },  // API → Debugging
+    { sourceIdx: 5, targetIdx: 6, relationType: 'branch' },  // Debugging → Performance
+    { sourceIdx: 6, targetIdx: 7, relationType: 'branch' },  // Performance → Rust
+    { sourceIdx: 2, targetIdx: 8, relationType: 'branch' },  // Japanese → Spanish
+    { sourceIdx: 6, targetIdx: 9, relationType: 'branch' },  // Performance → Deployment
+    // Merge edges (emerald colored)
+    { sourceIdx: 2, targetIdx: 10, relationType: 'merge' }, // Japanese → Synthesis
+    { sourceIdx: 3, targetIdx: 10, relationType: 'merge' }, // Arabic → Synthesis
+    { sourceIdx: 8, targetIdx: 10, relationType: 'merge' }, // Spanish → Synthesis
+  ];
+  
+  // Generate tree layout (excluding merge node for initial layout)
+  const branchPairs = edgeDefinitions
+    .filter(e => e.relationType === 'branch')
+    .map(e => ({ source: e.sourceIdx, target: e.targetIdx }));
+    
   const layout = generateTreeLayout(
-    connectionPairs.map(([s, t]) => ({ source: s, target: t })),
+    branchPairs,
     { count: conversations.length },
     42 // Seed for consistent layout
   );
   
   // Update positions
   conversations.forEach((conv, index) => {
-    conv.position = layout.positions[index];
+    conv.position = layout.positions[index] || { x: 1400, y: 300 }; // Default for merge node
   });
   
+  // Position merge node to the right of its parents
+  const mergeParentPositions = [2, 3, 8].map(i => conversations[i].position);
+  const avgY = mergeParentPositions.reduce((sum, p) => sum + p.y, 0) / mergeParentPositions.length;
+  const maxX = Math.max(...mergeParentPositions.map(p => p.x));
+  conversations[10].position = { x: maxX + 400, y: avgY };
+  
   // Create edge connections
-  const edges: EdgeConnection[] = connectionPairs.map(([sourceIdx, targetIdx]) => ({
+  const edges: EdgeConnection[] = edgeDefinitions.map(({ sourceIdx, targetIdx, relationType }) => ({
     id: `edge-${conversations[sourceIdx].id}-${conversations[targetIdx].id}`,
     source: conversations[sourceIdx].id,
     target: conversations[targetIdx].id,
-    type: 'bezier' as const,
-    animated: false,
+    curveType: 'bezier' as const,
+    relationType,
+    animated: relationType === 'merge', // Merge edges are animated
   }));
   
   // Update conversation connections
-  connectionPairs.forEach(([sourceIdx, targetIdx]) => {
+  edgeDefinitions.forEach(({ sourceIdx, targetIdx }) => {
     conversations[sourceIdx].connections.push(conversations[targetIdx].id);
   });
   
@@ -941,7 +1172,7 @@ export function getMockConversation(index: number): Conversation | undefined {
  * Get conversations count
  */
 export function getMockConversationCount(): number {
-  return 10;
+  return 11; // Includes merge node
 }
 
 export default generateMockData;

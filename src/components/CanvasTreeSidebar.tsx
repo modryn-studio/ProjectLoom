@@ -1,26 +1,25 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ChevronRight, 
-  ChevronDown, 
-  Home, 
-  GitBranch, 
   Plus, 
   Trash2, 
   PanelLeftClose, 
   PanelLeft,
   Folder,
-  FolderOpen,
   Edit2,
-  MoreVertical,
+  ChevronRight,
+  ChevronDown,
+  MessageSquare,
+  GitBranch,
+  Zap,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { colors, spacing, effects, typography, animation, layout } from '@/lib/design-tokens';
-import type { Canvas } from '@/types';
+import type { Workspace, Conversation } from '@/types';
 
 // =============================================================================
 // CONSTANTS
@@ -28,6 +27,213 @@ import type { Canvas } from '@/types';
 
 const MIN_SIDEBAR_WIDTH = layout.sidebar.width;
 const MAX_SIDEBAR_WIDTH = 600;
+
+// =============================================================================
+// CONVERSATION TREE COMPONENT (v4 DAG display)
+// =============================================================================
+
+interface ConversationTreeNode {
+  conversation: Conversation;
+  children: ConversationTreeNode[];
+  depth: number;
+}
+
+interface ConversationTreeProps {
+  workspaceId: string;
+  isExpanded: boolean;
+}
+
+// PERFORMANCE: Selector that creates a stable reference based on workspace conversations
+// Only recalculates when conversation structure actually changes (ids, parents, merge status)
+const createWorkspaceTreeSelector = (workspaceId: string) => 
+  (state: { conversations: Map<string, Conversation> }) => {
+    const arr = Array.from(state.conversations.values())
+      .filter(c => c.canvasId === workspaceId)
+      .map(c => ({
+        id: c.id,
+        title: c.metadata.title,
+        parentCardIds: c.parentCardIds,
+        isMergeNode: c.isMergeNode,
+        canvasId: c.canvasId,
+      }));
+    // Return a stable string key for comparison
+    return JSON.stringify(arr);
+  };
+
+function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
+  const conversations = useCanvasStore(state => state.conversations);
+  const selectedNodeIds = useCanvasStore(state => state.selectedNodeIds);
+  const setSelected = useCanvasStore(state => state.setSelected);
+  
+  // PERFORMANCE: Use a stable key for the workspace tree to minimize recalculations
+  // useMemo dependency is now just the serialized tree structure
+  const treeKey = useCanvasStore(useMemo(() => createWorkspaceTreeSelector(workspaceId), [workspaceId]));
+  
+  // Build tree structure from conversations
+  const { rootNodes, processedMergeNodes } = useMemo(() => {
+    const workspaceConversations = Array.from(conversations.values())
+      .filter(c => c.canvasId === workspaceId);
+    
+    // Track which merge nodes we've already rendered (to avoid duplication)
+    const processedMerge = new Set<string>();
+    
+    // Find root conversations (no parent or parent not in this workspace)
+    const rootConvs = workspaceConversations.filter(c => 
+      c.parentCardIds.length === 0 || 
+      !c.parentCardIds.some(pid => conversations.has(pid))
+    );
+    
+    // Build child map
+    const childMap = new Map<string, Conversation[]>();
+    workspaceConversations.forEach(conv => {
+      conv.parentCardIds.forEach(parentId => {
+        if (!childMap.has(parentId)) {
+          childMap.set(parentId, []);
+        }
+        childMap.get(parentId)!.push(conv);
+      });
+    });
+    
+    // Recursive tree builder
+    function buildNode(conv: Conversation, depth: number): ConversationTreeNode {
+      const children: ConversationTreeNode[] = [];
+      const childConvs = childMap.get(conv.id) || [];
+      
+      childConvs.forEach(child => {
+        // For merge nodes with multiple parents, only show under first sorted parent
+        // to avoid duplication in tree view and ensure deterministic display
+        if (child.isMergeNode && child.parentCardIds.length > 1) {
+          const sortedParents = [...child.parentCardIds].sort();
+          const primaryParent = sortedParents[0];
+          // Only add if we're the primary parent and haven't processed this merge yet
+          if (conv.id === primaryParent && !processedMerge.has(child.id)) {
+            processedMerge.add(child.id);
+            children.push(buildNode(child, depth + 1));
+          }
+        } else {
+          children.push(buildNode(child, depth + 1));
+        }
+      });
+      
+      return { conversation: conv, children, depth };
+    }
+    
+    const roots = rootConvs.map(c => buildNode(c, 0));
+    return { rootNodes: roots, processedMergeNodes: processedMerge };
+  // PERFORMANCE: Only rebuild tree when structure changes (tracked via treeKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeKey, conversations, workspaceId]);
+  
+  if (!isExpanded || rootNodes.length === 0) {
+    return null;
+  }
+  
+  // PERFORMANCE: Memoize handler to prevent re-renders of child nodes
+  const handleSelectCard = useCallback((cardId: string) => {
+    setSelected([cardId]);
+  }, [setSelected]);
+  
+  // Recursive render
+  function renderNode(node: ConversationTreeNode): React.ReactNode {
+    const { conversation, children, depth } = node;
+    const isSelected = selectedNodeIds.has(conversation.id);
+    const isMerge = conversation.isMergeNode;
+    const isBranched = conversation.parentCardIds.length > 0 && !isMerge;
+    const mergeSourceCount = isMerge ? conversation.parentCardIds.length : 0;
+    
+    return (
+      <div key={conversation.id}>
+        <motion.div
+          initial={{ opacity: 0, x: -5 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.15 }}
+          onClick={() => handleSelectCard(conversation.id)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[1],
+            padding: `${spacing[1]} ${spacing[1]}`,
+            paddingLeft: `${8 + depth * 16}px`,
+            backgroundColor: isSelected ? `${colors.amber.primary}20` : 'transparent',
+            borderRadius: effects.border.radius.default,
+            cursor: 'pointer',
+            fontSize: typography.sizes.xs,
+            fontFamily: typography.fonts.body,
+            color: colors.contrast.grayDark,
+            transition: 'background-color 0.15s ease',
+            borderLeft: isMerge 
+              ? `2px solid ${colors.semantic.success}` 
+              : isBranched 
+                ? `2px solid ${colors.amber.primary}` 
+                : '2px solid transparent',
+          }}
+          onMouseEnter={(e) => {
+            if (!isSelected) {
+              e.currentTarget.style.backgroundColor = `${colors.violet.primary}10`;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isSelected) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          {/* Icon */}
+          {isMerge ? (
+            <Zap size={12} color={colors.semantic.success} />
+          ) : isBranched ? (
+            <GitBranch size={12} color={colors.amber.primary} />
+          ) : (
+            <MessageSquare size={12} color={colors.contrast.grayDark} />
+          )}
+          
+          {/* Title */}
+          <span
+            style={{
+              flex: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: isSelected ? colors.amber.primary : colors.contrast.white,
+            }}
+            title={conversation.metadata.title}
+          >
+            {conversation.metadata.title}
+          </span>
+          
+          {/* Merge indicator with source count */}
+          {isMerge && mergeSourceCount > 0 && (
+            <span
+              style={{
+                fontSize: typography.sizes.xs,
+                color: colors.semantic.success,
+                backgroundColor: `${colors.semantic.success}20`,
+                padding: `0 ${spacing[1]}`,
+                borderRadius: effects.border.radius.default,
+              }}
+              title={`Merged from ${mergeSourceCount} cards`}
+            >
+              {mergeSourceCount}
+            </span>
+          )}
+        </motion.div>
+        
+        {/* Children */}
+        {children.length > 0 && (
+          <div style={{ marginLeft: '0px' }}>
+            {children.map(child => renderNode(child))}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div style={{ marginTop: spacing[1] }}>
+      {rootNodes.map(node => renderNode(node))}
+    </div>
+  );
+}
 
 // =============================================================================
 // STYLES
@@ -67,45 +273,44 @@ const toggleButtonStyles: React.CSSProperties = {
 };
 
 // =============================================================================
-// TREE NODE COMPONENT
+// WORKSPACE ITEM COMPONENT
 // =============================================================================
 
-interface TreeNodeProps {
-  canvas: Canvas;
-  depth: number;
+interface WorkspaceItemProps {
+  workspace: Workspace;
   isActive: boolean;
-  children: Canvas[];
   canDelete: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
-  onCreateChild: (parentId: string) => void;
   onRename: (id: string, newName: string) => void;
   triggerRename?: boolean;
   onRenameStart?: () => void;
 }
 
-function TreeNode({ 
-  canvas, 
-  depth, 
+function WorkspaceItem({ 
+  workspace, 
   isActive, 
-  children,
   canDelete,
   onSelect,
   onDelete,
-  onCreateChild,
   onRename,
   triggerRename,
   onRenameStart,
-}: TreeNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+}: WorkspaceItemProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
-  const [renamingValue, setRenamingValue] = useState(canvas.metadata.title);
+  const [isTreeExpanded, setIsTreeExpanded] = useState(false);
+  const [renamingValue, setRenamingValue] = useState(workspace.metadata.title);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasChildren = children.length > 0;
-  const isRoot = !canvas.parentCanvasId;
+  
+  // Auto-expand tree when workspace is active
+  useEffect(() => {
+    if (isActive) {
+      setIsTreeExpanded(true);
+    }
+  }, [isActive]);
 
   // Focus input when entering rename mode
   useEffect(() => {
@@ -124,21 +329,21 @@ function TreeNode({
   }, [triggerRename, isActive]);
 
   const handleStartRename = () => {
-    setRenamingValue(canvas.metadata.title);
+    setRenamingValue(workspace.metadata.title);
     setIsRenaming(true);
     setShowContextMenu(false);
   };
 
   const handleFinishRename = () => {
     const trimmed = renamingValue.trim();
-    if (trimmed && trimmed !== canvas.metadata.title) {
-      onRename(canvas.id, trimmed);
+    if (trimmed && trimmed !== workspace.metadata.title) {
+      onRename(workspace.id, trimmed);
     }
     setIsRenaming(false);
   };
 
   const handleCancelRename = () => {
-    setRenamingValue(canvas.metadata.title);
+    setRenamingValue(workspace.metadata.title);
     setIsRenaming(false);
   };
 
@@ -156,11 +361,10 @@ function TreeNode({
 
   return (
     <div>
-      {/* Node row */}
+      {/* Workspace row */}
       <motion.div
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: depth * 0.05 }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onContextMenu={handleRightClick}
@@ -169,49 +373,36 @@ function TreeNode({
           alignItems: 'center',
           gap: spacing[1],
           padding: `${spacing[1]} ${spacing[2]}`,
-          paddingLeft: `${8 + depth * 16}px`,
+          paddingLeft: spacing[1],
           backgroundColor: isActive ? `${colors.amber.primary}15` : 'transparent',
           borderRadius: effects.border.radius.default,
           cursor: 'pointer',
           transition: 'background-color 0.15s ease',
         }}
-        onClick={() => !isRenaming && onSelect(canvas.id)}
+        onClick={() => !isRenaming && onSelect(workspace.id)}
       >
-        {/* Expand/collapse toggle */}
-        {hasChildren ? (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              color: colors.contrast.grayDark,
-            }}
-          >
-            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </button>
-        ) : (
-          <span style={{ width: 14 }} />
-        )}
-
+        {/* Expand/collapse chevron */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsTreeExpanded(!isTreeExpanded);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            color: colors.contrast.grayDark,
+          }}
+          title={isTreeExpanded ? 'Collapse' : 'Expand'}
+        >
+          {isTreeExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+        
         {/* Icon */}
-        {isRoot ? (
-          <Home size={14} color={isActive ? colors.amber.primary : colors.contrast.grayDark} />
-        ) : hasChildren ? (
-          isExpanded ? (
-            <FolderOpen size={14} color={isActive ? colors.amber.primary : colors.violet.primary} />
-          ) : (
-            <Folder size={14} color={isActive ? colors.amber.primary : colors.violet.primary} />
-          )
-        ) : (
-          <GitBranch size={14} color={isActive ? colors.amber.primary : colors.contrast.grayDark} />
-        )}
+        <Folder size={14} color={isActive ? colors.amber.primary : colors.contrast.grayDark} />
 
         {/* Name (or rename input) */}
         {isRenaming ? (
@@ -254,38 +445,18 @@ function TreeNode({
               whiteSpace: 'nowrap',
             }}
           >
-            {canvas.metadata.title}
+            {workspace.metadata.title}
           </span>
         )}
 
-        {/* Actions (shown on hover via CSS or always for active) */}
+        {/* Actions (shown on hover or for active item) */}
         {(isActive || isHovered) && (
           <div style={{ display: 'flex', gap: spacing[1] }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateChild(canvas.id);
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: spacing[1],
-                cursor: 'pointer',
-                borderRadius: effects.border.radius.default,
-                color: isActive ? colors.navy.dark : colors.amber.primary,
-                backgroundColor: isActive ? colors.amber.primary : 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="Create child canvas"
-            >
-              <Plus size={12} />
-            </button>
             {canDelete && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDelete(canvas.id);
+                  onDelete(workspace.id);
                 }}
                 style={{
                   background: 'none',
@@ -297,7 +468,7 @@ function TreeNode({
                   display: 'flex',
                   alignItems: 'center',
                 }}
-                title="Delete canvas"
+                title="Delete workspace"
               >
                 <Trash2 size={12} />
               </button>
@@ -355,40 +526,12 @@ function TreeNode({
               <Edit2 size={14} />
               Rename
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowContextMenu(false);
-                onCreateChild(canvas.id);
-              }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: spacing[2],
-                padding: `${spacing[2]} ${spacing[2]}`,
-                background: 'none',
-                border: 'none',
-                borderRadius: effects.border.radius.default,
-                color: colors.contrast.white,
-                fontSize: typography.sizes.sm,
-                fontFamily: typography.fonts.body,
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'background-color 0.15s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${colors.violet.primary}15`}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <Plus size={14} />
-              Create Child
-            </button>
             {canDelete && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowContextMenu(false);
-                  onDelete(canvas.id);
+                  onDelete(workspace.id);
                 }}
                 style={{
                   width: '100%',
@@ -416,31 +559,21 @@ function TreeNode({
           </div>
         </>
       )}
-
-      {/* Children */}
+      
+      {/* Conversation Tree (v4 DAG display) */}
       <AnimatePresence>
-        {isExpanded && hasChildren && (
+        {isTreeExpanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
             style={{ overflow: 'hidden' }}
           >
-            {children.map((child) => (
-              <TreeNodeContainer
-                key={child.id}
-                canvas={child}
-                depth={depth + 1}
-                canDelete={true}
-                onSelect={onSelect}
-                onDelete={onDelete}
-                onCreateChild={onCreateChild}
-                onRename={onRename}
-                triggerRename={triggerRename}
-                onRenameStart={onRenameStart}
-              />
-            ))}
+            <ConversationTree 
+              workspaceId={workspace.id} 
+              isExpanded={isTreeExpanded} 
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -448,63 +581,8 @@ function TreeNode({
   );
 }
 
-// Container that gets children from store
-function TreeNodeContainer({
-  canvas,
-  depth,
-  canDelete,
-  onSelect,
-  onDelete,
-  onCreateChild,
-  onRename,
-  triggerRename,
-  onRenameStart,
-}: {
-  canvas: Canvas;
-  depth: number;
-  canDelete: boolean;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-  onRename: (id: string, newName: string) => void;
-  onCreateChild: (parentId: string) => void;
-  triggerRename?: boolean;
-  onRenameStart?: () => void;
-}) {
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  // Subscribe to canvases directly for reactivity
-  const canvases = useCanvasStore((s) => s.canvases);
-  
-  // Filter children directly from the subscribed canvases array
-  const children = canvases.filter(c => c.parentCanvasId === canvas.id);
-  
-  // Root canvases count - needed to prevent deleting the last one
-  const rootCount = canvases.filter(c => c.parentCanvasId === null).length;
-  
-  // Determine if this canvas can be deleted:
-  // - Branches (non-root) can always be deleted
-  // - Root canvases can be deleted if there's more than one root AND it's not active
-  const isRoot = canvas.parentCanvasId === null;
-  const canDeleteThis = canDelete && (!isRoot || (rootCount > 1 && canvas.id !== activeCanvasId));
-
-  return (
-    <TreeNode
-      canvas={canvas}
-      depth={depth}
-      isActive={canvas.id === activeCanvasId}
-      children={children}
-      canDelete={canDeleteThis}
-      onSelect={onSelect}
-      onDelete={onDelete}
-      onCreateChild={onCreateChild}
-      onRename={onRename}
-      triggerRename={triggerRename}
-      onRenameStart={onRenameStart}
-    />
-  );
-}
-
 // =============================================================================
-// CANVAS TREE SIDEBAR COMPONENT
+// CANVAS TREE SIDEBAR COMPONENT (v4 - Flat Workspace Switcher)
 // =============================================================================
 
 export function CanvasTreeSidebar() {
@@ -515,20 +593,16 @@ export function CanvasTreeSidebar() {
   const [triggerF2Rename, setTriggerF2Rename] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
 
-  // Subscribe to canvases array directly - this will trigger re-renders when canvases change
-  const canvases = useCanvasStore((s) => s.canvases);
-  const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const navigateToCanvas = useCanvasStore((s) => s.navigateToCanvas);
-  const deleteCanvas = useCanvasStore((s) => s.deleteCanvas);
-  const createCanvas = useCanvasStore((s) => s.createCanvas);
-  const updateCanvas = useCanvasStore((s) => s.updateCanvas);
+  // v4: Use workspaces instead of canvases (flat structure)
+  const workspaces = useCanvasStore((s) => s.workspaces);
+  const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
+  const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
+  const deleteWorkspace = useCanvasStore((s) => s.deleteWorkspace);
+  const createWorkspace = useCanvasStore((s) => s.createWorkspace);
+  const updateWorkspace = useCanvasStore((s) => s.updateWorkspace);
   
   // UI preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
-  
-  // Filter root canvases directly from the subscribed canvases array
-  // This ensures reactivity since we're using the subscribed data
-  const rootCanvases = canvases.filter(c => c.parentCanvasId === null);
 
   // Resize handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -559,36 +633,32 @@ export function CanvasTreeSidebar() {
 
   // Handlers
   const handleSelect = useCallback((id: string) => {
-    navigateToCanvas(id);
-  }, [navigateToCanvas]);
+    navigateToWorkspace(id);
+  }, [navigateToWorkspace]);
 
   const handleDelete = useCallback((id: string) => {
     // Check if confirmation is required
     if (uiPrefs.confirmOnDelete) {
-      if (confirm('Delete this canvas and all its children?')) {
-        deleteCanvas(id);
+      if (confirm('Delete this workspace?')) {
+        deleteWorkspace(id);
       }
     } else {
-      deleteCanvas(id);
+      deleteWorkspace(id);
     }
-  }, [deleteCanvas, uiPrefs.confirmOnDelete]);
+  }, [deleteWorkspace, uiPrefs.confirmOnDelete]);
 
-  const handleCreateChild = useCallback((parentId: string) => {
-    createCanvas(`Branch ${Date.now()}`, parentId);
-  }, [createCanvas]);
-
-  const handleRename = useCallback((canvasId: string, newName: string) => {
-    const canvas = canvases.find(c => c.id === canvasId);
-    if (canvas) {
-      updateCanvas(canvasId, {
+  const handleRename = useCallback((workspaceId: string, newName: string) => {
+    const workspace = workspaces.find((w) => w.id === workspaceId);
+    if (workspace) {
+      updateWorkspace(workspaceId, {
         metadata: {
-          ...canvas.metadata,
+          ...workspace.metadata,
           title: newName,
           updatedAt: new Date(),
         },
       });
     }
-  }, [canvases, updateCanvas]);
+  }, [workspaces, updateWorkspace]);
 
   // F2 keyboard shortcut for renaming
   useEffect(() => {
@@ -643,7 +713,7 @@ export function CanvasTreeSidebar() {
       <button
         onClick={() => setIsOpen(true)}
         style={toggleButtonStyles}
-        title="Open canvas tree"
+        title="Open workspace list"
       >
         <PanelLeft size={18} />
       </button>
@@ -674,11 +744,11 @@ export function CanvasTreeSidebar() {
           color: colors.contrast.white,
           fontFamily: typography.fonts.heading,
         }}>
-          Canvas Tree
+          Workspaces
         </span>
         <div style={{ display: 'flex', gap: spacing[1] }}>
           <button
-            onClick={() => createCanvas(`New Canvas ${rootCanvases.length + 1}`)}
+            onClick={() => createWorkspace(`New Workspace ${workspaces.length + 1}`)}
             style={{
               background: 'none',
               border: 'none',
@@ -690,7 +760,7 @@ export function CanvasTreeSidebar() {
               display: 'flex',
               alignItems: 'center',
             }}
-            title="Create new root canvas"
+            title="Create new workspace"
           >
             <Plus size={16} />
           </button>
@@ -713,9 +783,9 @@ export function CanvasTreeSidebar() {
         </div>
       </div>
 
-      {/* Tree content */}
+      {/* Workspace list (flat, no tree hierarchy) */}
       <div style={contentStyles}>
-        {rootCanvases.length === 0 ? (
+        {workspaces.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: spacing[4],
@@ -723,10 +793,10 @@ export function CanvasTreeSidebar() {
             fontSize: typography.sizes.sm,
             fontFamily: typography.fonts.body,
           }}>
-            <GitBranch size={32} style={{ marginBottom: spacing[2], opacity: 0.5 }} />
-            <p>No canvases yet</p>
+            <Folder size={32} style={{ marginBottom: spacing[2], opacity: 0.5 }} />
+            <p>No workspaces yet</p>
             <button
-              onClick={() => createCanvas('My First Canvas')}
+              onClick={() => createWorkspace('My First Workspace')}
               style={{
                 marginTop: spacing[2],
                 padding: `${spacing[2]} ${spacing[3]}`,
@@ -739,19 +809,18 @@ export function CanvasTreeSidebar() {
                 cursor: 'pointer',
               }}
             >
-              Create Canvas
+              Create Workspace
             </button>
           </div>
         ) : (
-          rootCanvases.map((canvas) => (
-            <TreeNodeContainer
-              key={canvas.id}
-              canvas={canvas}
-              depth={0}
-              canDelete={true}
+          workspaces.map((workspace) => (
+            <WorkspaceItem
+              key={workspace.id}
+              workspace={workspace}
+              isActive={workspace.id === activeWorkspaceId}
+              canDelete={workspaces.length > 1 && workspace.id !== activeWorkspaceId}
               onSelect={handleSelect}
               onDelete={handleDelete}
-              onCreateChild={handleCreateChild}
               onRename={handleRename}
               triggerRename={triggerF2Rename}
               onRenameStart={handleRenameStart}
@@ -769,7 +838,7 @@ export function CanvasTreeSidebar() {
         fontFamily: typography.fonts.body,
         flexShrink: 0,
       }}>
-        {canvases.length} canvas{canvases.length !== 1 ? 'es' : ''}
+        {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}
       </div>
     </motion.aside>
   );

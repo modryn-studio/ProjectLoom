@@ -1,12 +1,18 @@
 /**
  * ProjectLoom Type Definitions
  * 
- * Core types for Canvas, Conversation, Message, AI Provider,
- * and related interfaces. Designed for provider-agnostic
- * architecture with Phase 2 forward compatibility.
+ * Core types for Workspace, Conversation (Card), Message, AI Provider,
+ * and related interfaces. v4 Architecture with card-level branching
+ * and multi-parent merge support.
  * 
- * @version 1.0.0
+ * @version 4.0.0
  */
+
+// =============================================================================
+// SCHEMA VERSION
+// =============================================================================
+
+export const SCHEMA_VERSION = 4;
 
 // =============================================================================
 // POSITION & GEOMETRY
@@ -111,13 +117,15 @@ export interface Message {
  * Metadata associated with a conversation
  */
 export interface ConversationMetadata {
+  /** Display title */
+  title: string;
   /** When the conversation was created */
   createdAt: Date;
   /** When the conversation was last updated */
   updatedAt: Date;
   /** Number of messages in the conversation */
   messageCount: number;
-  /** Tags for categorization (Phase 2) */
+  /** Tags for categorization */
   tags: string[];
   /** Whether the card is currently expanded */
   isExpanded: boolean;
@@ -125,82 +133,160 @@ export interface ConversationMetadata {
   language?: LanguageCode;
 }
 
+// =============================================================================
+// CARD-LEVEL BRANCHING (v4)
+// =============================================================================
+
 /**
- * A conversation node on the canvas
+ * Branch point information - where this card branched from
+ */
+export interface BranchPoint {
+  /** Parent card ID that was branched from */
+  parentCardId: string;
+  /** Message index in parent where branch occurred (0-indexed) */
+  messageIndex: number;
+}
+
+/**
+ * Context inherited from a single parent card
+ */
+export interface InheritedContextEntry {
+  /** How context was inherited */
+  mode: InheritanceMode;
+  /** Messages inherited from this parent */
+  messages: Message[];
+  /** When this context was captured */
+  timestamp: Date;
+  /** Total messages in parent at branch time */
+  totalParentMessages: number;
+}
+
+/**
+ * Merge node metadata for synthesis cards
+ */
+export interface MergeMetadata {
+  /** IDs of source cards being merged */
+  sourceCardIds: string[];
+  /** Optional synthesis prompt used */
+  synthesisPrompt?: string;
+  /** When merge was created */
+  createdAt: Date;
+}
+
+/**
+ * Merge node configuration limits
+ */
+export const MERGE_NODE_CONFIG = {
+  /** Maximum number of parent cards for a merge node */
+  MAX_PARENTS: 5,
+  /** Show warning indicator at this threshold */
+  WARNING_THRESHOLD: 3,
+  /** Bundle edges visually at this threshold */
+  BUNDLE_THRESHOLD: 4,
+} as const;
+
+/**
+ * A conversation node (card) on the canvas
+ * v4: Supports card-level branching and multi-parent merge
  */
 export interface Conversation {
   /** Unique identifier */
   id: string;
-  /** Title of the conversation */
-  title: string;
-  /** ID of the canvas this conversation belongs to */
+  /** ID of the workspace this conversation belongs to */
   canvasId: string;
   /** Position on the canvas */
   position: Position;
   /** Messages in this conversation */
   content: Message[];
-  /** AI-generated summary (Phase 2) */
+  /** AI-generated summary */
   summary?: string;
-  /** IDs of connected conversations */
+  /** IDs of connected conversations (reference edges) */
   connections: string[];
   /** Conversation metadata */
   metadata: ConversationMetadata;
+  
+  // === Card-Level Branching (v4) ===
+  
+  /** Parent card IDs (supports multiple for merge nodes) */
+  parentCardIds: string[];
+  /** Branch point info - where this card branched from */
+  branchPoint?: BranchPoint;
+  /** Context inherited from parent cards */
+  inheritedContext: Record<string, InheritedContextEntry>;
+  /** Whether this is a merge/synthesis node */
+  isMergeNode: boolean;
+  /** Merge metadata (only if isMergeNode is true) */
+  mergeMetadata?: MergeMetadata;
 }
 
 // =============================================================================
-// CANVAS
+// WORKSPACE (formerly Canvas - v4 flat structure)
 // =============================================================================
 
 /**
- * Canvas metadata
+ * Workspace metadata (v4)
  */
-export interface CanvasMetadata {
-  /** Display title for the canvas */
+export interface WorkspaceMetadata {
+  /** Display title for the workspace */
   title: string;
-  /** When the canvas was created */
+  /** When the workspace was created */
   createdAt: Date;
-  /** When the canvas was last updated */
+  /** When the workspace was last updated */
   updatedAt: Date;
-  /** Optional color coding (Phase 2) */
+  /** Optional color coding */
   color?: string;
-  /** Schema version for migrations */
-  version: number;
+  /** Schema version */
+  schemaVersion: number;
 }
 
 /**
- * A canvas containing conversation nodes
+ * A workspace containing conversation cards (v4)
+ * Workspaces are flat - no parent/child hierarchy
+ * Card-level branching happens within a workspace
  */
-export interface Canvas {
+export interface Workspace {
   /** Unique identifier */
   id: string;
-  /** Parent canvas ID if this is a branch (Phase 2) */
-  parentCanvasId: string | null;
-  /** Context snapshot at branch time (Phase 2) */
-  contextSnapshot: ContextSnapshot | null;
-  /** Conversations on this canvas */
+  /** Display title */
+  title: string;
+  /** Conversation cards on this workspace */
   conversations: Conversation[];
-  /** Edge connections between conversations */
+  /** Edge connections between cards */
   edges: EdgeConnection[];
-  /** IDs of child canvas branches (Phase 2) */
-  branches: string[];
-  /** Tags for the canvas (Phase 2) */
+  /** Tags for categorization */
   tags: string[];
-  /** ID of conversation this was branched from (Phase 2) */
-  createdFromConversationId: string | null;
-  /** Canvas metadata */
-  metadata: CanvasMetadata;
-  /** Branch metadata - only present on branched canvases (Phase 2) */
-  branchMetadata?: BranchMetadata;
+  /** Workspace metadata */
+  metadata: WorkspaceMetadata;
 }
+
+/**
+ * @deprecated Use Workspace instead (v4 migration)
+ * Canvas is now just an alias for Workspace
+ */
+export type Canvas = Workspace;
+
+/**
+ * Canvas metadata - alias for WorkspaceMetadata
+ * @deprecated Use WorkspaceMetadata
+ */
+export type CanvasMetadata = WorkspaceMetadata;
 
 // =============================================================================
 // EDGE CONNECTIONS
 // =============================================================================
 
 /**
- * Edge/connection type
+ * Edge curve type for React Flow rendering
  */
-export type EdgeType = 'bezier' | 'straight' | 'step' | 'smoothstep';
+export type EdgeCurveType = 'bezier' | 'straight' | 'step' | 'smoothstep';
+
+/**
+ * Edge relationship type for card-level branching (v4)
+ * - branch: Parent → child card (amber, solid)
+ * - merge: Source → synthesis merge node (emerald, solid)
+ * - reference: Non-hierarchical reference link (violet, dashed)
+ */
+export type EdgeRelationType = 'branch' | 'merge' | 'reference';
 
 /**
  * Edge styling options
@@ -225,12 +311,14 @@ export interface EdgeConnection {
   /** Target conversation ID */
   target: string;
   /** Type of edge curve */
-  type: EdgeType;
+  curveType: EdgeCurveType;
+  /** Relationship type (v4) */
+  relationType: EdgeRelationType;
   /** Whether the edge shows animation */
   animated?: boolean;
   /** Custom styling */
   style?: EdgeStyle;
-  /** Optional label (Phase 2) */
+  /** Optional label */
   label?: string;
 }
 
@@ -305,11 +393,13 @@ export interface MessageSelection {
 }
 
 /**
- * Branch metadata for tracking lineage
+ * Branch metadata for tracking lineage (v4 - card level)
  */
 export interface BranchMetadata {
-  /** ID of the conversation this branch was created from */
-  createdFromConversationId: string;
+  /** ID of the card this branch was created from */
+  parentCardId: string;
+  /** Message index where branch occurred */
+  messageIndex: number;
   /** Number of messages inherited */
   inheritedMessageCount: number;
   /** Inheritance mode used */
@@ -319,7 +409,37 @@ export interface BranchMetadata {
 }
 
 /**
- * Data required to create a branch
+ * Data required to create a branch from a message (v4)
+ */
+export interface BranchFromMessageData {
+  /** ID of the source card to branch from */
+  sourceCardId: string;
+  /** Message index to branch from (0-indexed) */
+  messageIndex: number;
+  /** How to inherit context */
+  inheritanceMode: InheritanceMode;
+  /** Selected message IDs (for custom mode) */
+  customMessageIds?: string[];
+  /** Optional reason for the branch */
+  branchReason?: string;
+}
+
+/**
+ * Data required to create a merge node (v4)
+ */
+export interface CreateMergeNodeData {
+  /** IDs of source cards to merge */
+  sourceCardIds: string[];
+  /** Position for the new merge node */
+  position: Position;
+  /** Optional synthesis prompt */
+  synthesisPrompt?: string;
+  /** Inheritance mode for each source */
+  inheritanceMode?: InheritanceMode;
+}
+
+/**
+ * @deprecated Use BranchFromMessageData (v4)
  */
 export interface BranchData {
   /** ID of the source conversation to branch from */
@@ -455,7 +575,7 @@ export interface AIProvider {
 }
 
 // =============================================================================
-// STORAGE
+// STORAGE (v4)
 // =============================================================================
 
 /**
@@ -464,7 +584,7 @@ export interface AIProvider {
 export interface UserPreferences {
   /** Theme (dark-only in Phase 1) */
   theme: 'dark';
-  /** Default inheritance mode (Phase 2) */
+  /** Default inheritance mode */
   defaultInheritanceMode: InheritanceMode;
   /** Whether to show minimap */
   showMinimap: boolean;
@@ -475,7 +595,21 @@ export interface UserPreferences {
 }
 
 /**
- * Canvas storage data (Phase 2 - multiple canvases)
+ * Workspace storage data (v4 - flat workspaces)
+ */
+export interface WorkspaceStorageData {
+  /** Schema version */
+  schemaVersion: number;
+  /** All workspaces (flat, no hierarchy) */
+  workspaces: Workspace[];
+  /** Currently active workspace ID */
+  activeWorkspaceId: string;
+  /** Last updated timestamp */
+  lastUpdated: string;
+}
+
+/**
+ * @deprecated Use WorkspaceStorageData (v4)
  */
 export interface CanvasStorageData {
   /** All canvases */
@@ -491,9 +625,11 @@ export interface CanvasStorageData {
 }
 
 /**
- * Complete storage schema
+ * Complete storage schema (v4)
  */
 export interface StorageData {
+  /** Schema version */
+  schemaVersion: number;
   /** All conversations */
   conversations: Conversation[];
   /** Node positions by conversation ID */
