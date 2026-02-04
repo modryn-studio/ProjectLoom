@@ -149,10 +149,10 @@ export function InfiniteCanvas() {
 
   // Current canvas context
   const activeCanvasId = useCanvasStore((s) => s.activeCanvasId);
-  const getCurrentCanvas = useCanvasStore((s) => s.getCurrentCanvas);
+  const canvases = useCanvasStore((s) => s.canvases);
   const getCanvasLineage = useCanvasStore((s) => s.getCanvasLineage);
-  const currentCanvas = getCurrentCanvas();
-  const hasParent = currentCanvas?.parentCanvasId !== undefined;
+  const currentCanvas = canvases.find(c => c.id === activeCanvasId);
+  const hasParent = currentCanvas?.parentCanvasId != null && currentCanvas?.branchMetadata != null;
 
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);

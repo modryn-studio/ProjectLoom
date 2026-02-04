@@ -158,8 +158,9 @@ export function DevPerformanceOverlay({ nodeCount, edgeCount }: Props) {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     position: 'fixed',
-    top: spacing[4],
+    top: '50%',
     right: spacing[4],
+    transform: 'translateY(-50%)',
     backgroundColor: `${colors.navy.dark}ee`,
     borderRadius: effects.border.radius.default,
     padding: spacing[3],
@@ -231,8 +232,9 @@ const styles: Record<string, React.CSSProperties> = {
   
   collapsedButton: {
     position: 'fixed',
-    top: spacing[4],
+    top: '50%',
     right: spacing[4],
+    transform: 'translateY(-50%)',
     width: '32px',
     height: '32px',
     backgroundColor: `${colors.navy.dark}ee`,

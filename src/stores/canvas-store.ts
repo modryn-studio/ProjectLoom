@@ -586,8 +586,9 @@ export const useCanvasStore = create<CanvasState>()(
       const result = storage.load();
       const canvasResult = canvasStorage.load();
 
-      if (!result.success || result.data.conversations.length === 0) {
-        // No stored data or empty, load mock data for demo
+      // Load mock data only if no canvases exist at all
+      if (!canvasResult.success || !canvasResult.data.canvases || canvasResult.data.canvases.length === 0) {
+        // No stored canvases, load mock data for demo
         get().loadMockData();
         return;
       }
@@ -910,7 +911,15 @@ export const useCanvasStore = create<CanvasState>()(
       set((state) => ({
         canvases: state.canvases.map(c => 
           c.id === canvasId 
-            ? { ...c, ...updates, metadata: { ...c.metadata, updatedAt: new Date() } }
+            ? { 
+                ...c, 
+                ...updates, 
+                metadata: { 
+                  ...c.metadata, 
+                  ...(updates.metadata || {}),
+                  updatedAt: new Date() 
+                } 
+              }
             : c
         ),
       }));
@@ -1038,6 +1047,13 @@ export const useCanvasStore = create<CanvasState>()(
           createdAt: now,
           updatedAt: now,
           version: CURRENT_SCHEMA_VERSION,
+        },
+        branchMetadata: {
+          reason: branchReason,
+          createdFromConversationId: sourceConversationId,
+          inheritedMessageCount: contextSnapshot.messages.length,
+          inheritanceMode,
+          createdAt: now,
         },
       };
 

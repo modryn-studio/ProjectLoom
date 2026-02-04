@@ -438,7 +438,7 @@ export function SettingsButton({ onClick }: SettingsButtonProps) {
       title="Settings"
       style={{
         position: 'fixed',
-        bottom: spacing[4],
+        top: spacing[4],
         right: spacing[4],
         width: 48,
         height: 48,
