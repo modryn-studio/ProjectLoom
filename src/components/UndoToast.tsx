@@ -53,10 +53,12 @@ export function UndoToast() {
   const conversations = useCanvasStore((s) => s.conversations);
   const conversationCount = conversations.size;
   const edgeCount = useCanvasStore((s) => s.edges.length);
+  const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
   
   // Track previous counts to detect changes
   const prevConversationCount = useRef(conversationCount);
   const prevEdgeCount = useRef(edgeCount);
+  const prevWorkspaceId = useRef(activeWorkspaceId);
 
   const showToast = useCallback((newToast: ToastState) => {
     // Clear any existing timeout
@@ -75,6 +77,14 @@ export function UndoToast() {
   // Detect branch/merge creation (simplified - checks count changes only)
   useEffect(() => {
     const currentCount = conversationCount;
+    
+    // Skip toast if workspace changed (don't interpret as conversation add/delete)
+    if (activeWorkspaceId !== prevWorkspaceId.current) {
+      prevConversationCount.current = currentCount;
+      prevEdgeCount.current = edgeCount;
+      prevWorkspaceId.current = activeWorkspaceId;
+      return;
+    }
     
     // Check if a new conversation was added
     if (currentCount > prevConversationCount.current) {
@@ -115,7 +125,8 @@ export function UndoToast() {
     
     prevConversationCount.current = currentCount;
     prevEdgeCount.current = edgeCount;
-  }, [conversationCount, edgeCount, canUndo, showToast, conversations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationCount, edgeCount, activeWorkspaceId]);
 
   const handleUndo = useCallback(() => {
     undo();

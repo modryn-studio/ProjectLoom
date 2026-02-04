@@ -14,6 +14,7 @@ import {
   MessageSquare,
   GitBranch,
   Zap,
+  Settings,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -43,6 +44,9 @@ interface ConversationTreeProps {
   isExpanded: boolean;
 }
 
+// Track collapsed conversation nodes
+const collapsedNodesState = new Map<string, Set<string>>(); // workspaceId -> Set of collapsed conversation IDs
+
 // PERFORMANCE: Selector that creates a stable reference based on workspace conversations
 // Only recalculates when conversation structure actually changes (ids, parents, merge status)
 const createWorkspaceTreeSelector = (workspaceId: string) => 
@@ -64,6 +68,14 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
   const conversations = useCanvasStore(state => state.conversations);
   const selectedNodeIds = useCanvasStore(state => state.selectedNodeIds);
   const setSelected = useCanvasStore(state => state.setSelected);
+  
+  // Track which conversation nodes are collapsed in this workspace
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => {
+    if (!collapsedNodesState.has(workspaceId)) {
+      collapsedNodesState.set(workspaceId, new Set());
+    }
+    return collapsedNodesState.get(workspaceId)!;
+  });
   
   // PERFORMANCE: Use a stable key for the workspace tree to minimize recalculations
   // useMemo dependency is now just the serialized tree structure
@@ -100,11 +112,11 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
       const childConvs = childMap.get(conv.id) || [];
       
       childConvs.forEach(child => {
-        // For merge nodes with multiple parents, only show under first sorted parent
-        // to avoid duplication in tree view and ensure deterministic display
+        // For merge nodes with multiple parents, only show under the FIRST parent
+        // in the parentCardIds array to avoid duplication and maintain the order
+        // defined when the merge was created
         if (child.isMergeNode && child.parentCardIds.length > 1) {
-          const sortedParents = [...child.parentCardIds].sort();
-          const primaryParent = sortedParents[0];
+          const primaryParent = child.parentCardIds[0];
           // Only add if we're the primary parent and haven't processed this merge yet
           if (conv.id === primaryParent && !processedMerge.has(child.id)) {
             processedMerge.add(child.id);
@@ -133,6 +145,60 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
     setSelected([cardId]);
   }, [setSelected]);
   
+  // Toggle collapse state for a conversation node
+  const toggleNodeCollapse = useCallback((conversationId: string) => {
+    setCollapsedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(conversationId)) {
+        newSet.delete(conversationId);
+      } else {
+        newSet.add(conversationId);
+      }
+      collapsedNodesState.set(workspaceId, newSet);
+      return newSet;
+    });
+  }, [workspaceId]);
+  
+  // Auto-expand path to selected node
+  useEffect(() => {
+    const selectedId = Array.from(selectedNodeIds)[0];
+    if (!selectedId) return;
+    
+    const selectedConv = conversations.get(selectedId);
+    if (!selectedConv || selectedConv.canvasId !== workspaceId) return;
+    
+    // Build path to root by following parent links
+    const pathIds = new Set<string>();
+    let current = selectedConv;
+    const visited = new Set<string>();
+    
+    while (current) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      
+      const parentIds = current.parentCardIds || [];
+      const firstParentId = parentIds[0];
+      if (!firstParentId) break;
+      
+      const parent = conversations.get(firstParentId);
+      if (!parent) break;
+      
+      // Add parent to path (but not the selected node itself)
+      pathIds.add(parent.id);
+      current = parent;
+    }
+    
+    // Expand all nodes in the path
+    if (pathIds.size > 0) {
+      setCollapsedNodes(prev => {
+        const newSet = new Set(prev);
+        pathIds.forEach(id => newSet.delete(id));
+        collapsedNodesState.set(workspaceId, newSet);
+        return newSet;
+      });
+    }
+  }, [selectedNodeIds, conversations, workspaceId]);
+  
   // Recursive render
   function renderNode(node: ConversationTreeNode): React.ReactNode {
     const { conversation, children, depth } = node;
@@ -140,6 +206,8 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
     const isMerge = conversation.isMergeNode;
     const isBranched = conversation.parentCardIds.length > 0 && !isMerge;
     const mergeSourceCount = isMerge ? conversation.parentCardIds.length : 0;
+    const hasChildren = children.length > 0;
+    const isCollapsed = collapsedNodes.has(conversation.id);
     
     return (
       <div key={conversation.id}>
@@ -147,7 +215,6 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
           initial={{ opacity: 0, x: -5 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.15 }}
-          onClick={() => handleSelectCard(conversation.id)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -156,7 +223,6 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
             paddingLeft: `${8 + depth * 16}px`,
             backgroundColor: isSelected ? `${colors.amber.primary}20` : 'transparent',
             borderRadius: effects.border.radius.default,
-            cursor: 'pointer',
             fontSize: typography.sizes.xs,
             fontFamily: typography.fonts.body,
             color: colors.contrast.grayDark,
@@ -178,48 +244,77 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
             }
           }}
         >
-          {/* Icon */}
-          {isMerge ? (
-            <Zap size={12} color={colors.semantic.success} />
-          ) : isBranched ? (
-            <GitBranch size={12} color={colors.amber.primary} />
+          {/* Collapse chevron (only if has children) */}
+          {hasChildren ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNodeCollapse(conversation.id);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                color: colors.contrast.grayDark,
+              }}
+            >
+              {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+            </button>
           ) : (
-            <MessageSquare size={12} color={colors.contrast.grayDark} />
+            <div style={{ width: 12 }} />
           )}
           
-          {/* Title */}
-          <span
-            style={{
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              color: isSelected ? colors.amber.primary : colors.contrast.white,
-            }}
-            title={conversation.metadata.title}
+          {/* Clickable content */}
+          <div
+            onClick={() => handleSelectCard(conversation.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: spacing[1], flex: 1, cursor: 'pointer' }}
           >
-            {conversation.metadata.title}
-          </span>
-          
-          {/* Merge indicator with source count */}
-          {isMerge && mergeSourceCount > 0 && (
+            {/* Icon */}
+            {isMerge ? (
+              <Zap size={12} color={colors.semantic.success} />
+            ) : isBranched ? (
+              <GitBranch size={12} color={colors.amber.primary} />
+            ) : (
+              <MessageSquare size={12} color={colors.contrast.grayDark} />
+            )}
+            
+            {/* Title */}
             <span
               style={{
-                fontSize: typography.sizes.xs,
-                color: colors.semantic.success,
-                backgroundColor: `${colors.semantic.success}20`,
-                padding: `0 ${spacing[1]}`,
-                borderRadius: effects.border.radius.default,
+                flex: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                color: isSelected ? colors.amber.primary : colors.contrast.white,
               }}
-              title={`Merged from ${mergeSourceCount} cards`}
+              title={conversation.metadata.title}
             >
-              {mergeSourceCount}
+              {conversation.metadata.title}
             </span>
-          )}
+            
+            {/* Merge indicator with source count */}
+            {isMerge && mergeSourceCount > 0 && (
+              <span
+                style={{
+                  fontSize: typography.sizes.xs,
+                  color: colors.semantic.success,
+                  backgroundColor: `${colors.semantic.success}20`,
+                  padding: `0 ${spacing[1]}`,
+                  borderRadius: effects.border.radius.default,
+                }}
+                title={`Merged from ${mergeSourceCount} cards`}
+              >
+                {mergeSourceCount}
+              </span>
+            )}
+          </div>
         </motion.div>
         
-        {/* Children */}
-        {children.length > 0 && (
+        {/* Children (only show if not collapsed) */}
+        {hasChildren && !isCollapsed && (
           <div style={{ marginLeft: '0px' }}>
             {children.map(child => renderNode(child))}
           </div>
@@ -285,6 +380,7 @@ interface WorkspaceItemProps {
   onRename: (id: string, newName: string) => void;
   triggerRename?: boolean;
   onRenameStart?: () => void;
+  selectedNodeId?: string; // For auto-expanding when card is selected
 }
 
 function WorkspaceItem({ 
@@ -296,7 +392,9 @@ function WorkspaceItem({
   onRename,
   triggerRename,
   onRenameStart,
+  selectedNodeId,
 }: WorkspaceItemProps) {
+  const conversations = useCanvasStore(state => state.conversations);
   const [isHovered, setIsHovered] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isTreeExpanded, setIsTreeExpanded] = useState(false);
@@ -311,6 +409,16 @@ function WorkspaceItem({
       setIsTreeExpanded(true);
     }
   }, [isActive]);
+  
+  // Auto-expand workspace when a card in it is selected
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    
+    const selectedConv = conversations.get(selectedNodeId);
+    if (selectedConv && selectedConv.canvasId === workspace.id) {
+      setIsTreeExpanded(true);
+    }
+  }, [selectedNodeId, conversations, workspace.id]);
 
   // Focus input when entering rename mode
   useEffect(() => {
@@ -379,7 +487,15 @@ function WorkspaceItem({
           cursor: 'pointer',
           transition: 'background-color 0.15s ease',
         }}
-        onClick={() => !isRenaming && onSelect(workspace.id)}
+        onClick={() => {
+          if (!isRenaming) {
+            onSelect(workspace.id);
+            // Auto-expand tree when clicking on workspace
+            if (!isTreeExpanded) {
+              setIsTreeExpanded(true);
+            }
+          }
+        }}
       >
         {/* Expand/collapse chevron */}
         <button
@@ -585,17 +701,27 @@ function WorkspaceItem({
 // CANVAS TREE SIDEBAR COMPONENT (v4 - Flat Workspace Switcher)
 // =============================================================================
 
-export function CanvasTreeSidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+interface CanvasTreeSidebarProps {
+  onOpenSettings: () => void;
+  isOpen: boolean;
+  onToggle: (open: boolean) => void;
+}
+
+export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onToggle }: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
   const [triggerF2Rename, setTriggerF2Rename] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
+  
+  // Use external state for open/close
+  const isOpen = externalIsOpen;
+  const setIsOpen = onToggle;
 
   // v4: Use workspaces instead of canvases (flat structure)
   const workspaces = useCanvasStore((s) => s.workspaces);
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
+  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
   const deleteWorkspace = useCanvasStore((s) => s.deleteWorkspace);
   const createWorkspace = useCanvasStore((s) => s.createWorkspace);
@@ -707,17 +833,9 @@ export function CanvasTreeSidebar() {
     zIndex: 10,
   };
 
-  // Toggle button when closed
+  // Don't render anything when closed - toggle button is in breadcrumb
   if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        style={toggleButtonStyles}
-        title="Open workspace list"
-      >
-        <PanelLeft size={18} />
-      </button>
-    );
+    return null;
   }
 
   return (
@@ -824,12 +942,13 @@ export function CanvasTreeSidebar() {
               onRename={handleRename}
               triggerRename={triggerF2Rename}
               onRenameStart={handleRenameStart}
+              selectedNodeId={Array.from(selectedNodeIds)[0]}
             />
           ))
         )}
       </div>
 
-      {/* Footer with stats */}
+      {/* Footer with stats and settings */}
       <div style={{
         padding: spacing[2],
         borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
@@ -837,8 +956,37 @@ export function CanvasTreeSidebar() {
         color: colors.contrast.grayDark,
         fontFamily: typography.fonts.body,
         flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}>
-        {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}
+        <span>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
+        <button
+          onClick={onOpenSettings}
+          title="Settings"
+          style={{
+            padding: spacing[2],
+            backgroundColor: 'transparent',
+            border: `1px solid rgba(99, 102, 241, 0.3)`,
+            borderRadius: effects.border.radius.default,
+            color: colors.contrast.gray,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.navy.dark;
+            e.currentTarget.style.color = colors.amber.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = colors.contrast.gray;
+          }}
+        >
+          <Settings size={14} />
+        </button>
       </div>
     </motion.aside>
   );

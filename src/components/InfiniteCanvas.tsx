@@ -19,6 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { colors, canvas as canvasConfig, animation } from '@/lib/design-tokens';
+import { logger } from '@/lib/logger';
 import type { ConversationNodeData, Conversation, Message } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
@@ -29,7 +30,7 @@ import { InheritedContextPanel } from './InheritedContextPanel';
 import { CanvasBreadcrumb } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { APIKeyWarningBanner } from './APIKeyWarningBanner';
-import { SettingsPanel, SettingsButton } from './SettingsPanel';
+import { SettingsPanel } from './SettingsPanel';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectBranchDialogOpen } from '@/stores/canvas-store';
@@ -126,6 +127,9 @@ export function InfiniteCanvas() {
 
   // Settings panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Canvas context menu
   const canvasContextMenu = useContextMenu();
@@ -226,11 +230,11 @@ export function InfiniteCanvas() {
         if (store.canAddMergeParent(connection.target)) {
           const edge = store.createEdge(connection.source, connection.target, 'merge');
           if (!edge) {
-            console.warn('Cannot add parent to merge node - would create cycle or already exists');
+            logger.warn('Cannot add parent to merge node - would create cycle or already exists');
           }
         } else {
           // Max parents reached
-          console.warn('Cannot add more parents to merge node - max reached');
+          logger.warn('Cannot add more parents to merge node - max reached');
         }
       } else {
         // Normal connection - create a standard reference edge
@@ -455,7 +459,13 @@ export function InfiniteCanvas() {
   return (
     <div style={containerStyles}>
       {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
-      {isPrefsLoaded && uiPrefs.showCanvasTree && <CanvasTreeSidebar />}
+      {isPrefsLoaded && uiPrefs.showCanvasTree && (
+        <CanvasTreeSidebar 
+          onOpenSettings={openSettings} 
+          isOpen={isSidebarOpen}
+          onToggle={setIsSidebarOpen}
+        />
+      )}
 
       {/* Main content area */}
       <div style={mainContentStyles}>
@@ -463,7 +473,10 @@ export function InfiniteCanvas() {
         <div style={topOverlayStyles}>
           {/* Breadcrumb navigation */}
           <div style={pointerEventsAutoStyle}>
-            <CanvasBreadcrumb />
+            <CanvasBreadcrumb 
+              showSidebarToggle={!isSidebarOpen}
+              onToggleSidebar={() => setIsSidebarOpen(true)}
+            />
           </div>
 
           {/* Inherited context panel (shown when enabled - cards handle their own parent check) */}
@@ -550,8 +563,7 @@ export function InfiniteCanvas() {
           {/* API Key Warning Banner */}
           <APIKeyWarningBanner position="bottom" />
 
-          {/* Settings Button and Panel */}
-          <SettingsButton onClick={openSettings} />
+          {/* Settings Panel */}
           <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
 
           {/* Canvas Context Menu */}

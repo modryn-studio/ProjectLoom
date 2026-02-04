@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
-import { Folder } from 'lucide-react';
+import React, { useMemo, useState, useCallback } from 'react';
+import { ChevronRight, Zap, PanelLeft } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
+import type { Conversation } from '@/types';
 
 // =============================================================================
 // STYLES
@@ -17,52 +18,254 @@ const containerStyles: React.CSSProperties = {
   padding: `${spacing[2]} ${spacing[3]}`,
   backgroundColor: colors.navy.light,
   borderRadius: effects.border.radius.default,
-  maxWidth: '80vw',
+  flexWrap: 'wrap',
+  minHeight: '40px',
 };
 
-const labelStyles: React.CSSProperties = {
+const breadcrumbItemStyles: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: spacing[1],
-  padding: `${spacing[1]} ${spacing[2]}`,
-  color: colors.amber.primary,
   fontSize: typography.sizes.sm,
   fontFamily: typography.fonts.body,
+};
+
+const clickableCrumbStyles: React.CSSProperties = {
+  color: colors.contrast.gray,
+  cursor: 'pointer',
+  padding: `${spacing[1]} ${spacing[2]}`,
+  borderRadius: effects.border.radius.default,
+  transition: 'all 0.15s ease',
+};
+
+const activeCrumbStyles: React.CSSProperties = {
+  color: colors.amber.primary,
+  padding: `${spacing[1]} ${spacing[2]}`,
+  fontWeight: 500,
+};
+
+const chevronStyles: React.CSSProperties = {
+  color: colors.contrast.grayDark,
+  flexShrink: 0,
+};
+
+const mergeBadgeStyles: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: spacing[1],
+  padding: `2px ${spacing[2]}`,
+  backgroundColor: colors.semantic.success + '20',
+  color: colors.semantic.success,
+  borderRadius: effects.border.radius.default,
+  fontSize: typography.sizes.xs,
+  fontWeight: 600,
+  marginLeft: spacing[1],
+  cursor: 'help',
+  position: 'relative',
+};
+
+const sidebarToggleButtonStyles: React.CSSProperties = {
+  padding: spacing[2],
+  backgroundColor: colors.navy.dark,
+  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  borderRadius: effects.border.radius.default,
+  color: colors.contrast.grayDark,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.15s ease',
+  flexShrink: 0,
+  minWidth: '36px',
+  minHeight: '36px',
 };
 
 // =============================================================================
 // CANVAS BREADCRUMB COMPONENT
 // =============================================================================
 
+interface CanvasBreadcrumbProps {
+  showSidebarToggle?: boolean;
+  onToggleSidebar?: () => void;
+}
+
 /**
- * CanvasBreadcrumb - v4 Simplified Version
+ * CanvasBreadcrumb - v4 Ancestry Navigation
  * 
- * In v4, workspaces are flat (no hierarchy), so this just shows
- * the current workspace name. No navigation lineage needed.
+ * Shows the conversation lineage from root to selected card.
+ * For merge nodes, displays primary path + badge for additional parents.
  */
-export function CanvasBreadcrumb() {
-  const getCurrentWorkspace = useCanvasStore((s) => s.getCurrentWorkspace);
+export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }: CanvasBreadcrumbProps) {
+  const conversations = useCanvasStore((s) => s.conversations);
+  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
+  const setSelected = useCanvasStore((s) => s.setSelected);
+  const workspaces = useCanvasStore((s) => s.workspaces);
+  const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
   
-  const currentWorkspace = getCurrentWorkspace();
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipParents, setTooltipParents] = useState<string[]>([]);
 
-  // Don't render if no workspace
-  if (!currentWorkspace) {
-    return null;
-  }
+  // Get current workspace
+  const currentWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+  const workspaceName = currentWorkspace?.title || 'Workspace';
 
+  // Get first selected conversation
+  const selectedId = Array.from(selectedNodeIds)[0];
+  const selectedConv = selectedId ? conversations.get(selectedId) : undefined;
+
+  // Build breadcrumb path by tracing through first parent recursively
+  const breadcrumbPath = useMemo(() => {
+    if (!selectedConv) return [];
+
+    const path: Conversation[] = [];
+    const visited = new Set<string>();
+    
+    let current: Conversation | undefined = selectedConv;
+    
+    // Build path from selected back to root
+    while (current) {
+      // Prevent infinite loops
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      
+      path.unshift(current);
+      
+      // Follow first parent (consistent with tree sidebar)
+      const parentIds = current.parentCardIds || [];
+      const firstParentId = parentIds[0];
+      current = firstParentId ? conversations.get(firstParentId) : undefined;
+    }
+    
+    return path;
+  }, [selectedConv, conversations]);
+
+  // Click handlers
+  const handleCrumbClick = useCallback((convId: string) => {
+    setSelected([convId]);
+  }, [setSelected]);
+
+  const handleBadgeHover = useCallback((parents: string[]) => {
+    setTooltipParents(parents);
+    setTooltipVisible(true);
+  }, []);
+
+  const handleBadgeLeave = useCallback(() => {
+    setTooltipVisible(false);
+  }, []);
+  
   return (
-    <nav style={containerStyles} aria-label="Workspace indicator">
-      <div style={labelStyles}>
-        <Folder size={14} />
-        <span style={{
-          maxWidth: 200,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
-          {currentWorkspace.metadata.title}
+    <nav style={containerStyles} aria-label="Conversation ancestry">
+      {/* Sidebar toggle button (when sidebar is hidden) */}
+      {showSidebarToggle && (
+        <button
+          onClick={onToggleSidebar}
+          style={sidebarToggleButtonStyles}
+          title="Open workspace list"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.navy.hover;
+            e.currentTarget.style.borderColor = colors.amber.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = colors.navy.dark;
+            e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)';
+          }}
+        >
+          <PanelLeft size={16} />
+        </button>
+      )}
+      
+      {/* Show workspace name when no card selected */}
+      {breadcrumbPath.length === 0 && (
+        <span
+          style={{
+            ...breadcrumbItemStyles,
+            color: colors.contrast.grayDark,
+            marginLeft: showSidebarToggle ? spacing[1] : 0,
+          }}
+        >
+          {workspaceName}
         </span>
-      </div>
+      )}
+      
+      {/* Show breadcrumb path */}
+      {breadcrumbPath.map((conv, index) => {
+        const isLast = index === breadcrumbPath.length - 1;
+        const isMergeNode = conv.isMergeNode && conv.parentCardIds.length > 1;
+        const additionalParents = isMergeNode ? conv.parentCardIds.length - 1 : 0;
+        
+        // Get other parent names for tooltip
+        const otherParentNames = isMergeNode
+          ? conv.parentCardIds.slice(1).map(pid => {
+              const parent = conversations.get(pid);
+              return parent?.metadata.title || 'Unknown';
+            })
+          : [];
+
+        return (
+          <React.Fragment key={conv.id}>
+            <div style={breadcrumbItemStyles}>
+              <span
+                style={isLast ? activeCrumbStyles : clickableCrumbStyles}
+                onClick={() => !isLast && handleCrumbClick(conv.id)}
+                onMouseEnter={(e) => {
+                  if (!isLast) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = colors.navy.dark;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLast) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                {isMergeNode && '🔀 '}{conv.metadata.title}
+              </span>
+              
+              {isMergeNode && (
+                <span
+                  style={mergeBadgeStyles}
+                  onMouseEnter={() => handleBadgeHover(otherParentNames)}
+                  onMouseLeave={handleBadgeLeave}
+                  title={`Also merged from: ${otherParentNames.join(', ')}`}
+                >
+                  <Zap size={10} />
+                  +{additionalParents}
+                  
+                  {/* Tooltip */}
+                  {tooltipVisible && tooltipParents.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      marginTop: spacing[1],
+                      padding: spacing[2],
+                      backgroundColor: colors.navy.dark,
+                      border: `1px solid ${colors.navy.light}`,
+                      borderRadius: effects.border.radius.default,
+                      fontSize: typography.sizes.xs,
+                      whiteSpace: 'nowrap',
+                      zIndex: 1000,
+                      pointerEvents: 'none',
+                    }}>
+                      <div style={{ color: colors.contrast.grayDark, marginBottom: spacing[1], fontSize: typography.sizes.xs }}>
+                        Also merged from:
+                      </div>
+                      {otherParentNames.map((name, i) => (
+                        <div key={i} style={{ color: colors.contrast.gray }}>• {name}</div>
+                      ))}
+                    </div>
+                  )}
+                </span>
+              )}
+            </div>
+            
+            {!isLast && (
+              <ChevronRight size={14} style={chevronStyles} />
+            )}
+          </React.Fragment>
+        );
+      })}
     </nav>
   );
 }

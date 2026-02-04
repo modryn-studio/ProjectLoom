@@ -438,7 +438,7 @@ export function SettingsButton({ onClick }: SettingsButtonProps) {
       title="Settings"
       style={{
         position: 'fixed',
-        top: spacing[4],
+        bottom: spacing[24], // 96px from bottom (above the minimap which is typically ~80px tall)
         right: spacing[4],
         width: 48,
         height: 48,

@@ -732,13 +732,24 @@ export const useCanvasStore = create<WorkspaceState>()(
       const result = storage.load();
       const workspaceResult = workspaceStorage.load();
 
-      // Load mock data only if no workspaces exist at all
-      if (!workspaceResult.success || !workspaceResult.data.workspaces || workspaceResult.data.workspaces.length === 0) {
-        // No stored workspaces, load mock data for demo
+      // Check if we have any actual conversation data
+      const hasStoredConversations = result.success && 
+                                     result.data.conversations && 
+                                     result.data.conversations.length > 0;
+      
+      const hasWorkspaces = workspaceResult.success && 
+                           workspaceResult.data.workspaces && 
+                           workspaceResult.data.workspaces.length > 0;
+      
+      // Load mock data if there are no conversations in storage
+      // (even if a workspace structure exists)
+      if (!hasStoredConversations) {
+        console.log('[ProjectLoom] Loading mock data (no stored conversations found)');
         get().loadMockData();
         return;
       }
 
+      console.log('[ProjectLoom] Loading from storage:', result.data.conversations.length, 'conversation(s)');
       const storedData = result.data;
 
       // Reconstruct state from storage
@@ -856,22 +867,30 @@ export const useCanvasStore = create<WorkspaceState>()(
       const mockData = generateMockData();
       const { conversations: mockConversations, edges: mockEdges } = mockData;
 
+      // Create main workspace first
+      const mainWorkspace = createDefaultWorkspace();
+
+      // Update all conversations to use the actual workspace ID
+      const updatedConversations = mockConversations.map(conv => ({
+        ...conv,
+        canvasId: mainWorkspace.id,
+      }));
+
       // Create conversations map
       const conversations = new Map<string, Conversation>();
-      mockConversations.forEach((conv: Conversation) => {
+      updatedConversations.forEach((conv: Conversation) => {
         conversations.set(conv.id, conv);
       });
 
       // Create nodes using conversation positions
-      const nodes: ConversationNode[] = mockConversations.map((conv: Conversation) => {
+      const nodes: ConversationNode[] = updatedConversations.map((conv: Conversation) => {
         return conversationToNode(conv, conv.position, false, false);
       });
 
       // Create edges (v4 with relation types)
       const edges: Edge[] = mockEdges.map(connectionToEdge);
 
-      // Create main workspace for mock data (v4 - flat)
-      const mainWorkspace = createDefaultWorkspace();
+      // Populate workspace with conversations
       mainWorkspace.conversations = Array.from(conversations.values());
       mainWorkspace.edges = mockEdges;
 
