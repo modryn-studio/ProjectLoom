@@ -98,10 +98,12 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
 
   // Memoized panel styles to prevent object recreation on every render
   const panelStyles = useMemo<React.CSSProperties>(() => ({
+    position: 'fixed',
+    top: 0,
+    right: 0,
     width: panelWidth,
     minWidth: MIN_PANEL_WIDTH,
     maxWidth: MAX_PANEL_WIDTH,
-    flexShrink: 0,
     backgroundColor: colors.navy.light,
     borderLeft: `1px solid rgba(99, 102, 241, 0.2)`,
     display: 'flex',
@@ -109,8 +111,8 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
     height: '100vh',
     maxHeight: '100vh',
     overflow: 'hidden',
-    position: 'relative',
     userSelect: isResizing ? 'none' : 'auto',
+    zIndex: 100,
   }), [panelWidth, isResizing]);
 
   // Memoized resize handle styles

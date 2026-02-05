@@ -5,6 +5,9 @@ import { ReactFlowProvider } from '@xyflow/react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { InfiniteCanvas } from '@/components/InfiniteCanvas';
+import { ToastContainer } from '@/components/ToastContainer';
+import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
+import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors } from '@/lib/design-tokens';
 
@@ -25,6 +28,9 @@ export default function CanvasPage() {
       <ReactFlowProvider>
         <CanvasWrapper />
       </ReactFlowProvider>
+      <ToastContainer />
+      <HierarchicalMergeDialog />
+      <KeyboardShortcutsPanelProvider />
     </ErrorBoundary>
   );
 }

@@ -153,6 +153,16 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
     setTooltipVisible(false);
   }, []);
   
+  // Calculate canvas stats
+  const totalCards = conversations.size;
+  const mergeNodes = useMemo(() => {
+    let count = 0;
+    conversations.forEach((conv) => {
+      if (conv.isMergeNode) count++;
+    });
+    return count;
+  }, [conversations]);
+  
   return (
     <nav style={containerStyles} aria-label="Conversation ancestry">
       {/* Sidebar toggle button (when sidebar is hidden) */}
@@ -174,21 +184,63 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
         </button>
       )}
       
-      {/* Show workspace name when no card selected */}
+      {/* Show workspace name + stats when no card selected */}
       {breadcrumbPath.length === 0 && (
-        <span
-          style={{
-            ...breadcrumbItemStyles,
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[3],
+          marginLeft: showSidebarToggle ? spacing[1] : 0,
+        }}>
+          <span
+            style={{
+              ...breadcrumbItemStyles,
+              color: colors.contrast.grayDark,
+            }}
+          >
+            {workspaceName}
+          </span>
+          <span style={{
+            fontSize: typography.sizes.xs,
             color: colors.contrast.grayDark,
-            marginLeft: showSidebarToggle ? spacing[1] : 0,
-          }}
-        >
-          {workspaceName}
+            padding: `${spacing[1]} ${spacing[2]}`,
+            backgroundColor: 'rgba(100, 116, 139, 0.1)',
+            borderRadius: effects.border.radius.default,
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[2],
+          }}>
+            <span>{totalCards} {totalCards === 1 ? 'card' : 'cards'}</span>
+            {mergeNodes > 0 && (
+              <>
+                <span style={{ color: 'rgba(100, 116, 139, 0.5)' }}>|</span>
+                <span style={{ color: colors.semantic.success }}>{mergeNodes} {mergeNodes === 1 ? 'merge' : 'merges'}</span>
+              </>
+            )}
+          </span>
+        </div>
+      )}
+      
+      {/* Show multi-selection indicator */}
+      {selectedNodeIds.size > 1 && (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: spacing[1],
+          padding: `${spacing[1]} ${spacing[2]}`,
+          backgroundColor: colors.amber.muted,
+          color: colors.amber.primary,
+          borderRadius: effects.border.radius.default,
+          fontSize: typography.sizes.xs,
+          fontWeight: 600,
+          marginLeft: showSidebarToggle ? spacing[1] : 0,
+        }}>
+          {selectedNodeIds.size} selected
         </span>
       )}
       
-      {/* Show breadcrumb path */}
-      {breadcrumbPath.map((conv, index) => {
+      {/* Show breadcrumb path (only when exactly 1 card selected) */}
+      {selectedNodeIds.size === 1 && breadcrumbPath.map((conv, index) => {
         const isLast = index === breadcrumbPath.length - 1;
         const isMergeNode = conv.isMergeNode && conv.parentCardIds.length > 1;
         const additionalParents = isMergeNode ? conv.parentCardIds.length - 1 : 0;

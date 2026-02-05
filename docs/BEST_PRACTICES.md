@@ -69,6 +69,23 @@ A: Click any card to open the **right chat panel** with the full conversation hi
 
 ## ⚡ Merge Node Best Practices
 
+### Merge Warning System
+
+ProjectLoom actively warns you about merge complexity:
+
+**At 3+ parents:** 🟡 Warning toast appears
+- "Adding source 3/5. Complex merges may reduce AI response quality."
+- Badge turns amber, ⚠️ icon appears on card
+
+**At 5 parents:** 🔴 Error toast with suggestion
+- "Merge node limit reached (5 sources). Consider intermediate merge nodes."
+- Click "Learn More" to see hierarchical merge dialog
+- Badge turns red, card shows maximum complexity
+
+**At 6+ parents:** 🚫 Connection blocked
+- Cannot add more parents
+- System suggests creating hierarchical merge pattern
+
 ### Optimal Merge Patterns
 
 **2 Parents (Green ⚡ - Ideal)**
@@ -141,9 +158,64 @@ Group related threads → merge groups → final synthesis
 - `Ctrl+Enter` - Send message (when typing in chat panel)
 - `Ctrl+Z` / `Ctrl+Shift+Z` - Undo/Redo
 
+**View & Navigation:**
+- `+` / `-` - Zoom in/out
+- `Ctrl+0` - Fit all cards in view
+- `Ctrl+1` - Reset zoom to 100%
+- `Ctrl+F` - Search canvas (across titles, messages, branch reasons)
+- `?` - Show keyboard shortcuts panel
+
+**Selection & Organization:**
+- `Ctrl+A` - Select all cards
+- `Shift+Click` - Add card to selection (multi-select)
+- `Ctrl+L` - Auto-layout (organize overlapping cards)
+
 **Pro tip:** Use `Escape` twice to "dismiss" a card:
 1. First press: closes chat panel
 2. Second press: deselects card completely
+
+### Multi-Select Operations
+
+**Select multiple cards:**
+- Hold `Shift` and click cards to add to selection
+- Drag selection box on canvas (hold and drag on empty space)
+- Press `Ctrl+A` to select all cards
+
+**Bulk operations:**
+- Delete multiple cards: Select → press `Delete` → confirm count
+- Shows "X selected" badge in breadcrumb
+- Confirmation dialog shows: "Delete X conversations?"
+
+### Canvas Search
+
+**Find cards quickly:**
+- Press `Ctrl+F` to open search overlay (top-center)
+- Type query → searches titles, messages, branch reasons
+- Use `↑` / `↓` arrows to navigate results
+- Press `Enter` to jump to result (auto-pans viewport)
+- Shows match count (X/Y) and result snippets
+- Press `Escape` to close search
+
+**Search tips:**
+- Partial matches work ("auth" finds "authentication")
+- Case-insensitive by default
+- Match type badges show where text was found (title/message/branchReason)
+- Highlighted snippets show context around matches
+
+### Auto-Layout Organization
+
+**Organize overlapping cards:**
+- Press `Ctrl+L` to trigger auto-layout
+- System uses tree layout (respects parent-child hierarchy)
+- Cards reorganized to minimize overlaps
+- Success toast shows: "Organized X cards"
+- If already optimal: "Cards are already well organized!"
+
+**When to use:**
+- After creating many branches
+- When cards overlap and hard to read
+- To see clean hierarchical structure
+- Before taking screenshots/demos
 
 ### Message-Level Branching
 

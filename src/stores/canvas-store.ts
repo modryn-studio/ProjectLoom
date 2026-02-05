@@ -28,6 +28,7 @@ import type {
   MERGE_NODE_CONFIG,
 } from '@/types';
 import { logger } from '@/lib/logger';
+import { useToastStore } from '@/stores/toast-store';
 
 // Debounce helper for performance
 let saveTimeout: NodeJS.Timeout | null = null;
@@ -158,6 +159,9 @@ interface WorkspaceState {
   branchMessageIndex: number | null;
   branchSourcePosition: Position | null;
 
+  // Hierarchical Merge Dialog State
+  hierarchicalMergeDialogOpen: boolean;
+
   // Chat Panel State (session-only)
   chatPanelOpen: boolean;
   activeConversationId: string | null;
@@ -214,6 +218,10 @@ interface WorkspaceState {
   openBranchDialog: (conversationId: string, messageIndex?: number) => void;
   closeBranchDialog: () => void;
 
+  // Actions - Hierarchical Merge Dialog
+  openHierarchicalMergeDialog: () => void;
+  closeHierarchicalMergeDialog: () => void;
+
   // Actions - Chat Panel
   openChatPanel: (conversationId: string) => void;
   closeChatPanel: () => void;
@@ -223,6 +231,9 @@ interface WorkspaceState {
 
   // Actions - Drag State
   setIsAnyNodeDragging: (isDragging: boolean) => void;
+
+  // Actions - Layout
+  applyLayout: (positions: Map<string, { x: number; y: number }>) => void;
 }
 
 // =============================================================================
@@ -367,6 +378,9 @@ export const useCanvasStore = create<WorkspaceState>()(
     branchSourceId: null,
     branchMessageIndex: null,
     branchSourcePosition: null,
+    
+    // Hierarchical Merge Dialog State
+    hierarchicalMergeDialogOpen: false,
     
     // Chat Panel State (session-only)
     chatPanelOpen: false,
@@ -794,12 +808,12 @@ export const useCanvasStore = create<WorkspaceState>()(
       // Load mock data if there are no conversations in storage
       // (even if a workspace structure exists)
       if (!hasStoredConversations) {
-        console.log('[ProjectLoom] Loading mock data (no stored conversations found)');
+        logger.debug('Loading mock data (no stored conversations found)');
         get().loadMockData();
         return;
       }
 
-      console.log('[ProjectLoom] Loading from storage:', result.data.conversations.length, 'conversation(s)');
+      logger.debug('Loading from storage:', result.data.conversations.length, 'conversation(s)');
       const storedData = result.data;
 
       // Reconstruct state from storage
@@ -1187,11 +1201,30 @@ export const useCanvasStore = create<WorkspaceState>()(
     createMergeNode: (data: CreateMergeNodeData) => {
       const { sourceCardIds, position, synthesisPrompt, inheritanceMode = 'full' } = data;
       const { conversations, activeWorkspaceId } = get();
+      const toast = useToastStore.getState();
       
-      // Validate parent count
+      // Validate parent count - show error toast if blocked
       if (sourceCardIds.length > MERGE_CONFIG.MAX_PARENTS) {
         logger.warn(`Cannot create merge node with ${sourceCardIds.length} parents (max ${MERGE_CONFIG.MAX_PARENTS})`);
+        toast.error(
+          `Merge node limit reached (${MERGE_CONFIG.MAX_PARENTS} sources). Consider creating intermediate merge nodes.`,
+          { 
+            action: { 
+              label: 'Learn More', 
+              onClick: () => get().openHierarchicalMergeDialog() 
+            },
+            duration: 8000,
+          }
+        );
         return null;
+      }
+      
+      // Show warning for complex merges (3+ sources)
+      if (sourceCardIds.length >= MERGE_CONFIG.WARNING_THRESHOLD) {
+        toast.warning(
+          `Adding ${sourceCardIds.length}/${MERGE_CONFIG.MAX_PARENTS} sources. Complex merges may reduce AI response quality.`,
+          { duration: 5000 }
+        );
       }
 
       // Validate all source cards exist
@@ -1357,6 +1390,18 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     // =========================================================================
+    // Hierarchical Merge Dialog
+    // =========================================================================
+
+    openHierarchicalMergeDialog: () => {
+      set({ hierarchicalMergeDialogOpen: true });
+    },
+
+    closeHierarchicalMergeDialog: () => {
+      set({ hierarchicalMergeDialogOpen: false });
+    },
+
+    // =========================================================================
     // Chat Panel Management
     // =========================================================================
 
@@ -1480,6 +1525,30 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     setIsAnyNodeDragging: (isDragging: boolean) => {
       set({ isAnyNodeDragging: isDragging });
+    },
+
+    // =========================================================================
+    // Layout Management
+    // =========================================================================
+
+    applyLayout: (positions: Map<string, { x: number; y: number }>) => {
+      set((state) => {
+        const newNodes = state.nodes.map((node) => {
+          const newPos = positions.get(node.id);
+          if (newPos) {
+            return {
+              ...node,
+              position: newPos,
+            };
+          }
+          return node;
+        });
+
+        return { nodes: newNodes };
+      });
+      
+      // Save after layout change
+      useCanvasStore.getState().saveToStorage();
     },
   }))
 );

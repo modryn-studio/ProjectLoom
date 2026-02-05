@@ -25,6 +25,10 @@ import type { ConversationNodeData, Conversation, Message } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
+import { CanvasSearch } from './CanvasSearch';
+import { useSearchStore } from '@/stores/search-store';
+import { getOverlapCount, spreadLayout, treeLayout } from '@/lib/layout-utils';
+import { useToastStore } from '@/stores/toast-store';
 import { UndoToast } from './UndoToast';
 import { BranchDialog } from './BranchDialog';
 import { InheritedContextPanel } from './InheritedContextPanel';
@@ -172,6 +176,7 @@ export function InfiniteCanvas() {
   const redo = useCanvasStore((s) => s.redo);
   const canUndo = useCanvasStore((s) => s.canUndo);
   const canRedo = useCanvasStore((s) => s.canRedo);
+  const applyLayout = useCanvasStore((s) => s.applyLayout);
 
   // Chat panel state
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
@@ -412,14 +417,22 @@ export function InfiniteCanvas() {
     enabled: true,
     handlers: {
       onDelete: () => {
-        if (firstSelectedId) {
-          // Check if confirmation is required
+        const selectedIds = Array.from(selectedNodeIds);
+        if (selectedIds.length === 0) return;
+        
+        if (selectedIds.length === 1) {
+          // Single deletion
           if (uiPrefs.confirmOnDelete) {
             if (window.confirm('Delete this conversation?')) {
-              deleteConversation(firstSelectedId);
+              deleteConversation(selectedIds[0]);
             }
           } else {
-            deleteConversation(firstSelectedId);
+            deleteConversation(selectedIds[0]);
+          }
+        } else {
+          // Multi-select deletion - always confirm
+          if (window.confirm(`Delete ${selectedIds.length} conversations?`)) {
+            selectedIds.forEach(id => deleteConversation(id));
           }
         }
       },
@@ -475,6 +488,55 @@ export function InfiniteCanvas() {
       onAddConversation: () => {
         // N: Add new conversation at center of viewport
         handleAddConversation();
+      },
+      // View controls
+      onZoomIn: () => {
+        reactFlowInstance.current?.zoomIn({ duration: 200 });
+      },
+      onZoomOut: () => {
+        reactFlowInstance.current?.zoomOut({ duration: 200 });
+      },
+      onFitView: () => {
+        reactFlowInstance.current?.fitView({
+          padding: canvasConfig.viewport.fitViewPadding,
+          duration: 400,
+        });
+      },
+      onResetZoom: () => {
+        reactFlowInstance.current?.setViewport(
+          { x: 0, y: 0, zoom: 1 },
+          { duration: 400 }
+        );
+      },
+      // Selection
+      onSelectAll: () => {
+        const allIds = Array.from(conversations.keys());
+        setSelected(allIds);
+      },
+      // Search
+      onSearch: () => {
+        useSearchStore.getState().openSearch();
+      },
+      // Layout
+      onSuggestLayout: () => {
+        const currentNodes = reactFlowInstance.current?.getNodes() ?? [];
+        const currentEdges = reactFlowInstance.current?.getEdges() ?? [];
+        
+        if (currentNodes.length === 0) {
+          useToastStore.getState().info('Add some cards first to organize them.');
+          return;
+        }
+        
+        // Try tree layout first (respects hierarchy), fall back to spread
+        const result = treeLayout(currentNodes, currentEdges);
+        
+        if (!result.hasChanges) {
+          useToastStore.getState().success('Cards are already well organized!');
+          return;
+        }
+        
+        applyLayout(result.positions);
+        useToastStore.getState().success(`Organized ${currentNodes.length} cards.`);
       },
     },
   });
@@ -556,11 +618,11 @@ export function InfiniteCanvas() {
             zoomOnScroll={true}
             zoomOnPinch={true}
             zoomOnDoubleClick={false}
-            selectionOnDrag={false}
+            selectionOnDrag={true}
             selectNodesOnDrag={false}
             snapToGrid={false}
             deleteKeyCode={null}
-            multiSelectionKeyCode={null}
+            multiSelectionKeyCode="Shift"
           >
             {/* Dot grid background */}
             <Background
@@ -586,6 +648,9 @@ export function InfiniteCanvas() {
               showInteractive={false}
               style={controlsStyle}
             />
+
+            {/* Canvas Search */}
+            <CanvasSearch />
           </ReactFlow>
 
           {/* Dev performance overlay */}

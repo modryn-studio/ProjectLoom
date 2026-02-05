@@ -23,6 +23,22 @@ export interface KeyboardShortcutHandlers {
   onBranch?: () => void;
   /** Called when N is pressed */
   onAddConversation?: () => void;
+  /** Called when + or = is pressed (zoom in) */
+  onZoomIn?: () => void;
+  /** Called when - is pressed (zoom out) */
+  onZoomOut?: () => void;
+  /** Called when Ctrl+0 is pressed (fit view) */
+  onFitView?: () => void;
+  /** Called when Ctrl+1 is pressed (reset zoom to 100%) */
+  onResetZoom?: () => void;
+  /** Called when Ctrl+A is pressed (select all) */
+  onSelectAll?: () => void;
+  /** Called when ? or Shift+/ is pressed (show shortcuts help) */
+  onShowShortcuts?: () => void;
+  /** Called when Ctrl+F is pressed (search) */
+  onSearch?: () => void;
+  /** Called when Ctrl+L is pressed (suggest layout) */
+  onSuggestLayout?: () => void;
 }
 
 export interface UseKeyboardShortcutsOptions {
@@ -132,13 +148,75 @@ export function useKeyboardShortcuts({
           handlers.onAddConversation?.();
           break;
 
-        // Phase 3 shortcuts will be added here:
-        // - Ctrl+A: Select all
-        // - Ctrl+C: Copy
-        // - Ctrl+V: Paste
-        // - Arrow keys: Navigate between nodes
-        // - +/-: Zoom
-        // - Ctrl+F: Search
+        // View controls
+        case '+':
+        case '=':
+          event.preventDefault();
+          handlers.onZoomIn?.();
+          break;
+
+        case '-':
+          event.preventDefault();
+          handlers.onZoomOut?.();
+          break;
+
+        case '0':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Ctrl+0: Fit all cards in view
+            handlers.onFitView?.();
+          }
+          break;
+
+        case '1':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Ctrl+1: Reset zoom to 100%
+            handlers.onResetZoom?.();
+          }
+          break;
+
+        // Selection
+        case 'a':
+        case 'A':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Ctrl+A: Select all cards
+            handlers.onSelectAll?.();
+          }
+          break;
+
+        // Help & Search
+        case '?':
+          event.preventDefault();
+          handlers.onShowShortcuts?.();
+          break;
+
+        case '/':
+          if (event.shiftKey) {
+            event.preventDefault();
+            // Shift+/: Show shortcuts (same as ?)
+            handlers.onShowShortcuts?.();
+          }
+          break;
+
+        case 'f':
+        case 'F':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Ctrl+F: Search canvas
+            handlers.onSearch?.();
+          }
+          break;
+
+        case 'l':
+        case 'L':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Ctrl+L: Suggest layout
+            handlers.onSuggestLayout?.();
+          }
+          break;
 
         default:
           break;
@@ -203,15 +281,61 @@ export function getShortcutDisplay(
 }
 
 /**
- * Available shortcuts for display in UI (Phase 3)
+ * Available shortcuts for display in UI
  */
 export const SHORTCUTS = {
-  delete: { key: 'Delete', display: getShortcutDisplay('Delete') },
-  escape: { key: 'Escape', display: getShortcutDisplay('Escape') },
-  // Phase 3 additions:
-  // undo: { key: 'z', modifiers: { ctrl: true }, display: getShortcutDisplay('z', { ctrl: true }) },
-  // redo: { key: 'z', modifiers: { ctrl: true, shift: true }, display: getShortcutDisplay('z', { ctrl: true, shift: true }) },
-  // search: { key: 'f', modifiers: { ctrl: true }, display: getShortcutDisplay('f', { ctrl: true }) },
+  // Navigation
+  newCard: { key: 'N', description: 'New conversation card' },
+  openChat: { key: 'Space', description: 'Open chat panel' },
+  openChatAlt: { key: 'Enter', description: 'Open chat panel' },
+  escape: { key: 'Escape', description: 'Close panel / Deselect' },
+  
+  // Editing
+  branch: { key: 'B', modifiers: { ctrl: true }, description: 'Branch from selected card' },
+  delete: { key: 'Delete', description: 'Delete selected card' },
+  undo: { key: 'Z', modifiers: { ctrl: true }, description: 'Undo' },
+  redo: { key: 'Z', modifiers: { ctrl: true, shift: true }, description: 'Redo' },
+  redoAlt: { key: 'Y', modifiers: { ctrl: true }, description: 'Redo (Windows)' },
+  
+  // View
+  zoomIn: { key: '+', description: 'Zoom in' },
+  zoomOut: { key: '-', description: 'Zoom out' },
+  fitView: { key: '0', modifiers: { ctrl: true }, description: 'Fit all cards in view' },
+  resetZoom: { key: '1', modifiers: { ctrl: true }, description: 'Reset zoom to 100%' },
+  
+  // Selection
+  selectAll: { key: 'A', modifiers: { ctrl: true }, description: 'Select all cards' },
+  
+  // Search & Help
+  search: { key: 'F', modifiers: { ctrl: true }, description: 'Search canvas' },
+  suggestLayout: { key: 'L', modifiers: { ctrl: true }, description: 'Suggest layout' },
+  showShortcuts: { key: '?', description: 'Show keyboard shortcuts' },
 } as const;
+
+/**
+ * Shortcut categories for organized display
+ */
+export const SHORTCUT_CATEGORIES = [
+  {
+    name: 'Navigation',
+    shortcuts: ['newCard', 'openChat', 'escape'] as const,
+  },
+  {
+    name: 'Editing',
+    shortcuts: ['branch', 'delete', 'undo', 'redo'] as const,
+  },
+  {
+    name: 'View',
+    shortcuts: ['zoomIn', 'zoomOut', 'fitView', 'resetZoom'] as const,
+  },
+  {
+    name: 'Selection',
+    shortcuts: ['selectAll'] as const,
+  },
+  {
+    name: 'Search & Help',
+    shortcuts: ['search', 'suggestLayout', 'showShortcuts'] as const,
+  },
+] as const;
 
 export default useKeyboardShortcuts;

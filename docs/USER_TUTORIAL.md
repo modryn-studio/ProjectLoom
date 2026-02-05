@@ -268,13 +268,167 @@ ProjectLoom enforces these limits:
 | **Escape** | Close chat panel, then deselect | Two-stage behavior |
 | **Ctrl+Z / ⌘+Z** | Undo | Restores last action |
 | **Ctrl+Shift+Z / ⌘+Shift+Z** | Redo | Re-applies undone action |
+| **+** / **-** | Zoom in/out | Smooth zoom animation |
+| **Ctrl+0 / ⌘+0** | Fit all cards in view | Pans and zooms to show everything |
+| **Ctrl+1 / ⌘+1** | Reset zoom to 100% | Returns to default zoom level |
+| **Ctrl+A / ⌘+A** | Select all cards | Multi-select all visible cards |
+| **Ctrl+F / ⌘+F** | Open canvas search | Search across titles/messages |
+| **Ctrl+L / ⌘+L** | Auto-layout suggestions | Organize overlapping cards |
+| **?** | Show keyboard shortcuts panel | View all shortcuts organized by category |
 
 **Escape key behavior test:**
 1. Click a card to open chat panel
 2. Press Escape → chat panel closes
 3. Press Escape again → card deselects
 
-### 5.2 Undo/Redo System
+### 5.2 Keyboard Shortcuts Panel
+
+**View all available shortcuts:**
+
+1. Press **?** (question mark key)
+2. **Shortcuts panel appears** (centered modal)
+3. Organized by category:
+   - Navigation (N, Enter, Escape)
+   - Editing (Ctrl+B, Delete, Undo/Redo)
+   - View (+/-, Ctrl+0, Ctrl+1)
+   - Selection (Ctrl+A)
+   - Search & Help (Ctrl+F, Ctrl+L, ?)
+
+**Panel features:**
+- Platform-aware (shows Cmd on Mac, Ctrl on Windows)
+- Searchable/scannable layout
+- Close with Escape or click backdrop
+
+**Pro tip:** Keep this open while learning to reference shortcuts quickly!
+
+### 5.3 Multi-Select System
+
+**Select multiple cards at once:**
+
+**Method 1: Shift+Click**
+1. Click first card (selects it)
+2. Hold **Shift** and click another card
+3. Both cards are now selected (amber borders)
+4. Continue Shift+clicking to add more
+
+**Method 2: Drag Selection Box**
+1. Click and drag on **empty canvas space**
+2. Selection box appears (dashed rectangle)
+3. All cards inside box when you release = selected
+
+**Method 3: Select All**
+- Press **Ctrl+A** to select all cards in workspace
+
+**What you can do with multi-select:**
+- **Bulk delete:** Press Delete → confirmation shows count ("Delete 5 conversations?")
+- **Visual indicator:** Breadcrumb shows "X selected" badge
+- **Deselect:** Click empty canvas or press Escape
+
+**Test it:**
+1. Shift+click 3 cards
+2. Look at breadcrumb → "3 selected" badge appears
+3. Press Delete → "Delete 3 conversations?" confirmation
+4. Click Cancel (don't actually delete)
+5. Press Escape → all deselected
+
+### 5.4 Canvas Search
+
+**Find cards across entire workspace:**
+
+1. Press **Ctrl+F** (or ⌘+F on Mac)
+2. **Search panel appears** at top-center of canvas
+3. Type your query (e.g., "database" or "authentication")
+4. **Results appear instantly** with:
+   - Match count (X/Y)
+   - Card titles
+   - Match type badges (title/message/branchReason)
+   - Highlighted snippets showing context
+
+**Navigate results:**
+- **Arrow keys** (↑/↓) to move between results
+- **Enter** to jump to selected result
+- **Canvas auto-pans** to show the card
+- **Card is selected** after jumping
+
+**Close search:**
+- Press **Escape**
+- Click outside the panel
+
+**Search features:**
+- Case-insensitive
+- Partial matches work
+- Searches card titles, message content, and branch reasons
+- Real-time results (no submit button needed)
+
+**Test it:**
+1. Press Ctrl+F
+2. Type "testing" or "mock"
+3. See results populate
+4. Use arrow keys to navigate
+5. Press Enter to jump to first match
+6. Press Escape to close search
+
+### 5.5 Auto-Layout Organization
+
+**Automatically organize overlapping cards:**
+
+1. Create several cards and move them to overlap
+2. Press **Ctrl+L** (or ⌘+L on Mac)
+3. **Cards reorganize** using tree layout algorithm
+4. **Success toast appears:** "Organized X cards"
+
+**What happens:**
+- Cards arranged by hierarchy (parent-child relationships)
+- Overlaps minimized
+- Tree structure becomes visible
+- Respects existing relationships
+
+**If cards are already well-organized:**
+- Toast shows: "Cards are already well organized!"
+- No changes made
+
+**Layout algorithms used:**
+1. **Tree layout** (primary) - Respects parent-child hierarchy
+2. **Grid layout** (fallback) - If no hierarchy detected
+3. **Spread layout** (alternative) - Pushes overlapping cards apart
+
+**Test it:**
+1. Drag 4-5 cards to overlap in center of canvas
+2. Press Ctrl+L
+3. Watch cards smoothly reorganize
+4. Check toast notification for result
+
+### 5.6 Merge Node Toast Warnings
+
+**Real-time feedback when creating merge nodes:**
+
+**At 3 parents:**
+- **Warning toast** (🟡 amber) appears
+- Message: "Adding source 3/5. Complex merges may reduce AI response quality."
+- Auto-dismisses after 5 seconds
+- Can dismiss manually by clicking X
+
+**At 5 parents (maximum):**
+- **Error toast** (🔴 red) appears
+- Message: "Merge node limit reached (5 sources). Consider intermediate merge nodes."
+- Includes **"Learn More"** button
+- Click button → opens Hierarchical Merge Dialog
+
+**Hierarchical Merge Dialog:**
+- Shows visual example of good vs bad merge patterns
+- **Bad pattern:** 6 sources → 1 merge (too complex)
+- **Good pattern:** Group sources → intermediate merges → final synthesis
+- Educational guide to help you structure better
+
+**Test the warning system:**
+1. Find or create a merge node with 2 parents
+2. Add a 3rd parent → warning toast appears
+3. Add 4th parent → edges bundle, another warning
+4. Add 5th parent → error toast with "Learn More"
+5. Click "Learn More" → dialog shows hierarchical pattern
+6. Try to add 6th parent → connection blocked
+
+### 5.7 Undo/Redo System
 
 **Test the history:**
 
@@ -289,7 +443,7 @@ ProjectLoom enforces these limits:
 - Last 50 actions are tracked
 - Undo/redo survives page refresh (stored in localStorage)
 
-### 5.3 Settings Panel
+### 5.8 Settings Panel
 
 **Open settings (gear icon in bottom-right):**
 
@@ -311,7 +465,7 @@ ProjectLoom enforces these limits:
 3. Press Ctrl+B on a card → instant branch with summary context
 4. Turn setting back on
 
-### 5.4 Canvas Tree Sidebar Features
+### 5.9 Canvas Tree Sidebar Features
 
 **Advanced sidebar interactions:**
 
@@ -330,7 +484,7 @@ ProjectLoom enforces these limits:
    - ⚡ Merge nodes (left green border)
    - Number badge on merge nodes
 
-### 5.5 Inherited Context Panel
+### 5.10 Inherited Context Panel
 
 **When to see it:**
 - Auto-shows when you select a card with parents

@@ -193,7 +193,7 @@ export function selectContextMessages(
     
     case 'custom':
       if (!selectedIds || selectedIds.length === 0) {
-        console.warn('Custom mode requires selectedIds, falling back to empty');
+        logger.warn('Custom mode requires selectedIds, falling back to empty');
         return [];
       }
       const idSet = new Set(selectedIds);

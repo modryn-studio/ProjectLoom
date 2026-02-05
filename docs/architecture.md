@@ -410,9 +410,20 @@ export function MessageInput() {
 
 | Shortcut | Action | Notes |
 |----------|--------|-------|
-| Enter / Space | Open chat panel | For selected card |
-| Escape | Close chat panel → Deselect | Priority cascade |
-| Ctrl+Enter | Send message | Only in chat input |
+| **N** | New conversation | Creates at center or click position |
+| **Enter** / **Space** | Open chat panel | For selected card |
+| **Escape** | Close chat panel → Deselect | Two-stage cascade |
+| **Delete** | Delete selected | Single or multi-select (with confirmation) |
+| **Ctrl+B** | Branch from card | Opens branch dialog |
+| **Ctrl+Enter** | Send message | Only in chat input |
+| **Ctrl+Z** / **Ctrl+Shift+Z** | Undo / Redo | 50-action history |
+| **+** / **-** | Zoom in/out | ReactFlow API with 200ms animation |
+| **Ctrl+0** | Fit view | All cards with padding |
+| **Ctrl+1** | Reset zoom | 100% scale |
+| **Ctrl+A** | Select all cards | Multi-select all visible |
+| **Ctrl+F** | Canvas search | Real-time results with navigation |
+| **Ctrl+L** | Auto-layout | Tree algorithm with toast feedback |
+| **?** | Shortcuts panel | Categorized help overlay |
 
 ### Design Decisions
 
@@ -421,6 +432,244 @@ export function MessageInput() {
 3. **Identical resize logic:** Copy-paste from CanvasTreeSidebar for consistency
 4. **Width persistence:** Panel width saved to preferences, but open/closed state is session-only
 5. **animation.spring.snappy:** Fast response for user-triggered panel open/close (stiffness: 600)
+
+---
+
+## Toast Notification System (v4.1)
+
+### Architecture
+
+```typescript
+// toast-store.ts - Global notification queue
+interface ToastStore {
+  toasts: Toast[];
+  addToast: (toast: Omit<Toast, 'id'>) => void;
+  removeToast: (id: string) => void;
+  clearAll: () => void;
+}
+
+interface Toast {
+  id: string;  // Generated via nanoid
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  duration?: number;  // Default: 5000ms
+  action?: ToastAction;
+}
+
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+```
+
+### Configuration
+
+```typescript
+const TOAST_CONFIG = {
+  MAX_TOASTS: 3,           // Stack limit
+  DEFAULT_DURATION: 5000,  // 5 seconds
+  Z_INDEX: 370,            // overlay.notification layer
+};
+```
+
+### Usage Patterns
+
+**Merge warnings (canvas-store.ts):**
+```typescript
+// At 3 parents
+useToastStore.getState().addToast({
+  type: 'warning',
+  message: 'Adding source 3/5. Complex merges may reduce AI response quality.',
+});
+
+// At 5 parents
+useToastStore.getState().addToast({
+  type: 'error',
+  message: 'Merge node limit reached (5 sources).',
+  action: {
+    label: 'Learn More',
+    onClick: () => openHierarchicalMergeDialog(),
+  },
+});
+```
+
+**Undo notifications:**
+```typescript
+addToast({
+  type: 'info',
+  message: 'Card deleted',
+  action: { label: 'Undo', onClick: () => undo() },
+});
+```
+
+### Visual Design
+
+- Stacked vertically from bottom-right
+- Animated entry/exit with Framer Motion
+- Progress bar showing auto-dismiss countdown
+- Color-coded by type (success=emerald, error=red, warning=amber, info=violet)
+- Action button in amber for clickable toasts
+
+---
+
+## Search System (v4.1)
+
+### Architecture
+
+```typescript
+// search-store.ts - Search state management
+interface SearchStore {
+  isOpen: boolean;
+  query: string;
+  results: SearchResult[];
+  activeIndex: number;
+  openSearch: () => void;
+  closeSearch: () => void;
+  setQuery: (query: string) => void;
+  nextResult: () => void;
+  prevResult: () => void;
+  jumpToResult: (index: number) => void;
+}
+
+interface SearchResult {
+  cardId: string;
+  cardTitle: string;
+  matchType: 'title' | 'message' | 'branchReason';
+  snippet: string;           // Context around match
+  messageIndex?: number;     // For message matches
+  highlightedSnippet: string;  // With 【markers】
+}
+```
+
+### Search Algorithm
+
+```typescript
+// Searches across all conversations
+function searchConversations(
+  query: string,
+  conversations: Map<string, Conversation>
+): SearchResult[] {
+  const results: SearchResult[] = [];
+  const lowerQuery = query.toLowerCase();
+
+  for (const [id, conv] of conversations) {
+    // 1. Search title
+    if (conv.metadata.title.toLowerCase().includes(lowerQuery)) {
+      results.push({ matchType: 'title', ... });
+    }
+
+    // 2. Search messages
+    conv.content.forEach((msg, idx) => {
+      if (msg.content.toLowerCase().includes(lowerQuery)) {
+        results.push({ matchType: 'message', messageIndex: idx, ... });
+      }
+    });
+
+    // 3. Search branch reason
+    if (conv.branchPoint?.reason?.toLowerCase().includes(lowerQuery)) {
+      results.push({ matchType: 'branchReason', ... });
+    }
+  }
+
+  return results;
+}
+```
+
+### UI Behavior (CanvasSearch.tsx)
+
+- **Trigger:** Ctrl+F opens floating panel at top-center
+- **Real-time:** Results update on every keystroke (debounced 150ms)
+- **Navigation:** Arrow keys (↑/↓) cycle through results
+- **Jump:** Enter key pans canvas to selected result using `setCenter()`
+- **Visual:** Highlighted snippets with 【match】 markers
+- **Close:** Escape or click outside
+
+---
+
+## Layout Utilities (v4.1)
+
+### Architecture
+
+```typescript
+// layout-utils.ts - Auto-layout algorithms
+
+interface LayoutAlgorithm {
+  name: string;
+  arrange: (nodes: Node[], edges: Edge[]) => Map<string, Position>;
+}
+```
+
+### Overlap Detection
+
+```typescript
+function detectOverlaps(
+  nodes: Node[],
+  threshold: number = 50
+): Set<string> {
+  // Returns Set of node IDs that overlap with others
+  // Threshold: minimum overlap in pixels to count
+}
+```
+
+### Tree Layout (Primary)
+
+```typescript
+function treeLayout(
+  nodes: Node[],
+  edges: Edge[]
+): Map<string, Position> {
+  // 1. Build parent-child hierarchy from edges
+  // 2. Identify root nodes (no incoming edges)
+  // 3. Recursively position children:
+  //    - Horizontal spacing: 400px
+  //    - Vertical spacing: 300px
+  //    - Left-to-right, top-to-bottom arrangement
+  // 4. Return Map<nodeId, {x, y}>
+}
+```
+
+**Used by Ctrl+L shortcut** - Respects card hierarchy, minimizes overlaps.
+
+### Grid Layout (Fallback)
+
+```typescript
+function gridLayout(
+  nodes: Node[],
+  columns: number = 4
+): Map<string, Position> {
+  // Simple grid: columns × rows
+  // 400px horizontal spacing, 300px vertical
+}
+```
+
+### Spread Layout (Alternative)
+
+```typescript
+function spreadLayout(
+  nodes: Node[],
+  overlaps: Set<string>
+): Map<string, Position> {
+  // Physics-based: push overlapping cards apart
+  // Iterative force simulation
+}
+```
+
+### Integration (InfiniteCanvas.tsx)
+
+```typescript
+const onSuggestLayout = useCallback(() => {
+  const overlaps = detectOverlaps(nodes);
+
+  if (overlaps.size === 0) {
+    toast.info('Cards are already well organized!');
+    return;
+  }
+
+  const newPositions = treeLayout(nodes, edges);
+  applyLayout(newPositions);  // Updates canvas-store
+  toast.success(`Organized ${overlaps.size} cards`);
+}, [nodes, edges]);
+```
 
 ---
 
@@ -540,6 +789,19 @@ interface EdgeStyle {
 - ✅ Branch dialog (keyboard workflow)
 - ✅ Settings panel with branching preferences
 
+### ✅ v4.1: High-Value Phase 3 Features (Completed Feb 2026)
+**Enhancements:** See IMPLEMENTATION_STATUS.md for detailed feature breakdown
+
+- ✅ Global toast notification system (queue, auto-dismiss, actions)
+- ✅ Merge warnings (toast at 3+, error at 5 with "Learn More")
+- ✅ Hierarchical merge dialog (educational guide with visual examples)
+- ✅ Canvas stats in breadcrumb ("X cards | Y merges")
+- ✅ View control shortcuts (+/-, Ctrl+0, Ctrl+1, Ctrl+A)
+- ✅ Keyboard shortcuts panel (? key, categorized display)
+- ✅ Multi-select system (Shift+click, drag box, bulk operations)
+- ✅ Canvas search (Ctrl+F, real-time results, keyboard navigation)
+- ✅ Auto-layout suggestions (Ctrl+L, tree algorithm with overlap detection)
+
 ### Phase 3: AI Integration & Intelligence
 - [ ] AI provider integration (Claude, OpenAI, Local)
 - [ ] Live conversation with AI within cards
@@ -547,9 +809,9 @@ interface EdgeStyle {
 - [ ] Smart merge synthesis (AI combines multiple sources)
 
 ### Phase 4: Polish & Export
-- [ ] Suggest Layout (opt-in, not auto)
+- [x] Auto-layout suggestions (Ctrl+L) - **Completed in v4.1**
+- [x] Search across cards in workspace (Ctrl+F) - **Completed in v4.1**
 - [ ] Export/Import workspaces (JSON format)
-- [ ] Search across cards in workspace
 - [ ] Card summaries on hover
 - [ ] Branch comparison view
 - [ ] Decision ancestry tracking
@@ -583,7 +845,7 @@ src/
 │   ├── InfiniteCanvas.tsx
 │   ├── ConversationCard.tsx
 │   ├── CanvasTreeSidebar.tsx        # v4: DAG tree view
-│   ├── CanvasBreadcrumb.tsx         # v4: Navigation
+│   ├── CanvasBreadcrumb.tsx         # v4: Navigation + stats
 │   ├── InheritedContextPanel.tsx    # v4: Context inspection
 │   ├── BranchDialog.tsx             # v4: Keyboard workflow
 │   ├── InlineBranchPanel.tsx        # v4: Mouse workflow
@@ -593,18 +855,25 @@ src/
 │   ├── MessageInput.tsx             # Three-panel: Message input
 │   ├── UndoToast.tsx                # v4: Undo notifications
 │   ├── SettingsPanel.tsx            # v4: Preferences UI
+│   ├── ToastContainer.tsx           # v4.1: Toast notification stack
+│   ├── HierarchicalMergeDialog.tsx  # v4.1: Educational merge guide
+│   ├── KeyboardShortcutsPanel.tsx   # v4.1: Help panel (? key)
+│   ├── CanvasSearch.tsx             # v4.1: Search overlay (Ctrl+F)
 │   ├── ErrorBoundary.tsx
 │   └── DevPerformanceOverlay.tsx
 ├── hooks/
-│   └── useKeyboardShortcuts.ts
+│   └── useKeyboardShortcuts.ts      # v4.1: Extended shortcuts
 ├── stores/
 │   ├── canvas-store.ts              # v4: With branching + chat panel
-│   └── preferences-store.ts         # v4: User settings + chat width
+│   ├── preferences-store.ts         # v4: User settings + chat width
+│   ├── toast-store.ts               # v4.1: Global toast queue
+│   └── search-store.ts              # v4.1: Canvas search state
 ├── lib/
 │   ├── design-tokens.ts
 │   ├── language-utils.ts
 │   ├── storage.ts                   # v4: Schema version 4
 │   ├── context-utils.ts             # v4: Context selection
+│   ├── layout-utils.ts              # v4.1: Auto-layout algorithms
 │   ├── mock-data.ts
 │   └── logger.ts
 ├── utils/

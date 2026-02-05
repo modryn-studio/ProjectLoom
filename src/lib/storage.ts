@@ -101,7 +101,10 @@ export function clearLegacyStorage(): void {
     }
   });
   
-  console.log('🔄 ProjectLoom v4: Cleared legacy storage');
+  // Note: Using raw console.log here since logger may not be initialized yet
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔄 ProjectLoom v4: Cleared legacy storage');
+  }
 }
 
 /**
@@ -146,7 +149,7 @@ export class VersionedStorage<T> {
    * Log debug messages
    */
   private log(message: string, ...args: unknown[]): void {
-    if (this.debug) {
+    if (this.debug && process.env.NODE_ENV === 'development') {
       console.log(`[VersionedStorage:${this.key}] ${message}`, ...args);
     }
   }
