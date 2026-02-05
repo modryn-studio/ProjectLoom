@@ -17,6 +17,7 @@ import {
   BackgroundVariant,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useShallow } from 'zustand/react/shallow';
 
 import { colors, canvas as canvasConfig, animation } from '@/lib/design-tokens';
 import { logger } from '@/lib/logger';
@@ -31,9 +32,10 @@ import { CanvasBreadcrumb } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { APIKeyWarningBanner } from './APIKeyWarningBanner';
 import { SettingsPanel } from './SettingsPanel';
+import { ChatPanel } from './ChatPanel';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useCanvasStore, selectBranchDialogOpen } from '@/stores/canvas-store';
+import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
 import { nanoid } from 'nanoid';
 
@@ -135,35 +137,51 @@ export function InfiniteCanvas() {
   const canvasContextMenu = useContextMenu();
   const [canvasClickPosition, setCanvasClickPosition] = useState<{ x: number; y: number } | null>(null);
 
-  // Get data and actions from store
-  const nodes = useCanvasStore((s) => s.nodes);
-  const edges = useCanvasStore((s) => s.edges);
+  // Get data from store using shallow comparison to prevent unnecessary re-renders
+  const {
+    nodes,
+    edges,
+    conversations,
+    selectedNodeIds,
+    expandedNodeIds,
+    activeWorkspaceId,
+    workspaces,
+  } = useCanvasStore(useShallow((s) => ({
+    nodes: s.nodes,
+    edges: s.edges,
+    conversations: s.conversations,
+    selectedNodeIds: s.selectedNodeIds,
+    expandedNodeIds: s.expandedNodeIds,
+    activeWorkspaceId: s.activeWorkspaceId,
+    workspaces: s.workspaces,
+  })));
+
+  // Get actions from store (these are stable references)
   const onNodesChange = useCanvasStore((s) => s.onNodesChange);
   const onEdgesChange = useCanvasStore((s) => s.onEdgesChange);
   const onConnect = useCanvasStore((s) => s.onConnect);
-  const toggleExpanded = useCanvasStore((s) => s.toggleExpanded);
   const setSelected = useCanvasStore((s) => s.setSelected);
   const clearSelection = useCanvasStore((s) => s.clearSelection);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const createMergeNode = useCanvasStore((s) => s.createMergeNode);
-  const conversations = useCanvasStore((s) => s.conversations);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
   const addConversation = useCanvasStore((s) => s.addConversation);
-  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
-  const expandedNodeIds = useCanvasStore((s) => s.expandedNodeIds);
   const undo = useCanvasStore((s) => s.undo);
   const redo = useCanvasStore((s) => s.redo);
   const canUndo = useCanvasStore((s) => s.canUndo);
   const canRedo = useCanvasStore((s) => s.canRedo);
 
+  // Chat panel state
+  const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
+  const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
+
   // Branch dialog state
   const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
 
   // Current workspace context (v4 - flat)
-  const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
-  const workspaces = useCanvasStore((s) => s.workspaces);
   const currentWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
 
   // UI Preferences
@@ -244,25 +262,28 @@ export function InfiniteCanvas() {
     [onConnect, conversations]
   );
 
-  // Handle node selection
+  // Handle node selection - single click opens chat panel
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      setSelected([node.id]);
+      // Open chat panel with this conversation
+      openChatPanel(node.id);
     },
-    [setSelected]
+    [openChatPanel]
   );
 
-  // Handle node double-click for expansion
+  // Handle node double-click - no longer used for expansion, same as single click
   const handleNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      toggleExpanded(node.id);
+      // Same as single click - open chat panel
+      openChatPanel(node.id);
     },
-    [toggleExpanded]
+    [openChatPanel]
   );
 
-  // Handle canvas click (deselect)
+  // Handle canvas click (deselect and close chat panel)
   const handlePaneClick = useCallback(() => {
     clearSelection();
+    // Don't close chat panel on pane click - keep conversation context
   }, [clearSelection]);
 
   // Handle creating a new conversation
@@ -403,9 +424,9 @@ export function InfiniteCanvas() {
         }
       },
       onEscape: () => {
-        // Collapse expanded card first, then deselect
-        if (firstExpandedId) {
-          toggleExpanded(firstExpandedId);
+        // Priority: Close chat panel first, then deselect
+        if (chatPanelOpen) {
+          closeChatPanel();
         } else {
           clearSelection();
         }
@@ -421,9 +442,15 @@ export function InfiniteCanvas() {
         }
       },
       onExpand: () => {
-        // Space: Toggle expand/collapse on first selected card
+        // Space or Enter: Open chat panel for first selected card
         if (firstSelectedId) {
-          toggleExpanded(firstSelectedId);
+          openChatPanel(firstSelectedId);
+        }
+      },
+      onOpenChat: () => {
+        // Enter: Open chat panel for first selected card
+        if (firstSelectedId) {
+          openChatPanel(firstSelectedId);
         }
       },
       onBranch: () => {
@@ -590,6 +617,9 @@ export function InfiniteCanvas() {
           <UndoToast />
         </div>
       </div>
+
+      {/* Chat Panel (right side) */}
+      <ChatPanel onFocusNode={focusOnNode} />
     </div>
   );
 }

@@ -131,8 +131,8 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
       path.unshift(current);
       
       // Follow first parent (consistent with tree sidebar)
-      const parentIds = current.parentCardIds || [];
-      const firstParentId = parentIds[0];
+      const parentIds: string[] = current.parentCardIds || [];
+      const firstParentId: string | undefined = parentIds[0];
       current = firstParentId ? conversations.get(firstParentId) : undefined;
     }
     

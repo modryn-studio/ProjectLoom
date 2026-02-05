@@ -1,13 +1,13 @@
 'use client';
 
-import React, { memo, useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { memo, useMemo, useState, useCallback, useRef } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-import { colors, typography, spacing, effects, animation, card } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects, card } from '@/lib/design-tokens';
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
-import { useCanvasStore, selectIsAnyNodeDragging } from '@/stores/canvas-store';
+import { useCanvasStore, selectIsAnyNodeDragging, selectActiveConversationId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import { InlineBranchPanel } from './InlineBranchPanel';
@@ -24,6 +24,11 @@ type ConversationCardProps = NodeProps<ConversationCardNode>;
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Platform detection - cached at module level (doesn't change during session)
+ */
+const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 
 /**
  * Format timestamp to relative or absolute time
@@ -100,7 +105,10 @@ function ConversationCardComponent({
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
-  const toggleExpanded = useCanvasStore((s) => s.toggleExpanded);
+  
+  // Chat panel state - detect if this card is active
+  const activeConversationId = useCanvasStore(selectActiveConversationId);
+  const isActiveInChatPanel = activeConversationId === conversation.id;
   
   // Check if any node is being dragged (to disable hover effects)
   const isAnyNodeDragging = useCanvasStore(selectIsAnyNodeDragging);
@@ -109,16 +117,9 @@ function ConversationCardComponent({
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
 
-  // Inline branch panel state (mouse workflow)
-  const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
+  // Inline branch panel state (mouse workflow - triggered from context menu)
   const [pendingBranchMessageIndex, setPendingBranchMessageIndex] = useState<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  // Handle branch icon click - show inline panel
-  const handleBranchClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPendingBranchMessageIndex(messageIndex);
-  }, []);
 
   // Close inline branch panel
   const handleCloseBranchPanel = useCallback(() => {
@@ -145,16 +146,10 @@ function ConversationCardComponent({
     isSelected: isSelected || selected,
   });
 
-  // Platform detection (cached at module level to avoid re-computation)
-  const isMac = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    return /Mac/.test(navigator.platform);
-  }, []);
-
   // Preview content
   const previewContent = useMemo(() => getPreviewContent(messages), [messages]);
 
-  // Context menu items (excluding branch - it opens dialog directly)
+  // Context menu items (excluding branch - it opens dialog directly, no expand since cards are fixed)
   const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
     onDelete: () => {
       // Check if confirmation is required
@@ -166,8 +161,8 @@ function ConversationCardComponent({
         deleteConversation(conversation.id);
       }
     },
-    onExpand: () => toggleExpanded(conversation.id),
-  }, isMac), [conversation.id, deleteConversation, toggleExpanded, isMac, uiPrefs.confirmOnDelete]);
+    // No onExpand - cards are fixed size, conversation happens in chat panel
+  }, isMac), [conversation.id, deleteConversation, isMac, uiPrefs.confirmOnDelete]);
 
   // Handle right-click: Check if clicked item is "Branch from here"
   // If so, open dialog directly (centered modal per phase_2.md spec)
@@ -225,17 +220,18 @@ function ConversationCardComponent({
         style={handleStyle}
       />
 
-      {/* Card container with layout animation */}
+      {/* Card container - fixed size, no expansion */}
       <motion.div
         ref={cardRef}
         initial={false}
         animate={{
           scale: dragging ? 1.02 : 1,
-          width: isExpanded ? card.size.maxWidth : card.size.minWidth,
-          minHeight: isExpanded ? card.size.expandedMinHeight : card.size.collapsedHeight,
-          maxHeight: isExpanded ? card.size.expandedMaxHeight : card.size.collapsedHeight,
-          boxShadow: isExpanded
-            ? effects.shadow.cardExpanded
+          // Fixed size - no expansion in cards (chat panel handles conversation)
+          width: card.size.minWidth,
+          minHeight: card.size.collapsedHeight,
+          maxHeight: card.size.collapsedHeight,
+          boxShadow: isActiveInChatPanel
+            ? effects.glow.cardActive
             : selected || isSelected
             ? effects.glow.cardActive
             : effects.shadow.card,
@@ -248,10 +244,6 @@ function ConversationCardComponent({
           }
         }
         transition={{
-          // Use smooth easing for dimensions instead of spring to prevent getting stuck
-          width: { duration: 0.25, ease: 'easeInOut' },
-          minHeight: { duration: 0.25, ease: 'easeInOut' },
-          maxHeight: { duration: 0.25, ease: 'easeInOut' },
           scale: { duration: 0.2, ease: 'easeOut' },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
           y: { duration: 0.15, ease: 'easeOut' },
@@ -259,8 +251,10 @@ function ConversationCardComponent({
         style={{
           ...cardStyles.container,
           zIndex: cardZIndex,
-          // v4: Visual indicators for merge nodes and branched cards
-          borderColor: isMergeNode
+          // v4: Visual indicators for active card, merge nodes, and branched cards
+          borderColor: isActiveInChatPanel
+            ? colors.amber.primary  // Amber for active chat panel card
+            : isMergeNode
             ? (isAtMaxMerge 
                 ? colors.semantic.error     // Red at max (5 parents)
                 : isComplexMerge 
@@ -270,10 +264,8 @@ function ConversationCardComponent({
             ? colors.amber.dark        // Amber for branched cards
             : isSelected || selected
             ? colors.amber.primary
-            : isExpanded
-            ? colors.violet.primary
             : 'rgba(102, 126, 234, 0.4)',
-          borderWidth: isMergeNode || isBranchedCard ? 2 : 1,
+          borderWidth: isActiveInChatPanel || isMergeNode || isBranchedCard ? 2 : 1,
         }}
         onContextMenu={handleContextMenu}
       >
@@ -349,7 +341,7 @@ function ConversationCardComponent({
           </span>
         </div>
 
-        {/* Content */}
+        {/* Content - Always show preview (conversation happens in chat panel) */}
         <div
           style={{
             ...cardStyles.content,
@@ -358,87 +350,9 @@ function ConversationCardComponent({
             textAlign: textStyles.textAlign,
           }}
         >
-          <AnimatePresence mode="wait">
-            {isExpanded ? (
-              <motion.div
-                key="expanded"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={animation.spring.gentle}
-                style={cardStyles.expandedContent}
-              >
-                {/* Full message list with branch icons */}
-                {messages.map((message: Message, index: number) => (
-                  <div
-                    key={message.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
-                      width: '100%',
-                      position: 'relative',
-                    }}
-                    onMouseEnter={() => setHoveredMessageIndex(index)}
-                    onMouseLeave={() => setHoveredMessageIndex(null)}
-                  >
-                    <div
-                      style={{
-                        ...cardStyles.message,
-                        backgroundColor:
-                          message.role === 'user'
-                            ? colors.navy.dark
-                            : 'transparent',
-                        width: message.role === 'user' ? '80%' : '100%',
-                        marginLeft: message.role === 'user' ? 'auto' : '0',
-                      }}
-                    >
-                      <div
-                        style={{
-                          ...cardStyles.messageContent,
-                          fontFamily: textStyles.fontFamily,
-                          direction: textStyles.direction,
-                        }}
-                      >
-                        {message.content.slice(0, 500)}
-                        {message.content.length > 500 && '...'}
-                      </div>
-                    </div>
-                    
-                    {/* Branch icon - appears on hover */}
-                    <AnimatePresence>
-                      {hoveredMessageIndex === index && (
-                        <motion.button
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.1 }}
-                          onClick={(e) => handleBranchClick(index, e)}
-                          style={{
-                            ...cardStyles.branchIcon,
-                            [message.role === 'user' ? 'left' : 'right']: '-28px',
-                          }}
-                          title={`Branch from message ${index + 1}`}
-                        >
-                          <GitBranch size={14} />
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="collapsed"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                transition={animation.spring.gentle}
-                style={cardStyles.preview}
-              >
-                <p style={cardStyles.previewText}>{previewContent}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div style={cardStyles.preview}>
+            <p style={cardStyles.previewText}>{previewContent}</p>
+          </div>
         </div>
 
         {/* Footer: Timestamp */}
@@ -558,55 +472,6 @@ const cardStyles: Record<string, React.CSSProperties> = {
     WebkitBoxOrient: 'vertical',
     wordBreak: 'break-word',
   },
-
-  expandedContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: spacing[2],
-    maxHeight: '480px',
-    overflowY: 'auto',
-    overflowX: 'hidden',  // Prevent horizontal scrollbar
-    paddingRight: spacing[1],
-    paddingLeft: spacing[4],   // Space for left branch icons
-    paddingRight: spacing[4],  // Space for right branch icons
-    // Discrete scrollbar
-    scrollbarWidth: 'thin',
-    scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
-  } as React.CSSProperties,
-
-  message: {
-    padding: spacing[3],
-    borderRadius: effects.border.radius.default,
-    maxWidth: '100%',  // Prevent messages from exceeding container
-    overflow: 'visible',  // Allow branch icons to show outside
-  },
-
-  messageContent: {
-    fontSize: typography.sizes.sm,
-    color: colors.contrast.white,
-    lineHeight: typography.lineHeights.relaxed,
-    fontFamily: typography.fonts.body,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    overflowWrap: 'break-word',  // Additional wrapping safety
-  },
-
-  branchIcon: {
-    position: 'absolute',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: 24,
-    height: 24,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    border: '1px solid rgba(245, 158, 11, 0.4)',
-    borderRadius: '50%',
-    color: '#f59e0b',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-  } as React.CSSProperties,
 
   footer: {
     marginTop: 'auto',

@@ -101,7 +101,6 @@ interface ConversationMetadata {
   updatedAt: Date;
   messageCount: number;
   tags: string[];
-  isExpanded: boolean;
   language?: LanguageCode;
 }
 ```
@@ -297,6 +296,134 @@ class LocalLLMProvider implements AIProvider {
 
 ---
 
+## Three-Panel Layout Architecture (Implemented Feb 2026)
+
+> **Implementation Status:** ✅ Completed - see GitHub issue #6
+
+### Layout Overview
+
+ProjectLoom uses a three-panel layout pattern inspired by VSCode:
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  [≡] Workspaces    ProjectLoom - Main Workspace      [⚙]  │
+├──────────┬─────────────────────────────────┬───────────────┤
+│          │                                 │               │
+│  LEFT    │        CANVAS (MAIN)           │  RIGHT CHAT   │
+│  SIDEBAR │                                 │   PANEL       │
+│          │   ┌──────┐    ┌──────┐         │               │
+│  Cards   │   │Card 1│───▶│Card 2│         │  💬 Active    │
+│  Tree    │   └──────┘    └──────┘         │  Conversation │
+│  View    │        │                        │               │
+│          │   ┌────▼──┐   ┌──────┐         │  [Messages]   │
+│  • Root  │   │Card 3 │   │Card 4│         │  [Scrollable] │
+│   • DB   │   └───────┘   └──────┘         │  [Thread]     │
+│   • API  │                                 │               │
+│          │   [+ New Card]                  │  [Type here...]│
+│  [+ New] │                                 │               │
+└──────────┴─────────────────────────────────┴───────────────┘
+    20%              50-60%                      20-30%
+```
+
+### Chat Panel State Management
+
+```typescript
+interface ChatPanelState {
+  // UI State (session-only)
+  chatPanelOpen: boolean;  // Panel visibility
+  activeConversationId: string | null;  // Currently open conversation
+  
+  // Draft persistence (session-only, per conversation)
+  draftMessages: Map<string, string>;  // conversationId → draft text
+}
+
+interface ChatPanelActions {
+  openChatPanel: (conversationId: string) => void;
+  closeChatPanel: () => void;
+  setDraftMessage: (conversationId: string, content: string) => void;
+  getDraftMessage: (conversationId: string) => string;
+  sendMessage: (content: string) => Promise<void>;
+}
+
+interface ChatPanelPreferences {
+  // Persisted to localStorage
+  chatPanelWidth: number;  // 400-800px, default 480
+}
+```
+
+### User Interaction Flow
+
+**Opening Chat Panel:**
+1. User clicks conversation card on canvas
+2. `openChatPanel(conversationId)` called
+3. Panel slides in from right with animation.spring.snappy
+4. Message thread loads for that conversation
+5. Card on canvas shows thick amber border (2px)
+6. Drafts restored if available for that conversation
+
+**Switching Conversations:**
+1. User clicks different card while panel open
+2. Current draft auto-saved to draftMessages Map
+3. Panel immediately switches to new conversation
+4. New draft loaded from Map (or empty)
+5. No confirmation dialog (fast switching)
+
+**Sending Messages:**
+1. User types in MessageInput (auto-resizes 80-200px)
+2. Press Ctrl+Enter or click send button
+3. `sendMessage(content)` adds user message to conversation
+4. Draft cleared from Map for that conversation
+5. TODO Phase 3: Trigger AI response
+
+### Component Architecture
+
+```typescript
+// ChatPanel.tsx - Main container
+export function ChatPanel() {
+  // Resizable (400-800px) with identical logic to CanvasTreeSidebar
+  // Persists width to preferences.ui.chatPanelWidth
+  // Contains: ChatPanelHeader, MessageThread, MessageInput
+}
+
+// ChatPanelHeader.tsx - Title and actions
+export function ChatPanelHeader() {
+  // Shows: conversation title, merge/branch indicators, message count
+  // Actions: branch button, close button
+}
+
+// MessageThread.tsx - Scrollable messages
+export function MessageThread() {
+  // Renders messages with language-aware styling
+  // Auto-scrolls on new messages
+  // Branch icons on hover for message-level branching
+}
+
+// MessageInput.tsx - Message composition
+export function MessageInput() {
+  // Auto-resizing textarea (80-200px)
+  // Draft persistence on every keystroke
+  // Ctrl+Enter to send, Enter for newline
+}
+```
+
+### Keyboard Shortcuts
+
+| Shortcut | Action | Notes |
+|----------|--------|-------|
+| Enter / Space | Open chat panel | For selected card |
+| Escape | Close chat panel → Deselect | Priority cascade |
+| Ctrl+Enter | Send message | Only in chat input |
+
+### Design Decisions
+
+1. **Session-only drafts:** Draft messages stored in memory Map, not persisted to localStorage
+2. **Immediate switching:** No confirmation when switching conversations, drafts auto-saved
+3. **Identical resize logic:** Copy-paste from CanvasTreeSidebar for consistency
+4. **Width persistence:** Panel width saved to preferences, but open/closed state is session-only
+5. **animation.spring.snappy:** Fast response for user-triggered panel open/close (stiffness: 600)
+
+---
+
 ## Storage Architecture
 
 ### Versioned Persistence
@@ -388,8 +515,9 @@ interface EdgeStyle {
 - ✅ Visual connections (simple Bezier curves)
 - ✅ Local storage persistence with versioning
 - ✅ Pan/zoom with virtualization
-- ✅ Inline card expansion
-- ✅ Essential keyboard shortcuts (Delete, Escape, Space, Ctrl+B, N)
+- ✅ Three-panel layout (left sidebar, center canvas, right chat panel)
+- ✅ Resizable chat panel with draft persistence
+- ✅ Essential keyboard shortcuts (Delete, Escape, Space/Enter, Ctrl+B, Ctrl+Enter, N)
 - ✅ Language detection and font mapping
 - ✅ Dev performance overlay
 - ✅ Performance optimizations (debounced saves, O(n+m) handlers)
@@ -459,6 +587,10 @@ src/
 │   ├── InheritedContextPanel.tsx    # v4: Context inspection
 │   ├── BranchDialog.tsx             # v4: Keyboard workflow
 │   ├── InlineBranchPanel.tsx        # v4: Mouse workflow
+│   ├── ChatPanel.tsx                # Three-panel: Right chat panel
+│   ├── ChatPanelHeader.tsx          # Three-panel: Chat header
+│   ├── MessageThread.tsx            # Three-panel: Message display
+│   ├── MessageInput.tsx             # Three-panel: Message input
 │   ├── UndoToast.tsx                # v4: Undo notifications
 │   ├── SettingsPanel.tsx            # v4: Preferences UI
 │   ├── ErrorBoundary.tsx
@@ -466,8 +598,8 @@ src/
 ├── hooks/
 │   └── useKeyboardShortcuts.ts
 ├── stores/
-│   ├── canvas-store.ts              # v4: With branching logic
-│   └── preferences-store.ts         # v4: User settings
+│   ├── canvas-store.ts              # v4: With branching + chat panel
+│   └── preferences-store.ts         # v4: User settings + chat width
 ├── lib/
 │   ├── design-tokens.ts
 │   ├── language-utils.ts

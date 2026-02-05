@@ -32,6 +32,8 @@ export interface UserPreferences {
     showInheritedContext: boolean;
     /** Confirm before deleting */
     confirmOnDelete: boolean;
+    /** Chat panel width (persisted, min: 400, max: 800) */
+    chatPanelWidth: number;
   };
 }
 
@@ -76,6 +78,7 @@ const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
   showCanvasTree: true,
   showInheritedContext: true,
   confirmOnDelete: true,
+  chatPanelWidth: 480, // Default 30% of 1600px viewport
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {

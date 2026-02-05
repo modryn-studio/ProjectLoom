@@ -24,6 +24,7 @@ npm run dev
 Open your browser to `http://localhost:3000`
 
 **What you'll see:**
+- Three-panel layout: left sidebar, center canvas, right area (for chat panel)
 - Infinite dark navy canvas with dot grid background
 - 10 mock conversation cards arranged in a tree
 - Minimap in bottom-right corner
@@ -71,19 +72,22 @@ Open your browser to `http://localhost:3000`
 - Click on any card → it gets an amber border
 - Look at the **breadcrumb** at the top (shows current selection)
 
-**Expand a card:**
-- **Double-click** the card, OR
-- Press **Space** while card is selected
+**View full conversation:**
+- **Click any card** to open the **right chat panel**
+- The panel slides in from the right side
+- Shows full message history with scrollable thread
+- **Resizable:** Drag the left edge to resize (400-800px)
+- **Close:** Press `Escape` or click the X button
 
-**What you'll see:**
-- Card expands to show full message history
-- Smooth animation (width increases to 480px)
-- User messages on the right (dark background)
-- Assistant messages on the left
+**What you'll see in the chat panel:**
+- Header with conversation title and indicators
+- Scrollable message thread (user messages on right, AI on left)
+- Message input at bottom with "Type a message..." placeholder
+- Branch button to create branches from current conversation
 
-**Hover over messages:**
-- A **branch icon** (🌿) appears on the left/right of each message
-- This lets you branch from any specific message
+**Hover over messages in the panel:**
+- A **branch icon** (🌿) appears on each message
+- Click to branch from that specific message
 
 ### 2.2 Card Visual Indicators
 
@@ -103,7 +107,6 @@ Look for these visual cues on cards:
 
 **Right-click on any card:**
 - "Branch from here" - Creates a branch (we'll cover this next!)
-- "Expand/Collapse" - Toggle card size
 - "Delete" - Remove the card (can undo)
 
 **Try deleting a card:**
@@ -137,11 +140,12 @@ This is the **core v4 feature**! You can branch from any message in any card.
 - Click **"Create Branch"**
 
 **What happens:**
-- New card appears to the right
+- New card appears to the right on canvas
 - **Amber edge** connects parent → child
 - New card has a **🌿 GitBranch icon**
+- Chat panel switches to the new conversation
 - Undo toast appears
-- New card is auto-selected
+- New card is auto-selected with amber border
 
 **Inspect the new card:**
 1. Look for the "Inherited Context" panel at the top of the canvas
@@ -257,16 +261,17 @@ ProjectLoom enforces these limits:
 | Shortcut | Action | What to Test |
 |----------|--------|--------------|
 | **N** | New conversation | Creates card at center or click position |
-| **Space** | Expand/collapse selected card | Toggle card size |
+| **Enter** or **Space** | Open chat panel for selected card | Panel slides in from right |
 | **Ctrl+B / ⌘+B** | Branch from selected card | Opens branch dialog |
+| **Ctrl+Enter / ⌘+Enter** | Send message | Only works when typing in chat panel |
 | **Delete** | Delete selected card | Removes card, shows undo toast |
-| **Escape** | Collapse expanded card, then deselect | Two-stage behavior |
+| **Escape** | Close chat panel, then deselect | Two-stage behavior |
 | **Ctrl+Z / ⌘+Z** | Undo | Restores last action |
 | **Ctrl+Shift+Z / ⌘+Shift+Z** | Redo | Re-applies undone action |
 
 **Escape key behavior test:**
-1. Expand a card (Space)
-2. Press Escape → card collapses
+1. Click a card to open chat panel
+2. Press Escape → chat panel closes
 3. Press Escape again → card deselects
 
 ### 5.2 Undo/Redo System
@@ -485,19 +490,20 @@ You now understand:
 MOUSE ACTIONS
 - Click + drag canvas → Pan
 - Scroll wheel → Zoom
-- Double-click card → Expand/collapse
-- Click card → Select
+- Click card → Open chat panel
 - Right-click card → Context menu
 - Drag from handle → Create connection
-- Hover message → Show branch icon
+- Hover message (in chat panel) → Show branch icon
 - Click branch icon → Inline branch panel
+- Drag chat panel left edge → Resize panel
 
 KEYBOARD SHORTCUTS
 N               New conversation
-Space           Expand/collapse
+Enter / Space   Open chat panel
 Ctrl+B / ⌘+B    Branch from card
+Ctrl+Enter      Send message (in chat)
 Delete          Delete selected
-Escape          Collapse then deselect
+Escape          Close chat then deselect
 Ctrl+Z          Undo
 Ctrl+Shift+Z    Redo
 F2              Rename workspace
@@ -505,8 +511,9 @@ F2              Rename workspace
 VISUAL INDICATORS
 🌿 GitBranch    Branched card
 ⚡ Zap          Merge node
-Amber border    Selected or branched
+Amber border    Selected or active in chat
 Green border    Merge (2 parents)
+Thick amber     Open in chat panel
 Amber+⚠️        Merge (3-4 parents)
 Red+⚠️          Merge (5 parents, max)
 ```

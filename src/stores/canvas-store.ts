@@ -158,6 +158,11 @@ interface WorkspaceState {
   branchMessageIndex: number | null;
   branchSourcePosition: Position | null;
 
+  // Chat Panel State (session-only)
+  chatPanelOpen: boolean;
+  activeConversationId: string | null;
+  draftMessages: Map<string, string>;
+
   // History for undo/redo
   history: HistoryState[];
   historyIndex: number;
@@ -208,6 +213,13 @@ interface WorkspaceState {
   // Actions - Branch Dialog (keyboard workflow)
   openBranchDialog: (conversationId: string, messageIndex?: number) => void;
   closeBranchDialog: () => void;
+
+  // Actions - Chat Panel
+  openChatPanel: (conversationId: string) => void;
+  closeChatPanel: () => void;
+  setDraftMessage: (conversationId: string, content: string) => void;
+  getDraftMessage: (conversationId: string) => string;
+  sendMessage: (content: string) => Promise<void>;
 
   // Actions - Drag State
   setIsAnyNodeDragging: (isDragging: boolean) => void;
@@ -355,6 +367,11 @@ export const useCanvasStore = create<WorkspaceState>()(
     branchSourceId: null,
     branchMessageIndex: null,
     branchSourcePosition: null,
+    
+    // Chat Panel State (session-only)
+    chatPanelOpen: false,
+    activeConversationId: null,
+    draftMessages: new Map(),
     
     history: [],
     historyIndex: -1,
@@ -1340,6 +1357,124 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     // =========================================================================
+    // Chat Panel Management
+    // =========================================================================
+
+    openChatPanel: (conversationId: string) => {
+      const { activeConversationId, draftMessages } = get();
+      const conversation = get().conversations.get(conversationId);
+      
+      if (!conversation) {
+        logger.warn(`Conversation ${conversationId} not found`);
+        return;
+      }
+
+      // Auto-save current draft before switching (if we have one)
+      // Draft is managed in MessageInput component state, but we store it here when switching
+      
+      set({
+        chatPanelOpen: true,
+        activeConversationId: conversationId,
+        selectedNodeIds: new Set([conversationId]),
+      });
+      
+      logger.debug(`Opened chat panel for conversation ${conversationId}`);
+    },
+
+    closeChatPanel: () => {
+      set({
+        chatPanelOpen: false,
+        // Keep activeConversationId for quick reopen, clear selection
+      });
+    },
+
+    setDraftMessage: (conversationId: string, content: string) => {
+      const { draftMessages } = get();
+      const newDrafts = new Map(draftMessages);
+      
+      if (content.trim()) {
+        newDrafts.set(conversationId, content);
+      } else {
+        newDrafts.delete(conversationId);
+      }
+      
+      set({ draftMessages: newDrafts });
+    },
+
+    getDraftMessage: (conversationId: string) => {
+      return get().draftMessages.get(conversationId) || '';
+    },
+
+    sendMessage: async (content: string) => {
+      const { activeConversationId, conversations, draftMessages } = get();
+      
+      if (!activeConversationId || !content.trim()) {
+        return;
+      }
+
+      const conversation = conversations.get(activeConversationId);
+      if (!conversation) {
+        logger.warn(`Active conversation ${activeConversationId} not found`);
+        return;
+      }
+
+      // Create new user message
+      const newMessage = {
+        id: nanoid(),
+        role: 'user' as const,
+        content: content.trim(),
+        timestamp: new Date(),
+      };
+
+      // Update conversation with new message
+      const updatedConversation = {
+        ...conversation,
+        content: [...conversation.content, newMessage],
+        metadata: {
+          ...conversation.metadata,
+          updatedAt: new Date(),
+          messageCount: conversation.content.length + 1,
+        },
+      };
+
+      // Clear draft after sending
+      const newDrafts = new Map(draftMessages);
+      newDrafts.delete(activeConversationId);
+
+      // Update store
+      const newConversations = new Map(conversations);
+      newConversations.set(activeConversationId, updatedConversation);
+
+      // Update nodes to reflect new message count
+      const { nodes } = get();
+      const updatedNodes = nodes.map(node => {
+        if (node.id === activeConversationId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              conversation: updatedConversation,
+            },
+          };
+        }
+        return node;
+      });
+
+      set({
+        conversations: newConversations,
+        nodes: updatedNodes,
+        draftMessages: newDrafts,
+      });
+
+      // Save to storage
+      get().saveToStorage();
+      
+      logger.debug(`Sent message to conversation ${activeConversationId}`);
+      
+      // TODO: Phase 2 - Trigger AI response here
+    },
+
+    // =========================================================================
     // Drag State Management
     // =========================================================================
 
@@ -1369,6 +1504,11 @@ export const selectBranchDialogOpen = (state: WorkspaceState) => state.branchDia
 export const selectBranchSourceId = (state: WorkspaceState) => state.branchSourceId;
 export const selectBranchMessageIndex = (state: WorkspaceState) => state.branchMessageIndex;
 export const selectBranchSourcePosition = (state: WorkspaceState) => state.branchSourcePosition;
+
+// Chat panel selectors
+export const selectChatPanelOpen = (state: WorkspaceState) => state.chatPanelOpen;
+export const selectActiveConversationId = (state: WorkspaceState) => state.activeConversationId;
+export const selectDraftMessages = (state: WorkspaceState) => state.draftMessages;
 
 // Legacy alias for compatibility
 /** @deprecated Use selectWorkspaces instead */

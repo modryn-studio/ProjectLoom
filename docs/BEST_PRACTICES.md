@@ -23,8 +23,8 @@ A: The folder icon (top-left) shows/hides the Canvas Tree Sidebar. Click it to c
 **Q: Why can't I see the workspace name in the breadcrumb?**  
 A: The breadcrumb shows the workspace title when **no card is selected**. Select a card to see its ancestry path instead.
 
-**Q: Cards won't collapse back to their original size. What's wrong?**  
-A: This is a known issue we've addressed. If it persists, try refreshing (F5). Your work is auto-saved to localStorage.
+**Q: How do I view the full conversation for a card?**  
+A: Click any card to open the **right chat panel** with the full conversation history. The panel is resizable (drag the left edge) and closes with Escape.
 
 ---
 
@@ -135,13 +135,14 @@ Group related threads → merge groups → final synthesis
 
 **Essential shortcuts:**
 - `N` - New card (fastest way to start)
-- `Space` - Expand/collapse selected card
+- `Enter` or `Space` - Open chat panel for selected card
 - `Ctrl+B` - Branch from current card
-- `Escape` - Collapse card, then deselect (two-stage)
+- `Escape` - Close chat panel, then deselect (two-stage)
+- `Ctrl+Enter` - Send message (when typing in chat panel)
 - `Ctrl+Z` / `Ctrl+Shift+Z` - Undo/Redo
 
 **Pro tip:** Use `Escape` twice to "dismiss" a card:
-1. First press: collapses expanded card
+1. First press: closes chat panel
 2. Second press: deselects card completely
 
 ### Message-Level Branching
@@ -161,9 +162,15 @@ Group related threads → merge groups → final synthesis
 - Use breadcrumb to see ancestry path
 
 **Canvas click behavior:**
-- Click card → select
-- Double-click → expand/collapse
+- Click card → opens chat panel with full conversation
 - Right-click → context menu
+- Drag card → reposition on canvas
+
+**Chat panel behavior:**
+- Drag left edge → resize panel (400-800px)
+- Click X or press Escape → close panel
+- Type and press Ctrl+Enter → send message
+- Amber border on canvas card → indicates active conversation
 
 ---
 
@@ -405,10 +412,11 @@ C ──┘             ├─→ Final Decision
 ### Visual Cues
 
 **Border colors tell the story:**
-- Amber = Branched or selected
+- Amber = Branched, selected, or active in chat panel
 - Green = Healthy merge (2 parents)
 - Amber + ⚠️ = Complex merge (3-4)
 - Red + ⚠️ = Maximum merge (5)
+- Thick amber border (2px) = Card is open in right chat panel
 
 **Edge colors indicate relationship:**
 - Amber edges = Branch relationships
@@ -431,11 +439,14 @@ C ──┘             ├─→ Final Decision
 
 ### Keyboard Flow
 
-Rapid card creation:
+Rapid card creation and conversation:
 ```
-N → Space → (review) → Ctrl+B → (configure) → Enter
+N → Enter → (type message) → Ctrl+Enter → (AI responds)
 ↓
-New card created, branched, and ready
+New card created, chat panel open, ready to converse
+
+Branching flow:
+Select card → Ctrl+B → (configure) → Enter → (new branch opens in chat)
 ```
 
 ---
@@ -444,9 +455,10 @@ New card created, branched, and ready
 
 **Beginner** (Day 1):
 1. Create cards with `N`
-2. Expand/collapse with `Space` or double-click
-3. Basic selection and navigation
-4. Simple branching with `Ctrl+B`
+2. Open chat panel with click or `Enter`
+3. Send messages with `Ctrl+Enter`
+4. Basic selection and navigation
+5. Simple branching with `Ctrl+B`
 
 **Intermediate** (Week 1):
 5. Message-level branching

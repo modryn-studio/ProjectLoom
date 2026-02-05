@@ -15,8 +15,10 @@ export interface KeyboardShortcutHandlers {
   onUndo?: () => void;
   /** Called when Ctrl+Y or Ctrl+Shift+Z is pressed */
   onRedo?: () => void;
-  /** Called when Space is pressed */
+  /** Called when Space is pressed (opens chat panel) */
   onExpand?: () => void;
+  /** Called when Enter is pressed (opens chat panel) */
+  onOpenChat?: () => void;
   /** Called when Ctrl+B is pressed */
   onBranch?: () => void;
   /** Called when N is pressed */
@@ -98,10 +100,20 @@ export function useKeyboardShortcuts({
           break;
 
         case ' ':
-          // Space: Expand/collapse selected card
+          // Space: Open chat panel for selected card
           // Only if not in an input field (already handled above)
           event.preventDefault();
           handlers.onExpand?.();
+          break;
+
+        case 'Enter':
+          // Enter: Open chat panel for selected card (same as Space)
+          // Only if not in an input field (already handled above)
+          // Note: Ctrl+Enter for send is handled in MessageInput component
+          if (!event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            handlers.onOpenChat?.();
+          }
           break;
 
         case 'b':
