@@ -378,7 +378,7 @@ ProjectLoom enforces these limits:
 
 ---
 
-## Part 7: Visual Polish & Language Support
+## Part 7: Language Support & Visual Design
 
 ### 7.1 Language Detection
 
@@ -412,41 +412,29 @@ ProjectLoom enforces these limits:
 
 ---
 
-## Part 8: Real-World Workflow Example
+## Part 8: Next Steps
 
-### Complete Branching Scenario
+**You've completed the tutorial! 🎉**
 
-Let's create a realistic project structure:
+You now understand:
+- ✅ Canvas navigation and card management
+- ✅ Branching from messages and cards
+- ✅ Context inheritance modes
+- ✅ Merge nodes and DAG structures
+- ✅ Keyboard shortcuts and settings
 
-**Step 1: Find the root card**
-- Look for "Project Requirements Gathering" (usually top-left)
+**Ready to level up?**
 
-**Step 2: Branch for exploration**
-1. Expand the requirements card
-2. Branch from the first message
-3. Name it: "Explore tech stack options"
-4. Use "Full Context" inheritance
-
-**Step 3: Create parallel branches**
-1. From the same parent, create another branch
-2. Name it: "Explore design patterns"
-3. Notice both branches share the same parent
-
-**Step 4: Create a merge node**
-1. Drag from "tech stack" card to "design patterns" card
-2. "Design patterns" becomes a merge node with ⚡ icon
-3. Both contexts are now merged
-
-**Step 5: Continue the DAG**
-1. Branch from the merge node
-2. Name it: "Final architecture decision"
-3. This card inherits context from TWO parents
-
-**Result:** You've created a realistic decision-making flow where multiple exploration paths converge into a synthesis.
+👉 **See [BEST_PRACTICES.md](BEST_PRACTICES.md)** for:
+- Strategic workflow patterns (decision-making, parallel exploration)
+- Optimization tips and efficiency hacks
+- When to branch vs. merge vs. continue
+- Multi-workspace organization strategies
+- Advanced keyboard flows
 
 ---
 
-## Troubleshooting
+## Troubleshooting Common Issues
 
 ### "I can't connect two cards"
 - **Cause:** Would create a cycle
@@ -470,9 +458,7 @@ Let's create a realistic project structure:
 
 ---
 
-## Next Steps
-
-**You've mastered v4! 🎉**
+## Additional Resources
 
 **What's coming in Phase 3:**
 - Live AI integration (Claude, OpenAI, Local LLMs)
@@ -480,10 +466,11 @@ Let's create a realistic project structure:
 - Auto-generated summaries
 - AI-powered merge synthesis
 
-**Want to dive deeper?**
-- Read `architecture.md` for technical details
-- Check `PERFORMANCE_OPTIMIZATIONS.md` for performance insights
-- See GitHub issue #5 for the complete v4 specification
+**Documentation:**
+- **[BEST_PRACTICES.md](BEST_PRACTICES.md)** - Strategic patterns and optimization
+- **architecture.md** - Technical deep dive
+- **PERFORMANCE_OPTIMIZATIONS.md** - Performance insights
+- **GitHub issue #5** - Complete v4 specification
 
 **Found a bug?**
 - Check browser console for errors

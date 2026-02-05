@@ -565,7 +565,10 @@ const cardStyles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
     maxHeight: '480px',
     overflowY: 'auto',
+    overflowX: 'hidden',  // Prevent horizontal scrollbar
     paddingRight: spacing[1],
+    paddingLeft: spacing[4],   // Space for left branch icons
+    paddingRight: spacing[4],  // Space for right branch icons
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
@@ -574,6 +577,8 @@ const cardStyles: Record<string, React.CSSProperties> = {
   message: {
     padding: spacing[3],
     borderRadius: effects.border.radius.default,
+    maxWidth: '100%',  // Prevent messages from exceeding container
+    overflow: 'visible',  // Allow branch icons to show outside
   },
 
   messageContent: {
@@ -583,6 +588,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
     fontFamily: typography.fonts.body,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
+    overflowWrap: 'break-word',  // Additional wrapping safety
   },
 
   branchIcon: {

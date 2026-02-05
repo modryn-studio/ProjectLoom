@@ -456,6 +456,17 @@ export function InfiniteCanvas() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
+  // Focus on a specific node with smooth animation
+  const focusOnNode = useCallback((nodeId: string) => {
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({
+        padding: 0.2,
+        duration: 800,
+        nodes: [{ id: nodeId }],
+      });
+    }
+  }, []);
+
   return (
     <div style={containerStyles}>
       {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
@@ -464,6 +475,7 @@ export function InfiniteCanvas() {
           onOpenSettings={openSettings} 
           isOpen={isSidebarOpen}
           onToggle={setIsSidebarOpen}
+          onFocusNode={focusOnNode}
         />
       )}
 

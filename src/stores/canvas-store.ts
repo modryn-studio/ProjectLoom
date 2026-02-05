@@ -323,7 +323,7 @@ function connectionToEdge(connection: EdgeConnection): Edge {
     id: connection.id,
     source: connection.source,
     target: connection.target,
-    type: connection.curveType || 'smoothstep',
+    type: connection.curveType || 'bezier',
     animated: connection.animated ?? (relationType === 'reference'),
     style,
     data: { relationType },
@@ -528,15 +528,30 @@ export const useCanvasStore = create<WorkspaceState>()(
       }
 
       // Update nodes with new expanded state
+      // Force complete node refresh to clear any cached dimensions
       set((state) => ({
         expandedNodeIds: newExpanded,
-        nodes: state.nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            isExpanded: newExpanded.has(node.id),
-          },
-        })),
+        nodes: state.nodes.map((node) => {
+          if (node.id === id) {
+            // Create completely new node object to force React Flow remeasure
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                isExpanded: newExpanded.has(node.id),
+              },
+              // Clear any style that might have cached dimensions
+              style: undefined,
+            };
+          }
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isExpanded: newExpanded.has(node.id),
+            },
+          };
+        }),
       }));
     },
 
@@ -550,15 +565,31 @@ export const useCanvasStore = create<WorkspaceState>()(
         newExpanded.delete(id);
       }
 
+      // Update nodes with new expanded state
+      // Force complete node refresh to clear any cached dimensions
       set((state) => ({
         expandedNodeIds: newExpanded,
-        nodes: state.nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            isExpanded: newExpanded.has(node.id),
-          },
-        })),
+        nodes: state.nodes.map((node) => {
+          if (node.id === id) {
+            // Create completely new node object to force React Flow remeasure
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                isExpanded: newExpanded.has(node.id),
+              },
+              // Clear any style that might have cached dimensions
+              style: undefined,
+            };
+          }
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isExpanded: newExpanded.has(node.id),
+            },
+          };
+        }),
       }));
     },
 
@@ -611,6 +642,8 @@ export const useCanvasStore = create<WorkspaceState>()(
           } else if (change.type === 'remove') {
             removeIds.add(change.id);
           }
+          // Explicitly ignore 'dimensions' changes - we control size via isExpanded state
+          // React Flow measures DOM dimensions, but we animate via Framer Motion
         }
         
         // Quick exit if no relevant changes
@@ -707,7 +740,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         id: `edge-${connection.source}-${connection.target}`,
         source: connection.source,
         target: connection.target,
-        type: 'smoothstep',
+        type: 'bezier',
         style: {
           stroke: '#6366f1',
           strokeWidth: 2,
@@ -1208,7 +1241,7 @@ export const useCanvasStore = create<WorkspaceState>()(
           id: `edge-merge-${sourceId}-${mergeNode.id}`,
           source: sourceId,
           target: mergeNode.id,
-          type: 'smoothstep',
+          type: 'bezier',
           animated: false,
           style: {
             stroke: '#10b981',
@@ -1251,7 +1284,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         id: `edge-${relationType}-${sourceId}-${targetId}`,
         source: sourceId,
         target: targetId,
-        type: 'smoothstep',
+        type: 'bezier',
         animated: relationType === 'reference',
         style,
         data: { relationType },

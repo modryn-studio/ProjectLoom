@@ -136,6 +136,11 @@ html {
   transition: opacity 0.2s ease;
 }
 
+/* Prevent horizontal scrollbars on nodes */
+.react-flow__node {
+  overflow: visible !important;
+}
+
 .react-flow__node:hover .react-flow__handle {
   opacity: 1;
 }

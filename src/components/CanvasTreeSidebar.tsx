@@ -42,6 +42,7 @@ interface ConversationTreeNode {
 interface ConversationTreeProps {
   workspaceId: string;
   isExpanded: boolean;
+  onFocusNode?: (nodeId: string) => void;
 }
 
 // Track collapsed conversation nodes
@@ -64,7 +65,7 @@ const createWorkspaceTreeSelector = (workspaceId: string) =>
     return JSON.stringify(arr);
   };
 
-function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
+function ConversationTree({ workspaceId, isExpanded, onFocusNode }: ConversationTreeProps) {
   const conversations = useCanvasStore(state => state.conversations);
   const selectedNodeIds = useCanvasStore(state => state.selectedNodeIds);
   const setSelected = useCanvasStore(state => state.setSelected);
@@ -136,14 +137,14 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treeKey, conversations, workspaceId]);
   
-  if (!isExpanded || rootNodes.length === 0) {
-    return null;
-  }
-  
   // PERFORMANCE: Memoize handler to prevent re-renders of child nodes
+  // IMPORTANT: Define ALL hooks before any conditional returns
   const handleSelectCard = useCallback((cardId: string) => {
     setSelected([cardId]);
-  }, [setSelected]);
+    if (onFocusNode) {
+      onFocusNode(cardId);
+    }
+  }, [setSelected, onFocusNode]);
   
   // Toggle collapse state for a conversation node
   const toggleNodeCollapse = useCallback((conversationId: string) => {
@@ -198,6 +199,11 @@ function ConversationTree({ workspaceId, isExpanded }: ConversationTreeProps) {
       });
     }
   }, [selectedNodeIds, conversations, workspaceId]);
+  
+  // Early return AFTER all hooks are defined (React hooks rules)
+  if (!isExpanded || rootNodes.length === 0) {
+    return null;
+  }
   
   // Recursive render
   function renderNode(node: ConversationTreeNode): React.ReactNode {
@@ -381,6 +387,7 @@ interface WorkspaceItemProps {
   triggerRename?: boolean;
   onRenameStart?: () => void;
   selectedNodeId?: string; // For auto-expanding when card is selected
+  onFocusNode?: (nodeId: string) => void;
 }
 
 function WorkspaceItem({ 
@@ -393,6 +400,7 @@ function WorkspaceItem({
   triggerRename,
   onRenameStart,
   selectedNodeId,
+  onFocusNode,
 }: WorkspaceItemProps) {
   const conversations = useCanvasStore(state => state.conversations);
   const [isHovered, setIsHovered] = useState(false);
@@ -688,7 +696,8 @@ function WorkspaceItem({
           >
             <ConversationTree 
               workspaceId={workspace.id} 
-              isExpanded={isTreeExpanded} 
+              isExpanded={isTreeExpanded}
+              onFocusNode={onFocusNode}
             />
           </motion.div>
         )}
@@ -705,9 +714,10 @@ interface CanvasTreeSidebarProps {
   onOpenSettings: () => void;
   isOpen: boolean;
   onToggle: (open: boolean) => void;
+  onFocusNode?: (nodeId: string) => void;
 }
 
-export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onToggle }: CanvasTreeSidebarProps) {
+export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onToggle, onFocusNode }: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
@@ -943,6 +953,7 @@ export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onTo
               triggerRename={triggerF2Rename}
               onRenameStart={handleRenameStart}
               selectedNodeId={Array.from(selectedNodeIds)[0]}
+              onFocusNode={onFocusNode}
             />
           ))
         )}
