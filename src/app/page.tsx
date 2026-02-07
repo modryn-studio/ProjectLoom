@@ -124,7 +124,7 @@ const styles: Record<string, React.CSSProperties> = {
   main: {
     width: '100vw',
     height: '100vh',
-    backgroundColor: colors.navy.bg,
+    backgroundColor: colors.bg.primary,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -135,7 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.navy.bg,
+    backgroundColor: colors.bg.primary,
   },
 
   loadingContent: {
@@ -148,15 +148,15 @@ const styles: Record<string, React.CSSProperties> = {
   spinner: {
     width: '40px',
     height: '40px',
-    border: `3px solid ${colors.navy.hover}`,
-    borderTopColor: colors.violet.primary,
+    border: `3px solid ${colors.accent.muted}`,
+    borderTopColor: colors.accent.primary,
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
 
   loadingText: {
     fontSize: '14px',
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     margin: 0,
   },
 };

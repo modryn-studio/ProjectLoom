@@ -15,8 +15,8 @@ import type { InheritanceMode, Message, Conversation } from '@/types';
 // =============================================================================
 
 const containerStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
-  borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+  backgroundColor: colors.bg.secondary,
+  borderBottom: '1px solid var(--border-primary)',
   borderRadius: effects.border.radius.default,
   overflow: 'hidden',
 };
@@ -58,8 +58,8 @@ function getModeLabel(mode: InheritanceMode): string {
 function getModeColor(mode: InheritanceMode): string {
   switch (mode) {
     case 'full': return colors.semantic.success;
-    case 'summary': return colors.amber.primary;
-    default: return colors.contrast.grayDark;
+    case 'summary': return colors.accent.primary;
+    default: return colors.fg.quaternary;
   }
 }
 
@@ -213,11 +213,11 @@ export function InheritedContextPanel() {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-          <GitBranch size={16} color={colors.amber.primary} />
+          <GitBranch size={16} color={colors.accent.primary} />
           <span style={{ 
             fontSize: typography.sizes.sm, 
             fontWeight: 500,
-            color: colors.contrast.white,
+            color: colors.fg.primary,
             fontFamily: typography.fonts.body,
           }}>
             Inherited from "{parentTitle}"
@@ -235,8 +235,8 @@ export function InheritedContextPanel() {
           {/* Message count badge */}
           <span style={{
             ...badgeStyles,
-            backgroundColor: colors.navy.dark,
-            color: colors.contrast.grayDark,
+            backgroundColor: colors.bg.inset,
+            color: colors.fg.quaternary,
           }}>
             <MessageSquare size={12} />
             {inheritedMessages.length}
@@ -254,7 +254,7 @@ export function InheritedContextPanel() {
               height: 24,
               background: 'transparent',
               border: 'none',
-              color: colors.contrast.grayDark,
+              color: colors.fg.quaternary,
               cursor: 'pointer',
             }}
           >
@@ -278,7 +278,7 @@ export function InheritedContextPanel() {
               <div>
                 <div style={{ 
                   fontSize: typography.sizes.xs, 
-                  color: colors.contrast.grayDark,
+                  color: colors.fg.quaternary,
                   marginBottom: spacing[1],
                   display: 'flex',
                   alignItems: 'center',
@@ -295,7 +295,7 @@ export function InheritedContextPanel() {
                   maxHeight: 200,
                   overflowY: 'auto',
                   padding: spacing[2],
-                  backgroundColor: colors.navy.dark,
+                  backgroundColor: colors.bg.inset,
                   borderRadius: effects.border.radius.default,
                 }}>
                   {inheritedMessages.slice(0, 5).map((msg: Message) => (
@@ -306,9 +306,9 @@ export function InheritedContextPanel() {
                         gap: spacing[2],
                         padding: spacing[1],
                         backgroundColor: msg.role === 'user' 
-                          ? 'rgba(99, 102, 241, 0.1)' 
+                          ? 'var(--accent-muted)' 
                           : msg.role === 'system'
-                          ? 'rgba(245, 158, 11, 0.08)'
+                          ? 'var(--warning-muted)'
                           : 'transparent',
                         borderRadius: effects.border.radius.default,
                       }}
@@ -318,10 +318,10 @@ export function InheritedContextPanel() {
                         width: 60,
                         fontSize: typography.sizes.xs,
                         color: msg.role === 'user' 
-                          ? colors.violet.primary 
+                          ? colors.accent.primary 
                           : msg.role === 'system'
-                          ? colors.amber.primary
-                          : colors.amber.primary,
+                          ? colors.accent.primary
+                          : colors.accent.primary,
                         fontWeight: 500,
                         fontFamily: typography.fonts.body,
                       }}>
@@ -329,7 +329,7 @@ export function InheritedContextPanel() {
                       </span>
                       <span style={{
                         fontSize: typography.sizes.xs,
-                        color: colors.contrast.gray,
+                        color: colors.fg.secondary,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: msg.role === 'system' && isSummaryMode ? 'pre-wrap' : 'nowrap',
@@ -346,7 +346,7 @@ export function InheritedContextPanel() {
                   {inheritedMessages.length > 5 && (
                     <div style={{
                       fontSize: typography.sizes.xs,
-                      color: colors.contrast.grayDark,
+                      color: colors.fg.quaternary,
                       textAlign: 'center',
                       padding: spacing[1],
                       fontFamily: typography.fonts.body,
@@ -361,7 +361,7 @@ export function InheritedContextPanel() {
               <div style={{
                 marginTop: spacing[2],
                 fontSize: typography.sizes.xs,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 fontFamily: typography.fonts.body,
               }}>
                 Inherited: {new Date(inheritedContext.timestamp).toLocaleString()}
@@ -378,10 +378,10 @@ export function InheritedContextPanel() {
                       alignItems: 'center',
                       gap: spacing[1],
                       padding: `${spacing[1]} ${spacing[2]}`,
-                      backgroundColor: isRegenerating ? colors.navy.dark : `${colors.amber.primary}15`,
-                      border: `1px solid ${colors.amber.primary}`,
+                      backgroundColor: isRegenerating ? colors.bg.inset : `${colors.accent.primary}15`,
+                      border: `1px solid ${colors.accent.primary}`,
                       borderRadius: effects.border.radius.default,
-                      color: isRegenerating ? colors.contrast.grayDark : colors.amber.primary,
+                      color: isRegenerating ? colors.fg.quaternary : colors.accent.primary,
                       fontSize: typography.sizes.xs,
                       fontFamily: typography.fonts.body,
                       cursor: isRegenerating ? 'not-allowed' : 'pointer',
@@ -395,7 +395,7 @@ export function InheritedContextPanel() {
                     {isRegenerating ? 'Regenerating...' : 'Regenerate Summary'}
                     {regenerateCostEstimate && !isRegenerating && (
                       <span style={{ 
-                        color: colors.contrast.grayDark,
+                        color: colors.fg.quaternary,
                         marginLeft: 4,
                       }}>
                         ({regenerateCostEstimate})

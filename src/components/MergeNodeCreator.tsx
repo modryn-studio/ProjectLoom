@@ -191,11 +191,11 @@ export function MergeNodeCreator({
   const getMergeStyle = () => {
     const count = selectedCardIds.length;
     if (count <= 3) {
-      return { border: 'border-emerald-500', bg: 'bg-emerald-500/10', icon: '⚡' };
+      return { border: 'border-success-solid', bg: 'bg-success-muted', icon: '⚡' };
     } else if (count <= 5) {
-      return { border: 'border-amber-500', bg: 'bg-amber-500/10', icon: '⚠️' };
+      return { border: 'border-warning-solid', bg: 'bg-warning-muted', icon: '⚠️' };
     }
-    return { border: 'border-red-500', bg: 'bg-red-500/10', icon: '🚫' };
+    return { border: 'border-error-solid', bg: 'bg-error-muted', icon: '🚫' };
   };
 
   const mergeStyle = getMergeStyle();
@@ -214,34 +214,34 @@ export function MergeNodeCreator({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="w-[480px] max-h-[80vh] bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl overflow-hidden"
+          className="w-[480px] max-h-[80vh] bg-bg-secondary rounded-xl border border-border-primary shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700 bg-zinc-800/50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-primary bg-bg-tertiary">
             <div className="flex items-center gap-2">
-              <GitMerge className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-lg font-semibold text-zinc-100">Create Merge Node</h2>
+              <GitMerge className="w-5 h-5 text-success-solid" />
+              <h2 className="text-lg font-semibold text-fg-primary">Create Merge Node</h2>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="p-1 rounded hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-primary transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Selected Cards Preview */}
-          <div className={`p-4 border-b border-zinc-700 ${mergeStyle.bg}`}>
+          <div className={`p-4 border-b border-border-primary ${mergeStyle.bg}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-zinc-300">
+              <span className="text-sm font-medium text-fg-secondary">
                 Selected Sources ({selectedCardIds.length}/{MERGE_CONFIG.MAX_PARENTS})
               </span>
               <span className="text-lg">{mergeStyle.icon}</span>
             </div>
 
             {selectedCards.length === 0 ? (
-              <div className="text-sm text-zinc-500 italic">
+              <div className="text-sm text-fg-tertiary italic">
                 Select at least 2 cards below to merge
               </div>
             ) : (
@@ -254,13 +254,13 @@ export function MergeNodeCreator({
                   return (
                     <div
                       key={card.id}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg ${mergeStyle.border} border bg-zinc-800`}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg ${mergeStyle.border} border bg-bg-tertiary`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-zinc-200 text-sm truncate max-w-[140px]">
+                        <span className="text-fg-primary text-sm truncate max-w-[140px]">
                           {card.metadata.title}
                         </span>
-                        <span className="text-zinc-500 text-xs whitespace-nowrap">{msgCount} msgs</span>
+                        <span className="text-fg-tertiary text-xs whitespace-nowrap">{msgCount} msgs</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {/* Inheritance mode toggle */}
@@ -269,8 +269,8 @@ export function MergeNodeCreator({
                           disabled={isGenerating || isCreating}
                           className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                             mode === 'summary'
-                              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/40'
-                              : 'bg-zinc-700 text-zinc-400 border border-zinc-600 hover:text-zinc-200'
+                              ? 'bg-accent-muted text-accent-primary border border-accent-primary/40'
+                              : 'bg-bg-tertiary text-fg-tertiary border border-border-secondary hover:text-fg-primary'
                           } ${isGenerating ? 'opacity-60' : ''}`}
                           title={mode === 'full' ? 'Click for AI Summary' : 'Click for Full Context'}
                         >
@@ -286,7 +286,7 @@ export function MergeNodeCreator({
                         {/* Remove button */}
                         <button
                           onClick={() => handleRemoveCard(card.id)}
-                          className="p-0.5 rounded-full hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200"
+                          className="p-0.5 rounded-full hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-primary"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -299,7 +299,7 @@ export function MergeNodeCreator({
 
             {/* Warning for complex merges */}
             {isOverWarning && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-amber-400">
+              <div className="mt-2 flex items-center gap-2 text-xs text-warning-solid">
                 <AlertTriangle className="w-4 h-4" />
                 <span>
                   {isAtLimit
@@ -326,24 +326,24 @@ export function MergeNodeCreator({
                     className={`
                       w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors
                       ${isSelected
-                        ? 'bg-emerald-500/20 border border-emerald-500/50'
+                        ? 'bg-success-muted border border-success-solid/50'
                         : isDisabled
-                          ? 'opacity-50 cursor-not-allowed bg-zinc-800/30'
-                          : 'hover:bg-zinc-800 border border-transparent'
+                          ? 'opacity-50 cursor-not-allowed bg-bg-tertiary/30'
+                          : 'hover:bg-bg-tertiary border border-transparent'
                       }
                     `}
                   >
                     <div className={`
                       w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0
-                      ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-600'}
+                      ${isSelected ? 'bg-success-solid border-success-solid' : 'border-border-secondary'}
                     `}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-zinc-200 truncate">
+                      <div className="text-sm font-medium text-fg-primary truncate">
                         {card.metadata.title}
                       </div>
-                      <div className="text-xs text-zinc-500">
+                      <div className="text-xs text-fg-tertiary">
                         {messageCount} messages
                         {card.parentCardIds.length > 0 && (
                           <span> • branched from {card.parentCardIds.length} source(s)</span>
@@ -357,45 +357,45 @@ export function MergeNodeCreator({
           </div>
 
           {/* Synthesis Prompt */}
-          <div className="p-4 border-t border-zinc-700">
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+          <div className="p-4 border-t border-border-primary">
+            <label className="block text-sm font-medium text-fg-secondary mb-2">
               Synthesis Prompt (optional)
             </label>
             <textarea
               value={synthesisPrompt}
               onChange={(e) => setSynthesisPrompt(e.target.value)}
               placeholder="e.g., Compare the REST and GraphQL approaches and recommend the best option..."
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 resize-none"
+              className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-sm text-fg-primary placeholder:text-fg-tertiary focus:outline-none focus:ring-2 focus:ring-success-solid/50 focus:border-success-solid resize-none"
               rows={2}
             />
           </div>
 
           {/* Context Summary */}
-          <div className="px-4 py-2 bg-zinc-800/50 text-xs text-zinc-400 flex justify-between">
+          <div className="px-4 py-2 bg-bg-tertiary text-xs text-fg-tertiary flex justify-between">
             <span>Total context: {totalMessages} messages</span>
             <span>~{estimatedTokens.toLocaleString()} tokens</span>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mx-4 mb-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-md text-xs text-red-400">
+            <div className="mx-4 mb-2 px-3 py-2 bg-error-muted border border-error-solid/30 rounded-md text-xs text-error-solid">
               {error}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 p-4 border-t border-zinc-700">
+          <div className="flex gap-3 p-4 border-t border-border-primary">
             <button
               onClick={onClose}
               disabled={isCreating}
-              className="flex-1 px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 text-sm font-medium text-fg-secondary bg-bg-tertiary hover:bg-bg-secondary rounded-lg transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleCreateMerge}
               disabled={!canCreate || isCreating}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-success-solid hover:bg-success-solid/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isCreating ? (
                 <>

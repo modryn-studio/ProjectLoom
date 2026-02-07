@@ -69,9 +69,9 @@ const overlayStyles: React.CSSProperties = {
 };
 
 const dialogStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.md,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  border: '1px solid var(--border-primary)',
   boxShadow: effects.shadow.lg,
   width: '90%',
   maxWidth: '600px',
@@ -83,7 +83,7 @@ const dialogStyles: React.CSSProperties = {
 
 const headerStyles: React.CSSProperties = {
   padding: spacing[4],
-  borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+  borderBottom: '1px solid var(--border-primary)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -97,7 +97,7 @@ const contentStyles: React.CSSProperties = {
 
 const footerStyles: React.CSSProperties = {
   padding: spacing[4],
-  borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
+  borderTop: '1px solid var(--border-primary)',
   display: 'flex',
   justifyContent: 'flex-end',
   gap: spacing[2],
@@ -374,14 +374,14 @@ export function BranchDialog() {
           {/* Header */}
           <div style={headerStyles}>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-              <span style={{ color: colors.amber.primary }}>
+              <span style={{ color: colors.accent.primary }}>
                 <GitBranchIcon size={24} />
               </span>
               <h2 style={{ 
                 margin: 0, 
                 fontSize: '1.25rem', 
                 fontWeight: 600,
-                color: colors.contrast.white,
+                color: colors.fg.primary,
                 fontFamily: typography.fonts.heading,
               }}>
                 Branch from "{sourceConversation.metadata.title}"
@@ -398,7 +398,7 @@ export function BranchDialog() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
               }}
             >
               <XIcon />
@@ -416,7 +416,7 @@ export function BranchDialog() {
                   marginBottom: spacing[1],
                   fontSize: typography.sizes.sm,
                   fontWeight: 500,
-                  color: colors.contrast.gray,
+                  color: colors.fg.secondary,
                   fontFamily: typography.fonts.body,
                 }}
               >
@@ -432,10 +432,10 @@ export function BranchDialog() {
                 style={{
                   width: '100%',
                   padding: spacing[2],
-                  backgroundColor: colors.navy.dark,
-                  border: `1px solid rgba(99, 102, 241, 0.3)`,
+                  backgroundColor: colors.bg.inset,
+                  border: '1px solid var(--border-primary)',
                   borderRadius: effects.border.radius.default,
-                  color: colors.contrast.white,
+                  color: colors.fg.primary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   resize: 'none',
@@ -446,7 +446,7 @@ export function BranchDialog() {
               <div style={{ 
                 marginTop: spacing[1], 
                 fontSize: typography.sizes.xs, 
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 fontFamily: typography.fonts.body,
               }}>
                 {branchReason.length}/60 characters
@@ -461,7 +461,7 @@ export function BranchDialog() {
                   marginBottom: spacing[2],
                   fontSize: typography.sizes.sm,
                   fontWeight: 500,
-                  color: colors.contrast.gray,
+                  color: colors.fg.secondary,
                   fontFamily: typography.fonts.body,
                 }}
               >
@@ -477,11 +477,11 @@ export function BranchDialog() {
                       gap: spacing[2],
                       padding: spacing[2],
                       backgroundColor: inheritanceMode === option.id 
-                        ? `${colors.amber.primary}15` 
-                        : colors.navy.dark,
+                        ? `${colors.accent.primary}15` 
+                        : colors.bg.inset,
                       border: `1px solid ${inheritanceMode === option.id 
-                        ? colors.amber.primary 
-                        : 'rgba(99, 102, 241, 0.3)'}`,
+                        ? colors.accent.primary 
+                        : 'var(--border-primary)'}`,
                       borderRadius: effects.border.radius.default,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
@@ -496,7 +496,7 @@ export function BranchDialog() {
                       style={{ marginTop: '2px' }}
                     />
                     <div style={{ 
-                      color: inheritanceMode === option.id ? colors.amber.primary : colors.contrast.grayDark,
+                      color: inheritanceMode === option.id ? colors.accent.primary : colors.fg.quaternary,
                       marginTop: '2px',
                     }}>
                       {option.icon}
@@ -504,7 +504,7 @@ export function BranchDialog() {
                     <div>
                       <div style={{ 
                         fontWeight: 500, 
-                        color: colors.contrast.white,
+                        color: colors.fg.primary,
                         marginBottom: '2px',
                         fontFamily: typography.fonts.body,
                       }}>
@@ -512,7 +512,7 @@ export function BranchDialog() {
                       </div>
                       <div style={{ 
                         fontSize: typography.sizes.xs, 
-                        color: colors.contrast.grayDark,
+                        color: colors.fg.quaternary,
                         fontFamily: typography.fonts.body,
                       }}>
                         {option.description}
@@ -527,13 +527,13 @@ export function BranchDialog() {
             {stats && (
               <div style={{
                 padding: spacing[2],
-                backgroundColor: colors.navy.dark,
+                backgroundColor: colors.bg.inset,
                 borderRadius: effects.border.radius.default,
                 fontSize: typography.sizes.xs,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 fontFamily: typography.fonts.body,
               }}>
-                <strong style={{ color: colors.contrast.gray }}>Context preview:</strong>{' '}
+                <strong style={{ color: colors.fg.secondary }}>Context preview:</strong>{' '}
                 {inheritanceMode === 'full' 
                   ? `${stats.totalMessages} messages (${stats.totalTokens.toLocaleString()} tokens) — full context passed to AI`
                   : `${stats.totalMessages} messages → AI will generate a concise summary`
@@ -565,14 +565,14 @@ export function BranchDialog() {
               <div style={{
                 marginTop: spacing[2],
                 padding: spacing[2],
-                backgroundColor: `${colors.amber.primary}15`,
-                border: `1px solid ${colors.amber.primary}`,
+                backgroundColor: `${colors.accent.primary}15`,
+                border: `1px solid ${colors.accent.primary}`,
                 borderRadius: effects.border.radius.default,
                 display: 'flex',
                 alignItems: 'center',
                 gap: spacing[1],
                 fontSize: typography.sizes.xs,
-                color: colors.amber.primary,
+                color: colors.accent.primary,
                 fontFamily: typography.fonts.body,
               }}>
                 <AlertCircleIcon />
@@ -600,13 +600,13 @@ export function BranchDialog() {
                 style={{
                   width: 16,
                   height: 16,
-                  accentColor: colors.amber.primary,
+                  accentColor: colors.accent.primary,
                   cursor: 'pointer',
                 }}
               />
               <span style={{
                 fontSize: typography.sizes.xs,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 fontFamily: typography.fonts.body,
               }}>
                 Remember this choice as default
@@ -618,9 +618,9 @@ export function BranchDialog() {
               style={{
                 padding: `${spacing[2]} ${spacing[3]}`,
                 backgroundColor: 'transparent',
-                border: `1px solid rgba(99, 102, 241, 0.3)`,
+                border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.gray,
+                color: colors.fg.secondary,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
@@ -634,13 +634,13 @@ export function BranchDialog() {
               style={{
                 padding: `${spacing[2]} ${spacing[3]}`,
                 backgroundColor: !branchReason.trim() || validationError || isGeneratingSummary
-                  ? colors.navy.dark 
-                  : colors.amber.primary,
+                  ? colors.bg.inset 
+                  : colors.accent.primary,
                 border: 'none',
                 borderRadius: effects.border.radius.default,
                 color: !branchReason.trim() || validationError || isGeneratingSummary
-                  ? colors.contrast.grayDark 
-                  : colors.navy.dark,
+                  ? colors.fg.quaternary 
+                  : colors.bg.inset,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 fontWeight: 500,

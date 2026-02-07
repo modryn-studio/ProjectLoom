@@ -238,32 +238,30 @@ function ConversationCardComponent({
         whileHover={
           // Disable hover effect when ANY node is being dragged
           isAnyNodeDragging ? {} : {
-            y: card.hover.lift,
             boxShadow: effects.glow.cardHover,
           }
         }
         transition={{
           scale: { duration: 0.2, ease: 'easeOut' },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
-          y: { duration: 0.15, ease: 'easeOut' },
         }}
         style={{
           ...cardStyles.container,
           zIndex: cardZIndex,
           // v4: Visual indicators for active card, merge nodes, and branched cards
           borderColor: isActiveInChatPanel
-            ? colors.amber.primary  // Amber for active chat panel card
+            ? colors.accent.primary  // Accent for active chat panel card
             : isMergeNode
             ? (isAtMaxMerge 
                 ? colors.semantic.error     // Red at max (5 parents)
                 : isComplexMerge 
-                  ? colors.semantic.warning  // Amber warning at 3+ parents
+                  ? colors.semantic.warning  // Warning at 3+ parents
                   : colors.semantic.success) // Green for healthy merge (2 parents)
             : isBranchedCard
-            ? colors.amber.dark        // Amber for branched cards
+            ? colors.accent.emphasis        // Accent emphasis for branched cards
             : isSelected || selected
-            ? colors.amber.primary
-            : 'rgba(102, 126, 234, 0.4)',
+            ? colors.accent.primary
+            : 'var(--border-primary)',
           borderWidth: isActiveInChatPanel || isMergeNode || isBranchedCard ? 2 : 1,
         }}
         onContextMenu={handleContextMenu}
@@ -301,7 +299,7 @@ function ConversationCardComponent({
               }}
               title="Branched card"
             >
-              <GitBranch size={14} color={colors.amber.dark} />
+              <GitBranch size={14} color={colors.accent.emphasis} />
             </span>
           )}
           <h3 style={cardStyles.title}>{metadata.title}</h3>
@@ -390,24 +388,30 @@ function ConversationCardComponent({
 // =============================================================================
 
 const handleStyle: React.CSSProperties = {
-  width: 10,
-  height: 10,
-  backgroundColor: colors.violet.primary,
-  border: `2px solid ${colors.navy.bg}`,
+  width: 18,
+  height: 18,
+  backgroundColor: colors.accent.primary,
+  border: `2px solid ${colors.bg.primary}`,
+  borderRadius: '50%',
+  cursor: 'crosshair',
+  // Ensure handles stay above card content
+  zIndex: 10,
+  // Optimize pointer events - only handle itself is clickable
+  pointerEvents: 'all',
 };
 
 const cardStyles: Record<string, React.CSSProperties> = {
   container: {
-    backgroundColor: colors.navy.light,
+    backgroundColor: colors.bg.secondary,
     borderRadius: effects.border.radius.md,
-    border: '1px solid rgba(102, 126, 234, 0.4)',  // Consistent border width
+    border: `1px solid ${colors.border.default}`,
     padding: spacing.card.padding,
     cursor: 'grab',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
     gap: spacing.card.gap,
-    willChange: 'border-color',  // Optimize border transitions
+    willChange: 'border-color',
   },
 
   header: {
@@ -421,7 +425,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: '15px',
     fontWeight: 600,
-    color: '#e4e4f0',
+    color: 'var(--fg-primary)',
     fontFamily: typography.fonts.heading,
     margin: 0,
     lineHeight: 1.3,
@@ -445,7 +449,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
 
   timestamp: {
     fontSize: typography.sizes.xs,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     fontFamily: typography.fonts.body,
   },
 
@@ -462,7 +466,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
 
   previewText: {
     fontSize: '13px',
-    color: '#9ca3af',
+    color: 'var(--fg-secondary)',
     lineHeight: 1.5,  // Slightly more line height
     margin: 0,
     overflow: 'hidden',

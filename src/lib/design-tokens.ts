@@ -1,68 +1,81 @@
 /**
  * ProjectLoom Design Tokens
  * 
- * Complete design system including colors, typography, spacing,
- * animations, and effect parameters. Phase 1 uses core tokens,
- * Phase 2 uses advanced effects.
+ * Complete design system using CSS custom properties for theme-aware colors.
+ * Colors reference CSS variables defined in globals.css, enabling light/dark
+ * theme switching without component changes.
  * 
- * @version 1.0.0
+ * Typography, spacing, and animation remain as static values.
+ * 
+ * @version 2.0.0 - Neutral theme system (Zinc-based, professional, easy on eyes)
  */
 
 // =============================================================================
-// COLOR PALETTE
+// COLOR PALETTE - CSS Variable References (theme-aware)
 // =============================================================================
 
 export const colors = {
-  // Primary backgrounds
-  navy: {
-    bg: '#1a1d2e',
-    light: '#252b42',    // Lighter card background
-    dark: '#12141f',
-    hover: 'rgba(102, 126, 234, 0.4)',  // Border hover
+  // Background colors (maps to CSS --bg-* variables)
+  bg: {
+    primary: 'var(--bg-primary)',
+    secondary: 'var(--bg-secondary)',
+    tertiary: 'var(--bg-tertiary)',
+    inset: 'var(--bg-inset)',
+    overlay: 'var(--bg-overlay)',
   },
   
-  // Primary accent - threads, active states
-  amber: {
-    primary: '#fbbf24',
-    light: '#fcd34d',
-    dark: '#f59e0b',
-    muted: 'rgba(251, 191, 36, 0.2)',
-    glow: 'rgba(251, 191, 36, 0.4)',
+  // Foreground/text colors (maps to CSS --fg-* variables)
+  fg: {
+    primary: 'var(--fg-primary)',
+    secondary: 'var(--fg-secondary)',
+    tertiary: 'var(--fg-tertiary)',
+    quaternary: 'var(--fg-quaternary)',
   },
   
-  // Secondary accent - nodes, UI elements
-  violet: {
-    primary: '#6366f1',
-    light: '#818cf8',
-    dark: '#4f46e5',
-    muted: 'rgba(99, 102, 241, 0.2)',
-    glow: 'rgba(99, 102, 241, 0.4)',
+  // Border colors (maps to CSS --border-* variables)
+  border: {
+    default: 'var(--border-default)',
+    muted: 'var(--border-muted)',
+    strong: 'var(--border-strong)',
   },
   
-  // Contrast colors
-  contrast: {
-    black: '#0f1419',
-    white: '#e4e4f0',     // Bright white for titles
-    gray: '#9ca3af',      // Medium gray for preview
-    grayLight: '#d1d5db',
-    grayDark: '#6b7280',  // Dim gray for timestamps
+  // Accent color (subtle blue for interactions)
+  accent: {
+    primary: 'var(--accent-primary)',
+    secondary: 'var(--accent-secondary)',
+    muted: 'var(--accent-muted)',
+    emphasis: 'var(--accent-emphasis)',
   },
   
   // Semantic colors
   semantic: {
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
-    info: '#3b82f6',
+    success: 'var(--success-solid)',
+    successBg: 'var(--success-bg)',
+    successFg: 'var(--success-fg)',
+    successBorder: 'var(--success-border)',
+    
+    warning: 'var(--warning-solid)',
+    warningBg: 'var(--warning-bg)',
+    warningFg: 'var(--warning-fg)',
+    warningBorder: 'var(--warning-border)',
+    
+    error: 'var(--error-solid)',
+    errorBg: 'var(--error-bg)',
+    errorFg: 'var(--error-fg)',
+    errorBorder: 'var(--error-border)',
+    
+    info: 'var(--info-solid)',
+    infoBg: 'var(--info-bg)',
+    infoFg: 'var(--info-fg)',
+    infoBorder: 'var(--info-border)',
   },
   
-  // Edge/connection colors
-  edge: {
-    default: '#6366f1',
-    hover: '#818cf8',
-    active: '#fbbf24',
-    muted: 'rgba(99, 102, 241, 0.5)',
+  // Focus and selection
+  focus: {
+    ring: 'var(--focus-ring)',
+    selection: 'var(--selection-bg)',
   },
+  
 } as const;
 
 // =============================================================================
@@ -245,19 +258,21 @@ export const effects = {
     cardExpanded: '0 16px 48px rgba(0, 0, 0, 0.25)',
   },
   
-  // Glow effects (Phase 1 core, Phase 2 advanced)
+  // Glow effects - uses accent color from CSS variables
   glow: {
-    // Core glows for Phase 1
-    amber: `0 0 20px ${colors.amber.glow}`,
-    violet: `0 0 20px ${colors.violet.glow}`,
-    
-    // Advanced glows for Phase 2
-    amberIntense: `0 0 30px ${colors.amber.glow}, 0 0 60px ${colors.amber.muted}`,
-    violetIntense: `0 0 30px ${colors.violet.glow}, 0 0 60px ${colors.violet.muted}`,
+    // Core glows using new accent system
+    accent: '0 0 20px var(--accent-muted)',
+    accentStrong: '0 0 12px var(--accent-primary)',
     
     // Card glows
-    cardActive: `0 0 0 2px ${colors.amber.primary}, 0 0 20px ${colors.amber.glow}`,
-    cardHover: `0 0 0 1px ${colors.violet.primary}, 0 0 15px ${colors.violet.glow}`,
+    cardActive: '0 0 0 2px var(--accent-primary), 0 0 20px var(--accent-muted)',
+    cardHover: '0 0 0 1px var(--border-strong)',
+    
+    // Semantic glows
+    success: '0 0 12px var(--success-border)',
+    warning: '0 0 12px var(--warning-border)',
+    error: '0 0 12px var(--error-border)',
+    
   },
   
   // Blur effects (Phase 2)
@@ -276,20 +291,20 @@ export const effects = {
     },
   },
   
-  // Particle effects config (Phase 2)
+  // Particle effects config (Phase 2) - using CSS variables
   particles: {
     contextFlow: {
       count: 5,
       speed: 2,
       size: 3,
-      color: colors.amber.primary,
+      color: 'var(--accent-primary)',
       trail: true,
     },
     drag: {
       count: 3,
       speed: 1,
       size: 2,
-      color: colors.violet.light,
+      color: 'var(--accent-secondary)',
       trail: false,
     },
   },
@@ -319,8 +334,8 @@ export const effects = {
 export const canvas = {
   // Background
   background: {
-    color: colors.navy.bg,
-    dotColor: 'rgba(99, 102, 241, 0.15)',
+    color: 'var(--bg-primary)',
+    dotColor: 'var(--border-default)',
     dotSize: 1.5,
     dotGap: 20,
   },
@@ -329,9 +344,9 @@ export const canvas = {
   minimap: {
     width: 150,
     height: 100,
-    backgroundColor: colors.navy.dark,
-    nodeColor: colors.violet.muted,
-    maskColor: 'rgba(26, 29, 46, 0.8)',
+    backgroundColor: 'var(--bg-secondary)',
+    nodeColor: 'var(--accent-muted)',
+    maskColor: 'var(--bg-overlay)',
   },
   
   // Viewport
@@ -345,17 +360,17 @@ export const canvas = {
   // Connection lines
   connectionLine: {
     type: 'bezier' as const,
-    stroke: colors.violet.primary,
+    stroke: 'var(--accent-primary)',
     strokeWidth: 2,
-    animated: false,  // Phase 1: no animation
+    animated: false,
   },
   
   // Edge styling
   edge: {
-    stroke: colors.edge.default,
+    stroke: 'var(--accent-primary)',
     strokeWidth: 2,
-    strokeHover: colors.edge.hover,
-    strokeActive: colors.edge.active,
+    strokeHover: 'var(--accent-secondary)',
+    strokeActive: 'var(--accent-emphasis)',
     curvature: 0.25,
   },
 } as const;
@@ -386,8 +401,8 @@ export const card = {
     fontSize: typography.sizes.xs,
     padding: '0 8px',
     borderRadius: effects.border.radius.full,
-    backgroundColor: colors.violet.muted,
-    color: colors.contrast.white,
+    backgroundColor: 'var(--accent-muted)',
+    color: 'var(--fg-primary)',
   },
   
   // Hover animation values

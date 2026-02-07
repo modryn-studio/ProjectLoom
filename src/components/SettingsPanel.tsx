@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, AlertCircle, Monitor, Sun, Moon } from 'lucide-react';
 
-import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences } from '@/stores/preferences-store';
-import { apiKeyManager, type ProviderType } from '@/lib/api-key-manager';
+import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences, selectTheme, type ThemeMode } from '@/stores/preferences-store';
+import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
 import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
 import type { InheritanceMode } from '@/types';
 
@@ -25,9 +25,9 @@ const overlayStyles: React.CSSProperties = {
 };
 
 const panelStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.md,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  border: `1px solid ${colors.border.default}`,
   boxShadow: effects.shadow.lg,
   width: '90%',
   maxWidth: '500px',
@@ -39,7 +39,7 @@ const panelStyles: React.CSSProperties = {
 
 const headerStyles: React.CSSProperties = {
   padding: spacing[4],
-  borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+  borderBottom: `1px solid ${colors.border.default}`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -58,7 +58,7 @@ const sectionStyles: React.CSSProperties = {
 const sectionTitleStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
   fontWeight: 600,
-  color: colors.contrast.white,
+  color: colors.fg.primary,
   marginBottom: spacing[2],
   display: 'flex',
   alignItems: 'center',
@@ -68,7 +68,7 @@ const sectionTitleStyles: React.CSSProperties = {
 
 const labelStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
-  color: colors.contrast.gray,
+  color: colors.fg.secondary,
   marginBottom: spacing[1],
   fontFamily: typography.fonts.body,
 };
@@ -76,10 +76,10 @@ const labelStyles: React.CSSProperties = {
 const selectStyles: React.CSSProperties = {
   width: '100%',
   padding: `${spacing[2]} ${spacing[3]}`,
-  backgroundColor: colors.navy.dark,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  backgroundColor: colors.bg.inset,
+  border: `1px solid ${colors.border.default}`,
   borderRadius: effects.border.radius.default,
-  color: colors.contrast.white,
+  color: colors.fg.primary,
   fontSize: typography.sizes.sm,
   fontFamily: typography.fonts.body,
   cursor: 'pointer',
@@ -96,14 +96,14 @@ const checkboxLabelStyles: React.CSSProperties = {
 
 const descriptionStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
-  color: colors.contrast.grayDark,
+  color: colors.fg.tertiary,
   marginTop: spacing[1],
   fontFamily: typography.fonts.body,
 };
 
 const footerStyles: React.CSSProperties = {
   padding: spacing[3],
-  borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
+  borderTop: `1px solid ${colors.border.default}`,
   display: 'flex',
   justifyContent: 'flex-end',
   gap: spacing[2],
@@ -146,8 +146,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   // Preferences state
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const currentTheme = usePreferencesStore(selectTheme);
   const setBranchingPreferences = usePreferencesStore((s) => s.setBranchingPreferences);
   const setUIPreferences = usePreferencesStore((s) => s.setUIPreferences);
+  const setTheme = usePreferencesStore((s) => s.setTheme);
   const resetToDefaults = usePreferencesStore((s) => s.resetToDefaults);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
@@ -157,6 +159,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [keysLoaded, setKeysLoaded] = useState(false);
+  const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
 
   // Load preferences and API keys on mount
   useEffect(() => {
@@ -167,8 +170,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     if (isOpen && !keysLoaded) {
       const savedAnthropicKey = apiKeyManager.getKey('anthropic');
       const savedOpenAIKey = apiKeyManager.getKey('openai');
+      const currentStoragePreference = apiKeyManager.getStoragePreference();
+
       if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
       if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
+      setStoragePreference(currentStoragePreference);
       setKeysLoaded(true);
     }
   }, [isOpen, keysLoaded]);
@@ -212,6 +218,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   }, []);
 
+  const handleChangeStoragePreference = useCallback((type: StorageType) => {
+    apiKeyManager.setStoragePreference(type);
+    setStoragePreference(type);
+  }, []);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -233,11 +244,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             {/* Header */}
             <div style={headerStyles}>
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Settings size={20} color={colors.amber.primary} />
+                <Settings size={20} color={colors.accent.primary} />
                 <h2 style={{
                   fontSize: typography.sizes.lg,
                   fontWeight: 600,
-                  color: colors.contrast.white,
+                  color: colors.fg.primary,
                   fontFamily: typography.fonts.heading,
                   margin: 0,
                 }}>
@@ -249,7 +260,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: colors.contrast.grayDark,
+                  color: colors.fg.quaternary,
                   cursor: 'pointer',
                   padding: spacing[1],
                   borderRadius: effects.border.radius.default,
@@ -264,10 +275,66 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
             {/* Content */}
             <div style={contentStyles}>
+              {/* Appearance Section */}
+              <div style={sectionStyles}>
+                <div style={sectionTitleStyles}>
+                  <Monitor size={16} color={colors.accent.primary} />
+                  Appearance
+                </div>
+
+                {/* Theme Selector */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>Theme</label>
+                  <div style={{
+                    display: 'flex',
+                    gap: spacing[2],
+                  }}>
+                    {([
+                      { id: 'system', label: 'System', icon: Monitor },
+                      { id: 'light', label: 'Light', icon: Sun },
+                      { id: 'dark', label: 'Dark', icon: Moon },
+                    ] as const).map((option) => {
+                      const Icon = option.icon;
+                      const isSelected = currentTheme === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => setTheme(option.id)}
+                          style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: spacing[1],
+                            padding: `${spacing[2]} ${spacing[3]}`,
+                            backgroundColor: isSelected ? colors.accent.muted : colors.bg.inset,
+                            border: `1px solid ${isSelected ? colors.accent.primary : colors.border.default}`,
+                            borderRadius: effects.border.radius.default,
+                            color: isSelected ? colors.accent.primary : colors.fg.secondary,
+                            fontSize: typography.sizes.sm,
+                            fontFamily: typography.fonts.body,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <Icon size={14} />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={descriptionStyles}>
+                    {currentTheme === 'system' && 'Follows your operating system preference'}
+                    {currentTheme === 'light' && 'Light theme for bright environments'}
+                    {currentTheme === 'dark' && 'Dark theme for reduced eye strain'}
+                  </p>
+                </div>
+              </div>
+
               {/* Branching Section */}
               <div style={sectionStyles}>
                 <div style={sectionTitleStyles}>
-                  <GitBranch size={16} color={colors.amber.primary} />
+                  <GitBranch size={16} color={colors.accent.primary} />
                   Branching
                 </div>
 
@@ -303,14 +370,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     style={{
                       width: 16,
                       height: 16,
-                      accentColor: colors.amber.primary,
+                      accentColor: colors.accent.primary,
                       cursor: 'pointer',
                     }}
                   />
                   <div>
                     <span style={{
                       fontSize: typography.sizes.sm,
-                      color: colors.contrast.white,
+                      color: colors.fg.primary,
                       fontFamily: typography.fonts.body,
                     }}>
                       Always show branch dialog
@@ -325,7 +392,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               {/* UI Section */}
               <div style={sectionStyles}>
                 <div style={sectionTitleStyles}>
-                  <Settings size={16} color={colors.violet.primary} />
+                  <Settings size={16} color={colors.accent.primary} />
                   Interface
                 </div>
 
@@ -338,14 +405,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     style={{
                       width: 16,
                       height: 16,
-                      accentColor: colors.amber.primary,
+                      accentColor: colors.accent.primary,
                       cursor: 'pointer',
                     }}
                   />
                   <div>
                     <span style={{
                       fontSize: typography.sizes.sm,
-                      color: colors.contrast.white,
+                      color: colors.fg.primary,
                       fontFamily: typography.fonts.body,
                     }}>
                       Show canvas tree sidebar
@@ -365,14 +432,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     style={{
                       width: 16,
                       height: 16,
-                      accentColor: colors.amber.primary,
+                      accentColor: colors.accent.primary,
                       cursor: 'pointer',
                     }}
                   />
                   <div>
                     <span style={{
                       fontSize: typography.sizes.sm,
-                      color: colors.contrast.white,
+                      color: colors.fg.primary,
                       fontFamily: typography.fonts.body,
                     }}>
                       Show inherited context panel
@@ -392,14 +459,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     style={{
                       width: 16,
                       height: 16,
-                      accentColor: colors.amber.primary,
+                      accentColor: colors.accent.primary,
                       cursor: 'pointer',
                     }}
                   />
                   <div>
                     <span style={{
                       fontSize: typography.sizes.sm,
-                      color: colors.contrast.white,
+                      color: colors.fg.primary,
                       fontFamily: typography.fonts.body,
                     }}>
                       Confirm before deleting
@@ -421,6 +488,25 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <p style={{ ...descriptionStyles, marginBottom: spacing[3] }}>
                   Your API keys are stored locally in your browser and never sent to our servers.
                 </p>
+
+                {/* Storage Type */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>Storage Type</label>
+                  <select
+                    value={storagePreference}
+                    onChange={(e) => handleChangeStoragePreference(e.target.value as StorageType)}
+                    style={selectStyles}
+                  >
+                    <option value="localStorage">Persistent (localStorage) - Keys remain across sessions</option>
+                    <option value="sessionStorage">Session Only (sessionStorage) - Keys cleared when tab closes (more secure)</option>
+                  </select>
+                  <p style={descriptionStyles}>
+                    Current storage: <strong style={{ color: colors.fg.primary }}>
+                      {storagePreference === 'localStorage' ? 'Persistent' : 'Session Only'}
+                    </strong>
+                    {storagePreference === 'sessionStorage' && ' - You will need to re-enter keys when you reopen the tab'}
+                  </p>
+                </div>
 
                 {/* Anthropic Key */}
                 <div style={{ marginBottom: spacing[3] }}>
@@ -449,7 +535,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           transform: 'translateY(-50%)',
                           background: 'none',
                           border: 'none',
-                          color: colors.contrast.grayDark,
+                          color: colors.fg.quaternary,
                           cursor: 'pointer',
                           padding: spacing[1],
                         }}
@@ -459,7 +545,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </div>
                     {anthropicKey && (
                       <>
-                        <span style={{ display: 'flex', alignItems: 'center', color: '#10b981' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
                           <CheckCircle size={16} />
                         </span>
                         <button
@@ -468,7 +554,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: colors.contrast.grayDark,
+                            color: colors.fg.quaternary,
                             cursor: 'pointer',
                             padding: spacing[1],
                           }}
@@ -507,7 +593,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           transform: 'translateY(-50%)',
                           background: 'none',
                           border: 'none',
-                          color: colors.contrast.grayDark,
+                          color: colors.fg.quaternary,
                           cursor: 'pointer',
                           padding: spacing[1],
                         }}
@@ -517,7 +603,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </div>
                     {openaiKey && (
                       <>
-                        <span style={{ display: 'flex', alignItems: 'center', color: '#10b981' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
                           <CheckCircle size={16} />
                         </span>
                         <button
@@ -526,7 +612,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: colors.contrast.grayDark,
+                            color: colors.fg.quaternary,
                             cursor: 'pointer',
                             padding: spacing[1],
                           }}
@@ -547,9 +633,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 style={{
                   padding: `${spacing[2]} ${spacing[3]}`,
                   backgroundColor: 'transparent',
-                  border: `1px solid rgba(99, 102, 241, 0.3)`,
+                  border: `1px solid var(--border-primary)`,
                   borderRadius: effects.border.radius.default,
-                  color: colors.contrast.grayDark,
+                  color: colors.fg.quaternary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   cursor: 'pointer',
@@ -565,10 +651,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onClick={onClose}
                 style={{
                   padding: `${spacing[2]} ${spacing[3]}`,
-                  backgroundColor: colors.amber.primary,
+                  backgroundColor: colors.accent.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: colors.navy.dark,
+                  color: colors.bg.inset,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: 500,
@@ -605,10 +691,10 @@ export function SettingsButton({ onClick }: SettingsButtonProps) {
         width: 48,
         height: 48,
         borderRadius: '50%',
-        backgroundColor: colors.navy.light,
-        border: `1px solid rgba(99, 102, 241, 0.3)`,
+        backgroundColor: colors.bg.secondary,
+        border: `1px solid var(--border-primary)`,
         boxShadow: effects.shadow.lg,
-        color: colors.contrast.gray,
+        color: colors.fg.secondary,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -617,13 +703,13 @@ export function SettingsButton({ onClick }: SettingsButtonProps) {
         zIndex: 100,
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = colors.navy.dark;
-        e.currentTarget.style.color = colors.amber.primary;
+        e.currentTarget.style.backgroundColor = colors.bg.inset;
+        e.currentTarget.style.color = colors.accent.primary;
         e.currentTarget.style.transform = 'scale(1.05)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = colors.navy.light;
-        e.currentTarget.style.color = colors.contrast.gray;
+        e.currentTarget.style.backgroundColor = colors.bg.secondary;
+        e.currentTarget.style.color = colors.fg.secondary;
         e.currentTarget.style.transform = 'scale(1)';
       }}
     >

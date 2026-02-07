@@ -228,21 +228,16 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
             gap: spacing[1],
             padding: `${spacing[1]} ${spacing[1]}`,
             paddingLeft: `${8 + depth * 16}px`,
-            backgroundColor: isSelected ? `${colors.amber.primary}20` : 'transparent',
+            backgroundColor: isSelected ? `${colors.accent.primary}20` : 'transparent',
             borderRadius: effects.border.radius.default,
             fontSize: typography.sizes.xs,
             fontFamily: typography.fonts.body,
-            color: colors.contrast.grayDark,
+            color: colors.fg.quaternary,
             transition: 'background-color 0.15s ease',
-            borderLeft: isMerge 
-              ? `2px solid ${colors.semantic.success}` 
-              : isBranched 
-                ? `2px solid ${colors.amber.primary}` 
-                : '2px solid transparent',
           }}
           onMouseEnter={(e) => {
             if (!isSelected) {
-              e.currentTarget.style.backgroundColor = `${colors.violet.primary}10`;
+              e.currentTarget.style.backgroundColor = `${colors.accent.primary}10`;
             }
           }}
           onMouseLeave={(e) => {
@@ -265,7 +260,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
               }}
             >
               {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
@@ -283,9 +278,9 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
             {isMerge ? (
               <Zap size={12} color={colors.semantic.success} />
             ) : isBranched ? (
-              <GitBranch size={12} color={colors.amber.primary} />
+              <GitBranch size={12} color={colors.accent.primary} />
             ) : (
-              <MessageSquare size={12} color={colors.contrast.grayDark} />
+              <MessageSquare size={12} color={colors.fg.quaternary} />
             )}
             
             {/* Title */}
@@ -295,7 +290,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                color: isSelected ? colors.amber.primary : colors.contrast.white,
+                color: isSelected ? colors.accent.primary : colors.fg.primary,
               }}
               title={conversation.metadata.title}
             >
@@ -346,7 +341,7 @@ const headerStyles: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: spacing[3],
-  borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+  borderBottom: '1px solid var(--border-secondary)',
   flexShrink: 0,
 };
 
@@ -363,10 +358,10 @@ const toggleButtonStyles: React.CSSProperties = {
   top: spacing[3],
   left: spacing[3],
   padding: spacing[2],
-  backgroundColor: colors.navy.light,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  backgroundColor: colors.bg.secondary,
+  border: '1px solid var(--border-primary)',
   borderRadius: effects.border.radius.default,
-  color: colors.contrast.grayDark,
+  color: colors.fg.quaternary,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
@@ -491,7 +486,7 @@ function WorkspaceItem({
           gap: spacing[1],
           padding: `${spacing[1]} ${spacing[2]}`,
           paddingLeft: spacing[1],
-          backgroundColor: isActive ? `${colors.amber.primary}15` : 'transparent',
+          backgroundColor: isActive ? `${colors.accent.primary}15` : 'transparent',
           borderRadius: effects.border.radius.default,
           cursor: 'pointer',
           transition: 'background-color 0.15s ease',
@@ -519,7 +514,7 @@ function WorkspaceItem({
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            color: colors.contrast.grayDark,
+            color: colors.fg.quaternary,
           }}
           title={isTreeExpanded ? 'Collapse' : 'Expand'}
         >
@@ -527,7 +522,7 @@ function WorkspaceItem({
         </button>
         
         {/* Icon */}
-        <Folder size={14} color={isActive ? colors.amber.primary : colors.contrast.grayDark} />
+        <Folder size={14} color={isActive ? colors.accent.primary : colors.fg.quaternary} />
 
         {/* Name (or rename input) */}
         {isRenaming ? (
@@ -549,9 +544,9 @@ function WorkspaceItem({
               flex: 1,
               fontSize: typography.sizes.sm,
               fontFamily: typography.fonts.body,
-              color: colors.contrast.white,
-              backgroundColor: colors.navy.dark,
-              border: `1px solid ${colors.amber.primary}`,
+              color: colors.fg.primary,
+              backgroundColor: colors.bg.inset,
+              border: `1px solid ${colors.accent.primary}`,
               borderRadius: effects.border.radius.default,
               padding: `2px ${spacing[1]}`,
               outline: 'none',
@@ -564,7 +559,7 @@ function WorkspaceItem({
               flex: 1,
               fontSize: typography.sizes.sm,
               fontFamily: typography.fonts.body,
-              color: isActive ? colors.amber.primary : colors.contrast.white,
+              color: isActive ? colors.accent.primary : colors.fg.primary,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -585,11 +580,11 @@ function WorkspaceItem({
                 }}
                 style={{
                   background: 'none',
-                  border: `1px solid rgba(99, 102, 241, 0.3)`,
+                  border: '1px solid var(--border-primary)',
                   padding: spacing[1],
                   cursor: 'pointer',
                   borderRadius: effects.border.radius.default,
-                  color: colors.contrast.grayDark,
+                  color: colors.fg.quaternary,
                   display: 'flex',
                   alignItems: 'center',
                 }}
@@ -618,8 +613,8 @@ function WorkspaceItem({
               position: 'fixed',
               left: contextMenuPos.x,
               top: contextMenuPos.y,
-              backgroundColor: colors.navy.light,
-              border: `1px solid rgba(99, 102, 241, 0.3)`,
+              backgroundColor: colors.bg.secondary,
+              border: '1px solid var(--border-primary)',
               borderRadius: effects.border.radius.default,
               boxShadow: effects.shadow.lg,
               padding: spacing[1],
@@ -638,14 +633,14 @@ function WorkspaceItem({
                 background: 'none',
                 border: 'none',
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.white,
+                color: colors.fg.primary,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
                 textAlign: 'left',
                 transition: 'background-color 0.15s ease',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${colors.violet.primary}15`}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = `${colors.accent.primary}15`}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <Edit2 size={14} />
@@ -821,8 +816,8 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
     minWidth: MIN_SIDEBAR_WIDTH,
     maxWidth: MAX_SIDEBAR_WIDTH,
     flexShrink: 0,
-    backgroundColor: colors.navy.light,
-    borderRight: `1px solid rgba(99, 102, 241, 0.2)`,
+    backgroundColor: colors.bg.secondary,
+    borderRight: '1px solid var(--border-secondary)',
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
@@ -836,13 +831,22 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
   const resizeHandleStyles: React.CSSProperties = {
     position: 'absolute',
     top: 0,
-    right: -2,
-    width: isResizing || isResizeHovered ? 4 : 4,
+    right: 0,
+    width: 16,
     height: '100%',
     cursor: 'ew-resize',
-    backgroundColor: isResizing || isResizeHovered ? colors.amber.primary : 'transparent',
-    transition: isResizing ? 'none' : 'background-color 0.15s ease, width 0.15s ease',
     zIndex: 10,
+  };
+  
+  const resizeLineStyles: React.CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 3,
+    height: '100%',
+    backgroundColor: isResizing || isResizeHovered ? colors.accent.primary : 'transparent',
+    transition: isResizing ? 'none' : 'background-color 0.15s ease',
+    pointerEvents: 'none',
   };
 
   // Don't render anything when closed - toggle button is in breadcrumb
@@ -865,13 +869,15 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
         onMouseDown={handleMouseDown}
         onMouseEnter={() => setIsResizeHovered(true)}
         onMouseLeave={() => setIsResizeHovered(false)}
-      />
+      >
+        <div style={resizeLineStyles} />
+      </div>
       {/* Header */}
       <div style={headerStyles}>
         <span style={{
           fontSize: typography.sizes.sm,
           fontWeight: 600,
-          color: colors.contrast.white,
+          color: colors.fg.primary,
           fontFamily: typography.fonts.heading,
         }}>
           Workspaces
@@ -885,8 +891,8 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
               padding: spacing[1],
               cursor: 'pointer',
               borderRadius: effects.border.radius.default,
-              color: colors.navy.dark,
-              backgroundColor: colors.amber.primary,
+              color: colors.bg.inset,
+              backgroundColor: colors.accent.primary,
               display: 'flex',
               alignItems: 'center',
             }}
@@ -898,11 +904,11 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
             onClick={() => setIsOpen(false)}
             style={{
               background: 'none',
-              border: `1px solid rgba(99, 102, 241, 0.3)`,
+              border: '1px solid var(--border-primary)',
               padding: spacing[1],
               cursor: 'pointer',
               borderRadius: effects.border.radius.default,
-              color: colors.contrast.grayDark,
+              color: colors.fg.quaternary,
               display: 'flex',
               alignItems: 'center',
             }}
@@ -919,7 +925,7 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
           <div style={{
             textAlign: 'center',
             padding: spacing[4],
-            color: colors.contrast.grayDark,
+            color: colors.fg.quaternary,
             fontSize: typography.sizes.sm,
             fontFamily: typography.fonts.body,
           }}>
@@ -930,10 +936,10 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
               style={{
                 marginTop: spacing[2],
                 padding: `${spacing[2]} ${spacing[3]}`,
-                backgroundColor: colors.amber.primary,
+                backgroundColor: colors.accent.primary,
                 border: 'none',
                 borderRadius: effects.border.radius.default,
-                color: colors.navy.dark,
+                color: colors.bg.inset,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
@@ -964,9 +970,9 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
       {/* Footer with stats and settings */}
       <div style={{
         padding: spacing[2],
-        borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
+        borderTop: '1px solid var(--border-secondary)',
         fontSize: typography.sizes.xs,
-        color: colors.contrast.grayDark,
+        color: colors.fg.quaternary,
         fontFamily: typography.fonts.body,
         flexShrink: 0,
         display: 'flex',
@@ -982,9 +988,9 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
               style={{
                 padding: spacing[2],
                 backgroundColor: 'transparent',
-                border: `1px solid rgba(99, 102, 241, 0.3)`,
+                border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.gray,
+                color: colors.fg.secondary,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -992,12 +998,12 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.navy.dark;
-                e.currentTarget.style.color = colors.violet.primary;
+                e.currentTarget.style.backgroundColor = colors.bg.inset;
+                e.currentTarget.style.color = colors.accent.primary;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = colors.contrast.gray;
+                e.currentTarget.style.color = colors.fg.secondary;
               }}
             >
               <Bot size={14} />
@@ -1009,9 +1015,9 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
           style={{
             padding: spacing[2],
             backgroundColor: 'transparent',
-            border: `1px solid rgba(99, 102, 241, 0.3)`,
+            border: '1px solid var(--border-primary)',
             borderRadius: effects.border.radius.default,
-            color: colors.contrast.gray,
+            color: colors.fg.secondary,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -1019,12 +1025,12 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
             transition: 'all 0.2s ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = colors.navy.dark;
-            e.currentTarget.style.color = colors.amber.primary;
+            e.currentTarget.style.backgroundColor = colors.bg.inset;
+            e.currentTarget.style.color = colors.accent.primary;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = colors.contrast.gray;
+            e.currentTarget.style.color = colors.fg.secondary;
           }}
         >
           <Settings size={14} />

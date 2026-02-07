@@ -34,9 +34,9 @@ interface ToastState {
 const AUTO_HIDE_MS = 5000; // 5 seconds per spec
 
 const ICONS: Record<ActionType, React.ReactNode> = {
-  branch: <GitBranch className="w-4 h-4 text-amber-400" />,
-  merge: <GitMerge className="w-4 h-4 text-emerald-400" />,
-  delete: <Trash2 className="w-4 h-4 text-red-400" />,
+  branch: <GitBranch className="w-4 h-4 text-warning-solid" />,
+  merge: <GitMerge className="w-4 h-4 text-success-solid" />,
+  delete: <Trash2 className="w-4 h-4 text-error-solid" />,
 };
 
 // =============================================================================
@@ -162,12 +162,12 @@ export function UndoToast() {
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="fixed bottom-4 right-4 z-50"
         >
-          <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl shadow-black/40">
+          <div className="flex items-center gap-3 px-4 py-3 bg-bg-secondary border border-border-primary rounded-lg shadow-xl shadow-black/40">
             {/* Icon */}
             {ICONS[toast.type]}
             
             {/* Message */}
-            <span className="text-sm text-zinc-200">
+            <span className="text-sm text-fg-primary">
               {toast.message}
             </span>
             
@@ -176,7 +176,7 @@ export function UndoToast() {
               {toast.canUndo && (
                 <button
                   onClick={handleUndo}
-                  className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-accent-primary hover:text-accent-secondary hover:bg-accent-muted rounded transition-colors"
                 >
                   <Undo2 className="w-3.5 h-3.5" />
                   Undo
@@ -185,7 +185,7 @@ export function UndoToast() {
               
               <button
                 onClick={handleDismiss}
-                className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 rounded transition-colors"
+                className="p-1 text-fg-tertiary hover:text-fg-primary hover:bg-bg-tertiary rounded transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -197,7 +197,7 @@ export function UndoToast() {
             initial={{ scaleX: 1 }}
             animate={{ scaleX: 0 }}
             transition={{ duration: AUTO_HIDE_MS / 1000, ease: 'linear' }}
-            className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-600 origin-left rounded-b-lg"
+            className="absolute bottom-0 left-0 right-0 h-0.5 bg-border-secondary origin-left rounded-b-lg"
           />
         </motion.div>
       )}

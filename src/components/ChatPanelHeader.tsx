@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useCallback, memo } from 'react';
-import { X, GitBranch, Zap } from 'lucide-react';
+import { X, GitBranch, Zap, Maximize2 } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
-import { ModelSelector } from './ModelSelector';
 import type { Conversation } from '@/types';
 
 // =============================================================================
@@ -16,20 +15,13 @@ import type { Conversation } from '@/types';
 interface ChatPanelHeaderProps {
   conversation: Conversation;
   onClose: () => void;
-  /** Currently selected model ID */
-  currentModel?: string | null;
-  /** Callback when model is changed */
-  onModelChange?: (modelId: string) => void;
-  /** Whether any API key is configured */
-  hasApiKey?: boolean;
+  onMaximize?: () => void;
 }
 
 export const ChatPanelHeader = memo(function ChatPanelHeader({ 
   conversation, 
   onClose,
-  currentModel,
-  onModelChange,
-  hasApiKey = true,
+  onMaximize,
 }: ChatPanelHeaderProps) {
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
@@ -85,28 +77,25 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
         {/* Branch indicator icon */}
         {isBranchedCard && !isMergeNode && (
           <span style={headerStyles.indicator} title="Branched card">
-            <GitBranch size={16} color={colors.amber.dark} />
+            <GitBranch size={16} color={colors.accent.emphasis} />
           </span>
         )}
 
         <h2 style={headerStyles.title}>{conversation.metadata.title}</h2>
-        
-        {/* Message count badge */}
-        <span style={headerStyles.badge}>
-          {conversation.metadata.messageCount} msgs
-        </span>
       </div>
 
       {/* Right side: Actions */}
       <div style={headerStyles.actions}>
-        {/* Model Selector */}
-        {onModelChange && (
-          <ModelSelector
-            currentModel={currentModel ?? null}
-            onModelChange={onModelChange}
-            hasApiKey={hasApiKey}
-            compact
-          />
+        {/* Maximize button */}
+        {onMaximize && (
+          <button
+            onClick={onMaximize}
+            style={headerStyles.actionButton}
+            title="Maximize chat (fullscreen)"
+            aria-label="Maximize chat"
+          >
+            <Maximize2 size={16} />
+          </button>
         )}
 
         {/* Branch button */}
@@ -142,9 +131,9 @@ const headerStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: `${spacing[3]} ${spacing[4]}`,
-    borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
-    backgroundColor: colors.navy.dark,
+    padding: `${spacing[2]} ${spacing[3]}`,
+    borderBottom: '1px solid var(--border-secondary)',
+    backgroundColor: colors.bg.secondary,
     flexShrink: 0,
     gap: spacing[2],
   },
@@ -164,9 +153,9 @@ const headerStyles: Record<string, React.CSSProperties> = {
   },
 
   title: {
-    fontSize: typography.sizes.base,
+    fontSize: typography.sizes.sm,
     fontWeight: 600,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontFamily: typography.fonts.heading,
     margin: 0,
     lineHeight: 1.3,
@@ -174,16 +163,6 @@ const headerStyles: Record<string, React.CSSProperties> = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     flex: 1,
-  },
-
-  badge: {
-    fontSize: typography.sizes.xs,
-    padding: `2px ${spacing[2]}`,
-    borderRadius: effects.border.radius.default,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    color: colors.violet.light,
-    fontFamily: typography.fonts.code,
-    flexShrink: 0,
   },
 
   actions: {
@@ -199,9 +178,9 @@ const headerStyles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: spacing[2],
     backgroundColor: 'transparent',
-    border: `1px solid rgba(99, 102, 241, 0.3)`,
+    border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
@@ -212,9 +191,9 @@ const headerStyles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: spacing[2],
     backgroundColor: 'transparent',
-    border: `1px solid rgba(99, 102, 241, 0.3)`,
+    border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },

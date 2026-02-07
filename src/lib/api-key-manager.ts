@@ -13,13 +13,14 @@
 // =============================================================================
 
 export type ProviderType = 'anthropic' | 'openai';
+export type StorageType = 'localStorage' | 'sessionStorage';
 
 export interface APIKeyInfo {
   /** The API key (if available) */
   key: string | null;
   /** Source of the key */
-  source: 'env' | 'localStorage' | 'none';
-  /** Whether this is a dev-mode key (localStorage) */
+  source: 'env' | 'localStorage' | 'sessionStorage' | 'none';
+  /** Whether this is a dev-mode key (browser storage) */
   isDevMode: boolean;
 }
 
@@ -33,11 +34,7 @@ export interface APIKeyStatus {
 // =============================================================================
 
 const STORAGE_KEY = 'projectloom:api-keys';
-
-const ENV_VAR_MAP: Record<ProviderType, string> = {
-  anthropic: 'NEXT_PUBLIC_ANTHROPIC_API_KEY',
-  openai: 'NEXT_PUBLIC_OPENAI_API_KEY',
-};
+const STORAGE_PREF_KEY = 'projectloom:storage-preference';
 
 const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
@@ -50,15 +47,28 @@ const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
 
 class APIKeyManager {
   /**
-   * Check if localStorage is available
+   * Get the storage object based on preference
+   */
+  private getStorage(): Storage | null {
+    if (typeof window === 'undefined') return null;
+
+    const preference = this.getStoragePreference();
+    return preference === 'sessionStorage' ? window.sessionStorage : window.localStorage;
+  }
+
+  /**
+   * Check if storage is available
    */
   private isStorageAvailable(): boolean {
     if (typeof window === 'undefined') return false;
-    
+
     try {
+      const storage = this.getStorage();
+      if (!storage) return false;
+
       const testKey = '__storage_test__';
-      window.localStorage.setItem(testKey, testKey);
-      window.localStorage.removeItem(testKey);
+      storage.setItem(testKey, testKey);
+      storage.removeItem(testKey);
       return true;
     } catch {
       return false;
@@ -66,24 +76,59 @@ class APIKeyManager {
   }
 
   /**
-   * Get environment variable key
+   * Get storage preference (defaults to localStorage for backwards compatibility)
    */
-  private getEnvKey(provider: ProviderType): string | null {
-    const envVar = ENV_VAR_MAP[provider];
-    const value = process.env[envVar];
-    return value && value.length > 0 ? value : null;
+  getStoragePreference(): StorageType {
+    if (typeof window === 'undefined') return 'localStorage';
+
+    try {
+      // Storage preference itself is always in localStorage to persist across sessions
+      const pref = window.localStorage.getItem(STORAGE_PREF_KEY);
+      return pref === 'sessionStorage' ? 'sessionStorage' : 'localStorage';
+    } catch {
+      return 'localStorage';
+    }
   }
 
   /**
-   * Get stored keys from localStorage
+   * Set storage preference
+   */
+  setStoragePreference(type: StorageType): boolean {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      // Storage preference is always stored in localStorage
+      window.localStorage.setItem(STORAGE_PREF_KEY, type);
+
+      // If switching storage types, migrate existing keys
+      const oldStorage = type === 'sessionStorage' ? window.localStorage : window.sessionStorage;
+      const newStorage = type === 'sessionStorage' ? window.sessionStorage : window.localStorage;
+
+      const oldData = oldStorage.getItem(STORAGE_KEY);
+      if (oldData) {
+        newStorage.setItem(STORAGE_KEY, oldData);
+        oldStorage.removeItem(STORAGE_KEY);
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get stored keys from browser storage
    */
   private getStoredKeys(): Record<string, string> {
     if (!this.isStorageAvailable()) return {};
-    
+
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const storage = this.getStorage();
+      if (!storage) return {};
+
+      const raw = storage.getItem(STORAGE_KEY);
       if (!raw) return {};
-      
+
       const parsed = JSON.parse(raw);
       // Deobfuscate keys
       const result: Record<string, string> = {};
@@ -118,14 +163,8 @@ class APIKeyManager {
 
   /**
    * Get API key for a provider
-   * Priority: Environment variables > localStorage
    */
   getKey(provider: ProviderType): string | null {
-    // 1. Check environment variables (production)
-    const envKey = this.getEnvKey(provider);
-    if (envKey) return envKey;
-    
-    // 2. Fall back to localStorage (development)
     const storedKeys = this.getStoredKeys();
     return storedKeys[provider] || null;
   }
@@ -134,25 +173,17 @@ class APIKeyManager {
    * Get detailed key info for a provider
    */
   getKeyInfo(provider: ProviderType): APIKeyInfo {
-    const envKey = this.getEnvKey(provider);
-    if (envKey) {
-      return {
-        key: envKey,
-        source: 'env',
-        isDevMode: false,
-      };
-    }
-    
     const storedKeys = this.getStoredKeys();
     const localKey = storedKeys[provider];
     if (localKey) {
+      const storageType = this.getStoragePreference();
       return {
         key: localKey,
-        source: 'localStorage',
+        source: storageType,
         isDevMode: true,
       };
     }
-    
+
     return {
       key: null,
       source: 'none',
@@ -161,22 +192,25 @@ class APIKeyManager {
   }
 
   /**
-   * Save API key to localStorage
+   * Save API key to browser storage
    */
   saveKey(provider: ProviderType, key: string): boolean {
     if (!this.isStorageAvailable()) return false;
-    
+
     try {
+      const storage = this.getStorage();
+      if (!storage) return false;
+
       const keys = this.getStoredKeys();
       keys[provider] = key;
-      
+
       // Obfuscate before storing
       const toStore: Record<string, string> = {};
       for (const [k, v] of Object.entries(keys)) {
         toStore[k] = this.obfuscate(v);
       }
-      
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+
+      storage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       return true;
     } catch {
       return false;
@@ -184,22 +218,25 @@ class APIKeyManager {
   }
 
   /**
-   * Remove API key from localStorage
+   * Remove API key from browser storage
    */
   removeKey(provider: ProviderType): boolean {
     if (!this.isStorageAvailable()) return false;
-    
+
     try {
+      const storage = this.getStorage();
+      if (!storage) return false;
+
       const keys = this.getStoredKeys();
       delete keys[provider];
-      
+
       // Obfuscate remaining before storing
       const toStore: Record<string, string> = {};
       for (const [k, v] of Object.entries(keys)) {
         toStore[k] = this.obfuscate(v);
       }
-      
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+
+      storage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       return true;
     } catch {
       return false;
@@ -211,9 +248,12 @@ class APIKeyManager {
    */
   clearKeys(): boolean {
     if (!this.isStorageAvailable()) return false;
-    
+
     try {
-      window.localStorage.removeItem(STORAGE_KEY);
+      const storage = this.getStorage();
+      if (!storage) return false;
+
+      storage.removeItem(STORAGE_KEY);
       return true;
     } catch {
       return false;

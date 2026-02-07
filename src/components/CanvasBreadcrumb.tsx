@@ -16,7 +16,7 @@ const containerStyles: React.CSSProperties = {
   alignItems: 'center',
   gap: spacing[1],
   padding: `${spacing[2]} ${spacing[3]}`,
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.default,
   flexWrap: 'wrap',
   minHeight: '40px',
@@ -31,7 +31,7 @@ const breadcrumbItemStyles: React.CSSProperties = {
 };
 
 const clickableCrumbStyles: React.CSSProperties = {
-  color: colors.contrast.gray,
+  color: colors.fg.secondary,
   cursor: 'pointer',
   padding: `${spacing[1]} ${spacing[2]}`,
   borderRadius: effects.border.radius.default,
@@ -39,13 +39,13 @@ const clickableCrumbStyles: React.CSSProperties = {
 };
 
 const activeCrumbStyles: React.CSSProperties = {
-  color: colors.amber.primary,
+  color: colors.accent.primary,
   padding: `${spacing[1]} ${spacing[2]}`,
   fontWeight: 500,
 };
 
 const chevronStyles: React.CSSProperties = {
-  color: colors.contrast.grayDark,
+  color: colors.fg.quaternary,
   flexShrink: 0,
 };
 
@@ -66,10 +66,10 @@ const mergeBadgeStyles: React.CSSProperties = {
 
 const sidebarToggleButtonStyles: React.CSSProperties = {
   padding: spacing[2],
-  backgroundColor: colors.navy.dark,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  backgroundColor: colors.bg.inset,
+  border: `1px solid var(--border-primary)`,
   borderRadius: effects.border.radius.default,
-  color: colors.contrast.grayDark,
+  color: colors.fg.quaternary,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
@@ -172,12 +172,12 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
           style={sidebarToggleButtonStyles}
           title="Open workspace list"
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = colors.navy.hover;
-            e.currentTarget.style.borderColor = colors.amber.primary;
+            e.currentTarget.style.backgroundColor = colors.accent.muted;
+            e.currentTarget.style.borderColor = colors.accent.primary;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = colors.navy.dark;
-            e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)';
+            e.currentTarget.style.backgroundColor = colors.bg.inset;
+            e.currentTarget.style.borderColor = 'var(--border-primary)';
           }}
         >
           <PanelLeft size={16} />
@@ -195,16 +195,16 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
           <span
             style={{
               ...breadcrumbItemStyles,
-              color: colors.contrast.grayDark,
+              color: colors.fg.quaternary,
             }}
           >
             {workspaceName}
           </span>
           <span style={{
             fontSize: typography.sizes.xs,
-            color: colors.contrast.grayDark,
+            color: colors.fg.quaternary,
             padding: `${spacing[1]} ${spacing[2]}`,
-            backgroundColor: 'rgba(100, 116, 139, 0.1)',
+            backgroundColor: 'var(--bg-tertiary)',
             borderRadius: effects.border.radius.default,
             display: 'flex',
             alignItems: 'center',
@@ -213,7 +213,7 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
             <span>{totalCards} {totalCards === 1 ? 'card' : 'cards'}</span>
             {mergeNodes > 0 && (
               <>
-                <span style={{ color: 'rgba(100, 116, 139, 0.5)' }}>|</span>
+                <span style={{ color: 'var(--fg-tertiary)' }}>|</span>
                 <span style={{ color: colors.semantic.success }}>{mergeNodes} {mergeNodes === 1 ? 'merge' : 'merges'}</span>
               </>
             )}
@@ -228,8 +228,8 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
           alignItems: 'center',
           gap: spacing[1],
           padding: `${spacing[1]} ${spacing[2]}`,
-          backgroundColor: colors.amber.muted,
-          color: colors.amber.primary,
+          backgroundColor: colors.accent.muted,
+          color: colors.accent.primary,
           borderRadius: effects.border.radius.default,
           fontSize: typography.sizes.xs,
           fontWeight: 600,
@@ -261,7 +261,7 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
                 onClick={() => !isLast && handleCrumbClick(conv.id)}
                 onMouseEnter={(e) => {
                   if (!isLast) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = colors.navy.dark;
+                    (e.currentTarget as HTMLElement).style.backgroundColor = colors.bg.inset;
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -292,19 +292,19 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
                       transform: 'translateX(-50%)',
                       marginTop: spacing[1],
                       padding: spacing[2],
-                      backgroundColor: colors.navy.dark,
-                      border: `1px solid ${colors.navy.light}`,
+                      backgroundColor: colors.bg.inset,
+                      border: `1px solid ${colors.bg.secondary}`,
                       borderRadius: effects.border.radius.default,
                       fontSize: typography.sizes.xs,
                       whiteSpace: 'nowrap',
                       zIndex: 1000,
                       pointerEvents: 'none',
                     }}>
-                      <div style={{ color: colors.contrast.grayDark, marginBottom: spacing[1], fontSize: typography.sizes.xs }}>
+                      <div style={{ color: colors.fg.quaternary, marginBottom: spacing[1], fontSize: typography.sizes.xs }}>
                         Also merged from:
                       </div>
                       {otherParentNames.map((name, i) => (
-                        <div key={i} style={{ color: colors.contrast.gray }}>• {name}</div>
+                        <div key={i} style={{ color: colors.fg.secondary }}>• {name}</div>
                       ))}
                     </div>
                   )}

@@ -36,12 +36,12 @@ export function CustomConnectionLine({
       <path
         d={path}
         fill="none"
-        stroke={colors.amber.primary}
+        stroke={colors.accent.primary}
         strokeWidth={3}
         strokeDasharray="8, 4"
         className="connection-line-animated"
         style={{
-          filter: `drop-shadow(0 0 4px ${colors.amber.glow})`,
+          filter: `drop-shadow(0 0 4px ${colors.accent.muted})`,
         }}
       />
       
@@ -50,9 +50,9 @@ export function CustomConnectionLine({
         cx={toX}
         cy={toY}
         r={8}
-        fill={colors.amber.primary}
+        fill={colors.accent.primary}
         style={{
-          filter: `drop-shadow(0 0 8px ${colors.amber.glow})`,
+          filter: `drop-shadow(0 0 8px ${colors.accent.muted})`,
         }}
       >
         <animate
@@ -74,7 +74,7 @@ export function CustomConnectionLine({
         cx={toX}
         cy={toY}
         r={4}
-        fill={colors.amber.light}
+        fill={colors.accent.secondary}
       />
     </g>
   );

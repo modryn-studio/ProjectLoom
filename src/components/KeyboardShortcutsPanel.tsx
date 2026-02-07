@@ -42,9 +42,9 @@ const overlayStyles: React.CSSProperties = {
 };
 
 const dialogStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.md,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  border: '1px solid var(--border-primary)',
   boxShadow: effects.shadow.lg,
   width: '90%',
   maxWidth: '520px',
@@ -56,7 +56,7 @@ const dialogStyles: React.CSSProperties = {
 
 const headerStyles: React.CSSProperties = {
   padding: spacing[4],
-  borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+  borderBottom: '1px solid var(--border-secondary)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -75,7 +75,7 @@ const categoryStyles: React.CSSProperties = {
 const categoryTitleStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
   fontWeight: 600,
-  color: colors.contrast.grayDark,
+  color: colors.fg.quaternary,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   marginBottom: spacing[2],
@@ -86,12 +86,12 @@ const shortcutRowStyles: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: `${spacing[2]} 0`,
-  borderBottom: `1px solid rgba(255, 255, 255, 0.05)`,
+  borderBottom: '1px solid var(--border-secondary)',
 };
 
 const shortcutDescriptionStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
-  color: colors.contrast.grayLight,
+  color: colors.fg.tertiary,
 };
 
 const kbdStyles: React.CSSProperties = {
@@ -99,12 +99,12 @@ const kbdStyles: React.CSSProperties = {
   alignItems: 'center',
   gap: spacing[1],
   padding: `${spacing[1]} ${spacing[2]}`,
-  backgroundColor: colors.navy.dark,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  backgroundColor: colors.bg.inset,
+  border: '1px solid var(--border-primary)',
   borderRadius: effects.border.radius.sm,
   fontSize: typography.sizes.xs,
   fontFamily: typography.fonts.code,
-  color: colors.contrast.white,
+  color: colors.fg.primary,
   minWidth: '24px',
   justifyContent: 'center',
 };
@@ -183,8 +183,8 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                   width: 32, 
                   height: 32, 
                   borderRadius: effects.border.radius.sm,
-                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                  color: colors.violet.primary,
+                  backgroundColor: 'var(--accent-muted)',
+                  color: colors.accent.primary,
                 }}>
                   <Keyboard size={18} />
                 </div>
@@ -192,7 +192,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                   margin: 0, 
                   fontSize: '1.125rem', 
                   fontWeight: 600, 
-                  color: colors.contrast.white 
+                  color: colors.fg.primary 
                 }}>
                   Keyboard Shortcuts
                 </h2>
@@ -203,7 +203,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: colors.contrast.gray,
+                  color: colors.fg.secondary,
                   padding: spacing[1],
                   borderRadius: effects.border.radius.sm,
                   display: 'flex',
@@ -212,11 +212,11 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                   transition: 'color 0.15s, background-color 0.15s',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = colors.contrast.white;
+                  e.currentTarget.style.color = colors.fg.primary;
                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = colors.contrast.gray;
+                  e.currentTarget.style.color = colors.fg.secondary;
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
@@ -257,9 +257,9 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
               <div style={{ 
                 marginTop: spacing[4],
                 paddingTop: spacing[3],
-                borderTop: `1px solid rgba(255, 255, 255, 0.1)`,
+                borderTop: '1px solid var(--border-secondary)',
                 fontSize: typography.sizes.xs,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 textAlign: 'center',
               }}>
                 {isMac ? '⌘ = Command key' : 'Ctrl = Control key'}

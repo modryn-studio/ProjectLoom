@@ -108,35 +108,35 @@ export function InlineBranchPanel({
         exit={{ opacity: 0, scale: 0.95, y: -10 }}
         transition={{ duration: 0.15, ease: 'easeOut' }}
         className={`
-          absolute z-50 w-72 bg-zinc-900 rounded-lg border border-zinc-700
+          absolute z-50 w-72 bg-bg-secondary rounded-lg border border-border-default
           shadow-xl shadow-black/50
           ${position === 'right' ? 'left-full ml-2' : 'right-full mr-2'}
         `}
         style={{ top: '-8px' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-700">
-          <div className="flex items-center gap-2 text-sm font-medium text-zinc-100">
-            <GitBranch className="w-4 h-4 text-amber-400" />
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
+          <div className="flex items-center gap-2 text-sm font-medium text-fg-primary">
+            <GitBranch className="w-4 h-4 text-accent-primary" />
             <span>Branch from message {messageIndex + 1}</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="p-1 rounded hover:bg-bg-tertiary text-fg-tertiary hover:text-fg-secondary transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Context Info */}
-        <div className="px-3 py-2 bg-zinc-800/50 text-xs text-zinc-400">
+        <div className="px-3 py-2 bg-bg-tertiary text-xs text-fg-tertiary">
           <div className="flex justify-between">
             <span>Messages to inherit:</span>
-            <span className="text-zinc-200">{contextMessageCount} of {totalMessages}</span>
+            <span className="text-fg-secondary">{contextMessageCount} of {totalMessages}</span>
           </div>
           <div className="flex justify-between mt-1">
             <span>Estimated tokens:</span>
-            <span className="text-zinc-200">~{estimatedTokens}</span>
+            <span className="text-fg-secondary">~{estimatedTokens}</span>
           </div>
         </div>
 
@@ -149,27 +149,27 @@ export function InlineBranchPanel({
               className={`
                 w-full flex items-start gap-3 p-2 rounded-md text-left transition-colors
                 ${selectedMode === option.value
-                  ? 'bg-amber-500/20 border border-amber-500/50'
-                  : 'hover:bg-zinc-800 border border-transparent'
+                  ? 'bg-accent-muted border border-accent-primary'
+                  : 'hover:bg-bg-tertiary border border-transparent'
                 }
               `}
             >
               <div className={`
                 mt-0.5 p-1 rounded
-                ${selectedMode === option.value ? 'text-amber-400' : 'text-zinc-500'}
+                ${selectedMode === option.value ? 'text-accent-primary' : 'text-fg-tertiary'}
               `}>
                 {option.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium ${selectedMode === option.value ? 'text-amber-100' : 'text-zinc-200'}`}>
+                <div className={`text-sm font-medium ${selectedMode === option.value ? 'text-fg-primary' : 'text-fg-secondary'}`}>
                   {option.label}
                 </div>
-                <div className="text-xs text-zinc-500 mt-0.5">
+                <div className="text-xs text-fg-tertiary mt-0.5">
                   {option.description}
                 </div>
               </div>
               {selectedMode === option.value && (
-                <Check className="w-4 h-4 text-amber-400 mt-1" />
+                <Check className="w-4 h-4 text-accent-primary mt-1" />
               )}
             </button>
           ))}
@@ -177,32 +177,32 @@ export function InlineBranchPanel({
 
         {/* Error Message */}
         {error && (
-          <div className="mx-3 mb-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-md flex items-center gap-2 text-xs text-red-400">
+          <div className="mx-3 mb-2 px-3 py-2 bg-error-bg border border-error-border rounded-md flex items-center gap-2 text-xs text-error-fg">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 p-3 pt-1 border-t border-zinc-700/50">
+        <div className="flex gap-2 p-3 pt-1 border-t border-border-default">
           <button
             onClick={onClose}
             disabled={isCreating}
-            className="flex-1 px-3 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-md transition-colors disabled:opacity-50"
+            className="flex-1 px-3 py-2 text-sm font-medium text-fg-secondary bg-bg-tertiary hover:bg-bg-inset rounded-md transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleCreateBranch}
             disabled={isCreating}
-            className="flex-1 px-3 py-2 text-sm font-medium text-zinc-900 bg-amber-500 hover:bg-amber-400 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 px-3 py-2 text-sm font-medium text-bg-primary bg-accent-primary hover:brightness-110 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isCreating ? (
               <>
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full"
+                  className="w-4 h-4 border-2 border-bg-primary/30 border-t-bg-primary rounded-full"
                 />
                 Creating...
               </>
@@ -216,8 +216,8 @@ export function InlineBranchPanel({
         </div>
 
         {/* Keyboard hint */}
-        <div className="px-3 pb-2 text-xs text-zinc-500 text-center">
-          Tip: Use <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-zinc-400">Ctrl+B</kbd> for keyboard workflow
+        <div className="px-3 pb-2 text-xs text-fg-tertiary text-center">
+          Tip: Use <kbd className="px-1 py-0.5 bg-bg-tertiary rounded text-fg-secondary">Ctrl+B</kbd> for keyboard workflow
         </div>
       </motion.div>
     </AnimatePresence>

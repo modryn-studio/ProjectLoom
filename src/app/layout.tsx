@@ -23,9 +23,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const stored = localStorage.getItem('projectloom:preferences');
+                  if (stored) {
+                    const prefs = JSON.parse(stored);
+                    const theme = prefs?.data?.ui?.theme || 'system';
+                    if (theme !== 'system') {
+                      document.documentElement.setAttribute('data-theme', theme);
+                    }
+                  }
+                } catch (e) {
+                  // Ignore errors
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#1a1d2e] text-[#e4e4f0]`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-bg-primary text-fg-primary`}
       >
         {children}
       </body>

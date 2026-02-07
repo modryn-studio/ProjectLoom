@@ -54,9 +54,9 @@ const overlayStyles: React.CSSProperties = {
 };
 
 const dialogStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.md,
-  border: `1px solid rgba(16, 185, 129, 0.3)`,
+  border: '1px solid var(--success-solid)',
   boxShadow: effects.shadow.lg,
   width: '90%',
   maxWidth: '550px',
@@ -67,7 +67,7 @@ const dialogStyles: React.CSSProperties = {
 
 const headerStyles: React.CSSProperties = {
   padding: spacing[4],
-  borderBottom: `1px solid rgba(16, 185, 129, 0.2)`,
+  borderBottom: '1px solid var(--success-muted)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -79,7 +79,7 @@ const contentStyles: React.CSSProperties = {
 
 const footerStyles: React.CSSProperties = {
   padding: spacing[4],
-  borderTop: `1px solid rgba(255, 255, 255, 0.1)`,
+  borderTop: '1px solid var(--border-secondary)',
   display: 'flex',
   justifyContent: 'flex-end',
   gap: spacing[3],
@@ -144,7 +144,7 @@ export function HierarchicalMergeDialog() {
                   width: 32, 
                   height: 32, 
                   borderRadius: effects.border.radius.sm,
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  backgroundColor: 'var(--success-muted)',
                   color: colors.semantic.success,
                 }}>
                   <GitMergeIcon size={18} />
@@ -153,7 +153,7 @@ export function HierarchicalMergeDialog() {
                   margin: 0, 
                   fontSize: '1.125rem', 
                   fontWeight: 600, 
-                  color: colors.contrast.white 
+                  color: colors.fg.primary 
                 }}>
                   Merge Node Limit Reached
                 </h2>
@@ -164,7 +164,7 @@ export function HierarchicalMergeDialog() {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: colors.contrast.gray,
+                  color: colors.fg.secondary,
                   padding: spacing[1],
                   borderRadius: effects.border.radius.sm,
                   display: 'flex',
@@ -173,11 +173,11 @@ export function HierarchicalMergeDialog() {
                   transition: 'color 0.15s, background-color 0.15s',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = colors.contrast.white;
+                  e.currentTarget.style.color = colors.fg.primary;
                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = colors.contrast.gray;
+                  e.currentTarget.style.color = colors.fg.secondary;
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
@@ -190,7 +190,7 @@ export function HierarchicalMergeDialog() {
               {/* Explanation */}
               <p style={{ 
                 margin: `0 0 ${spacing[4]}`, 
-                color: colors.contrast.grayLight,
+                color: colors.fg.tertiary,
                 fontSize: '0.9375rem',
                 lineHeight: 1.6,
               }}>
@@ -210,7 +210,7 @@ export function HierarchicalMergeDialog() {
                   alignItems: 'center', 
                   gap: spacing[2],
                   marginBottom: spacing[3],
-                  color: colors.amber.primary,
+                  color: colors.accent.primary,
                 }}>
                   <LightbulbIcon />
                   <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
@@ -234,11 +234,11 @@ export function HierarchicalMergeDialog() {
                     display: 'block',
                     fontFamily: '"JetBrains Mono", monospace',
                     fontSize: '0.8125rem',
-                    color: colors.contrast.gray,
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    color: colors.fg.secondary,
+                    backgroundColor: 'var(--error-muted)',
                     padding: `${spacing[2]} ${spacing[3]}`,
                     borderRadius: effects.border.radius.sm,
-                    border: `1px solid rgba(239, 68, 68, 0.2)`,
+                    border: '1px solid var(--error-muted)',
                   }}>
                     [A] [B] [C] [D] [E] [F] → [Final]  <span style={{ color: colors.semantic.error }}>// 6 sources - too many!</span>
                   </code>
@@ -260,11 +260,11 @@ export function HierarchicalMergeDialog() {
                     display: 'block',
                     fontFamily: '"JetBrains Mono", monospace',
                     fontSize: '0.8125rem',
-                    color: colors.contrast.grayLight,
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    color: colors.fg.tertiary,
+                    backgroundColor: 'var(--success-muted)',
                     padding: `${spacing[2]} ${spacing[3]}`,
                     borderRadius: effects.border.radius.sm,
-                    border: `1px solid rgba(16, 185, 129, 0.2)`,
+                    border: '1px solid var(--success-muted)',
                     whiteSpace: 'pre-wrap',
                     lineHeight: 1.8,
                   }}>
@@ -278,10 +278,10 @@ export function HierarchicalMergeDialog() {
               {/* Benefits */}
               <div style={{ 
                 fontSize: '0.875rem', 
-                color: colors.contrast.gray,
+                color: colors.fg.secondary,
                 lineHeight: 1.6,
               }}>
-                <strong style={{ color: colors.contrast.grayLight }}>Benefits:</strong>
+                <strong style={{ color: colors.fg.tertiary }}>Benefits:</strong>
                 <ul style={{ margin: `${spacing[2]} 0 0`, paddingLeft: spacing[5] }}>
                   <li>Better AI response quality with focused context</li>
                   <li>Easier to understand conversation flow</li>
@@ -297,19 +297,19 @@ export function HierarchicalMergeDialog() {
                 style={{
                   padding: `${spacing[2]} ${spacing[4]}`,
                   backgroundColor: colors.semantic.success,
-                  color: colors.contrast.white,
+                  color: colors.fg.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.sm,
                   fontSize: '0.875rem',
                   fontWeight: 500,
                   cursor: 'pointer',
-                  transition: 'background-color 0.15s, transform 0.1s',
+                  transition: 'background-color 0.15s, transform 0.1s, filter 0.15s',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#0ea570';
+                  e.currentTarget.style.filter = 'brightness(1.1)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.semantic.success;
+                  e.currentTarget.style.filter = 'brightness(1)';
                 }}
                 onMouseDown={(e) => {
                   e.currentTarget.style.transform = 'scale(0.98)';

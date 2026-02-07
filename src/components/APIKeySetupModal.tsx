@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Key, AlertCircle, CheckCircle, Loader, ExternalLink } from 'lucide-react';
 
 import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
-import { apiKeyManager, type ProviderType } from '@/lib/api-key-manager';
+import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
 import { detectProvider } from '@/lib/vercel-ai-integration';
 
 // =============================================================================
@@ -39,19 +39,22 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
   const [anthropicKey, setAnthropicKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [openaiKey, setOpenaiKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [isSaving, setIsSaving] = useState(false);
+  const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
 
-  // Load existing keys on mount
+  // Load existing keys and storage preference on mount
   useEffect(() => {
     if (isOpen) {
       const existingAnthropic = apiKeyManager.getKey('anthropic');
       const existingOpenai = apiKeyManager.getKey('openai');
-      
+      const currentStoragePreference = apiKeyManager.getStoragePreference();
+
       if (existingAnthropic) {
         setAnthropicKey(prev => ({ ...prev, value: existingAnthropic, isValid: true }));
       }
       if (existingOpenai) {
         setOpenaiKey(prev => ({ ...prev, value: existingOpenai, isValid: true }));
       }
+      setStoragePreference(currentStoragePreference);
     }
   }, [isOpen]);
 
@@ -114,24 +117,27 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
   // Handle save
   const handleSave = useCallback(async () => {
     setIsSaving(true);
-    
+
     try {
       // Validate both keys
       const anthropicValid = await validateKey('anthropic', anthropicKey.value, setAnthropicKey);
       const openaiValid = await validateKey('openai', openaiKey.value, setOpenaiKey);
-      
+
       if (!anthropicValid || !openaiValid) {
         setIsSaving(false);
         return;
       }
-      
+
       // Check at least one key is provided
       if (!anthropicKey.value.trim() && !openaiKey.value.trim()) {
         setAnthropicKey(prev => ({ ...prev, error: 'At least one API key is required' }));
         setIsSaving(false);
         return;
       }
-      
+
+      // Set storage preference first
+      apiKeyManager.setStoragePreference(storagePreference);
+
       // Save keys
       if (anthropicKey.value.trim()) {
         apiKeyManager.saveKey('anthropic', anthropicKey.value.trim());
@@ -139,18 +145,18 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       if (openaiKey.value.trim()) {
         apiKeyManager.saveKey('openai', openaiKey.value.trim());
       }
-      
+
       // Mark setup as complete
       if (typeof window !== 'undefined') {
         localStorage.setItem('projectloom:keys-configured', 'true');
       }
-      
+
       onSuccess?.();
       onClose();
     } finally {
       setIsSaving(false);
     }
-  }, [anthropicKey.value, openaiKey.value, validateKey, onSuccess, onClose]);
+  }, [anthropicKey.value, openaiKey.value, storagePreference, validateKey, onSuccess, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -224,6 +230,35 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                 >
                   OpenAI Platform <ExternalLink size={12} />
                 </a>
+              </div>
+            </div>
+
+            {/* Storage Preference */}
+            <div style={styles.storagePreference}>
+              <label style={styles.label}>Storage Type</label>
+              <div style={styles.storageOptions}>
+                <button
+                  type="button"
+                  onClick={() => setStoragePreference('localStorage')}
+                  style={{
+                    ...styles.storageOption,
+                    ...(storagePreference === 'localStorage' ? styles.storageOptionActive : {}),
+                  }}
+                >
+                  <div style={styles.storageOptionTitle}>Persistent</div>
+                  <div style={styles.storageOptionDesc}>Keys remain across sessions</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStoragePreference('sessionStorage')}
+                  style={{
+                    ...styles.storageOption,
+                    ...(storagePreference === 'sessionStorage' ? styles.storageOptionActive : {}),
+                  }}
+                >
+                  <div style={styles.storageOptionTitle}>Session Only</div>
+                  <div style={styles.storageOptionDesc}>Keys cleared when tab closes (more secure)</div>
+                </button>
               </div>
             </div>
 
@@ -316,16 +351,16 @@ function KeyInput({
           style={{
             ...styles.input,
             borderColor: error
-              ? 'rgba(239, 68, 68, 0.5)'
+              ? 'var(--error-border)'
               : isValid
-              ? 'rgba(16, 185, 129, 0.5)'
-              : 'rgba(99, 102, 241, 0.3)',
+              ? 'var(--success-border)'
+              : 'var(--border-default)',
           }}
         />
         <div style={styles.inputIcons}>
           {isValidating && <Loader size={14} className="animate-spin" />}
-          {isValid === true && <CheckCircle size={14} color="#10b981" />}
-          {isValid === false && <AlertCircle size={14} color="#ef4444" />}
+          {isValid === true && <CheckCircle size={14} color="var(--success-solid)" />}
+          {isValid === false && <AlertCircle size={14} color="var(--error-solid)" />}
           <button
             type="button"
             onClick={() => setShowKey(!showKey)}
@@ -358,9 +393,9 @@ const styles: Record<string, React.CSSProperties> = {
   modal: {
     width: '100%',
     maxWidth: 480,
-    backgroundColor: colors.navy.light,
+    backgroundColor: colors.bg.secondary,
     borderRadius: effects.border.radius.lg,
-    border: '1px solid rgba(99, 102, 241, 0.3)',
+    border: '1px solid var(--border-primary)',
     boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4)',
     overflow: 'hidden',
   },
@@ -370,7 +405,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     gap: spacing[3],
     padding: spacing[4],
-    borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
+    borderBottom: '1px solid var(--border-primary)',
   },
 
   headerIcon: {
@@ -380,8 +415,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: 48,
     height: 48,
     borderRadius: '50%',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    color: colors.violet.primary,
+    backgroundColor: 'var(--accent-muted)',
+    color: colors.accent.primary,
     flexShrink: 0,
   },
 
@@ -389,14 +424,14 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: typography.sizes.lg,
     fontWeight: 600,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontFamily: typography.fonts.heading,
   },
 
   subtitle: {
     margin: `${spacing[1]} 0 0`,
     fontSize: typography.sizes.sm,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     fontFamily: typography.fonts.body,
   },
 
@@ -410,7 +445,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: 'none',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     cursor: 'pointer',
   },
 
@@ -423,15 +458,15 @@ const styles: Record<string, React.CSSProperties> = {
 
   infoBanner: {
     padding: spacing[3],
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'var(--accent-muted)',
     borderRadius: effects.border.radius.default,
-    border: '1px solid rgba(99, 102, 241, 0.2)',
+    border: '1px solid var(--border-primary)',
   },
 
   infoText: {
     margin: 0,
     fontSize: typography.sizes.sm,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     fontFamily: typography.fonts.body,
     lineHeight: typography.lineHeights.relaxed,
   },
@@ -447,7 +482,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: spacing[1],
     fontSize: typography.sizes.sm,
-    color: colors.violet.light,
+    color: colors.accent.secondary,
     textDecoration: 'none',
   },
 
@@ -460,7 +495,7 @@ const styles: Record<string, React.CSSProperties> = {
   label: {
     fontSize: typography.sizes.sm,
     fontWeight: 500,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontFamily: typography.fonts.body,
   },
 
@@ -474,10 +509,10 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: `${spacing[2]} ${spacing[3]}`,
     paddingRight: '80px',
-    backgroundColor: colors.navy.dark,
-    border: '1px solid rgba(99, 102, 241, 0.3)',
+    backgroundColor: colors.bg.inset,
+    border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.code,
     outline: 'none',
@@ -494,17 +529,17 @@ const styles: Record<string, React.CSSProperties> = {
 
   showButton: {
     padding: `2px ${spacing[1]}`,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'var(--accent-muted)',
     border: 'none',
     borderRadius: '4px',
-    color: colors.violet.light,
+    color: colors.accent.secondary,
     fontSize: typography.sizes.xs,
     cursor: 'pointer',
   },
 
   error: {
     fontSize: typography.sizes.xs,
-    color: '#ef4444',
+    color: 'var(--error-fg)',
     fontFamily: typography.fonts.body,
   },
 
@@ -513,16 +548,16 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'flex-end',
     gap: spacing[2],
     padding: spacing[4],
-    borderTop: '1px solid rgba(99, 102, 241, 0.2)',
-    backgroundColor: colors.navy.dark,
+    borderTop: '1px solid var(--border-primary)',
+    backgroundColor: colors.bg.inset,
   },
 
   cancelButton: {
     padding: `${spacing[2]} ${spacing[4]}`,
     backgroundColor: 'transparent',
-    border: '1px solid rgba(99, 102, 241, 0.3)',
+    border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
     cursor: 'pointer',
@@ -533,14 +568,60 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: spacing[2],
     padding: `${spacing[2]} ${spacing[4]}`,
-    backgroundColor: colors.violet.primary,
+    backgroundColor: colors.accent.primary,
     border: 'none',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
     fontWeight: 500,
     cursor: 'pointer',
+  },
+
+  storagePreference: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[2],
+  } as React.CSSProperties,
+
+  storageOptions: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: spacing[2],
+  },
+
+  storageOption: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: spacing[3],
+    backgroundColor: 'var(--accent-muted)',
+    border: '1px solid var(--border-primary)',
+    borderRadius: effects.border.radius.default,
+    color: colors.fg.secondary,
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'all 0.15s ease',
+  } as React.CSSProperties,
+
+  storageOptionActive: {
+    backgroundColor: 'var(--accent-muted)',
+    borderColor: colors.accent.primary,
+  },
+
+  storageOptionTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: 500,
+    color: colors.fg.primary,
+    fontFamily: typography.fonts.body,
+    marginBottom: spacing[1],
+  },
+
+  storageOptionDesc: {
+    fontSize: typography.sizes.xs,
+    color: colors.fg.secondary,
+    fontFamily: typography.fonts.body,
+    lineHeight: typography.lineHeights.relaxed,
   },
 };
 

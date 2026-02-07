@@ -159,6 +159,7 @@ interface WorkspaceState {
   branchSourceId: string | null;
   branchMessageIndex: number | null;
   branchSourcePosition: Position | null;
+  branchTargetPosition: Position | null;
 
   // Hierarchical Merge Dialog State
   hierarchicalMergeDialogOpen: boolean;
@@ -217,7 +218,7 @@ interface WorkspaceState {
   updateInheritedSummary: (conversationId: string, parentId: string, newSummaryText: string) => void;
 
   // Actions - Branch Dialog (keyboard workflow)
-  openBranchDialog: (conversationId: string, messageIndex?: number) => void;
+  openBranchDialog: (conversationId: string, messageIndex?: number, targetPosition?: Position) => void;
   closeBranchDialog: () => void;
 
   // Actions - Hierarchical Merge Dialog
@@ -329,17 +330,18 @@ function conversationToNode(
 
 /**
  * Get edge style based on relation type (v4)
+ * Uses CSS variables for theme-aware colors
  */
 function getEdgeStyle(relationType: EdgeRelationType): { stroke: string; strokeWidth: number; strokeDasharray?: string } {
   switch (relationType) {
     case 'branch':
-      return { stroke: '#f59e0b', strokeWidth: 2 }; // Amber
+      return { stroke: 'var(--accent-primary)', strokeWidth: 2 };
     case 'merge':
-      return { stroke: '#10b981', strokeWidth: 3 }; // Emerald, thicker
+      return { stroke: 'var(--success-solid)', strokeWidth: 3 };
     case 'reference':
-      return { stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '5,5' }; // Violet, dashed
+      return { stroke: 'var(--fg-tertiary)', strokeWidth: 1, strokeDasharray: '5,5' };
     default:
-      return { stroke: '#6366f1', strokeWidth: 2 }; // Indigo fallback
+      return { stroke: 'var(--accent-primary)', strokeWidth: 2 };
   }
 }
 
@@ -386,6 +388,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     branchSourceId: null,
     branchMessageIndex: null,
     branchSourcePosition: null,
+    branchTargetPosition: null,
     
     // Hierarchical Merge Dialog State
     hierarchicalMergeDialogOpen: false,
@@ -781,7 +784,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         target: connection.target,
         type: 'bezier',
         style: {
-          stroke: '#6366f1',
+          stroke: 'var(--accent-primary)',
           strokeWidth: 2,
         },
       };
@@ -1004,6 +1007,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         branchSourceId: null,
         branchMessageIndex: null,
         branchSourcePosition: null,
+        branchTargetPosition: null,
       });
     },
 
@@ -1130,7 +1134,7 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     branchFromMessage: (data: BranchFromMessageData) => {
       const { sourceCardId, messageIndex, inheritanceMode = 'full', branchReason, summaryText } = data;
-      const { conversations, nodes, activeWorkspaceId } = get();
+      const { conversations, nodes, activeWorkspaceId, branchTargetPosition } = get();
       
       const sourceConversation = conversations.get(sourceCardId);
       if (!sourceConversation || !Array.isArray(sourceConversation.content)) {
@@ -1144,8 +1148,9 @@ export const useCanvasStore = create<WorkspaceState>()(
         return null;
       }
 
-      // Calculate position for new branch (offset from parent)
-      const newPosition: Position = {
+      // Calculate position for new branch
+      // Use branchTargetPosition if set (from drag-to-create), otherwise calculate offset
+      const newPosition: Position = branchTargetPosition ?? {
         x: sourceNode.position.x + 300,
         y: sourceNode.position.y + 150,
       };
@@ -1464,7 +1469,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     // Branch Dialog (keyboard workflow)
     // =========================================================================
 
-    openBranchDialog: (conversationId: string, messageIndex?: number) => {
+    openBranchDialog: (conversationId: string, messageIndex?: number, targetPosition?: Position) => {
       const conversation = get().conversations.get(conversationId);
       const node = get().nodes.find(n => n.id === conversationId);
       
@@ -1478,6 +1483,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         branchSourceId: conversationId,
         branchMessageIndex: messageIndex ?? (Array.isArray(conversation.content) ? conversation.content.length - 1 : 0),
         branchSourcePosition: node.position,
+        branchTargetPosition: targetPosition ?? null,
       });
     },
 
@@ -1487,6 +1493,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         branchSourceId: null,
         branchMessageIndex: null,
         branchSourcePosition: null,
+        branchTargetPosition: null,
       });
     },
 
@@ -1528,10 +1535,18 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     closeChatPanel: () => {
-      set({
+      set((state) => ({
         chatPanelOpen: false,
-        // Keep activeConversationId for quick reopen, clear selection
-      });
+        selectedNodeIds: new Set(),
+        nodes: state.nodes.map((node) => ({
+          ...node,
+          selected: false,
+          data: {
+            ...node.data,
+            isSelected: false,
+          },
+        })),
+      }));
     },
 
     setDraftMessage: (conversationId: string, content: string) => {

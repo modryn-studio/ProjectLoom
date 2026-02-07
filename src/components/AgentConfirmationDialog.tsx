@@ -36,9 +36,9 @@ const overlayStyles: React.CSSProperties = {
 };
 
 const dialogStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.md,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  border: '1px solid var(--border-primary)',
   boxShadow: effects.shadow.lg,
   width: '90%',
   maxWidth: '600px',
@@ -55,9 +55,9 @@ const dialogStyles: React.CSSProperties = {
 function getActionIcon(type: AgentAction['type']) {
   switch (type) {
     case 'delete': return <Trash2 size={16} color={colors.semantic.error} />;
-    case 'rename': return <Edit3 size={16} color={colors.amber.primary} />;
+    case 'rename': return <Edit3 size={16} color={colors.accent.primary} />;
     case 'create_branch': return <GitBranch size={16} color={colors.semantic.success} />;
-    case 'create_document': return <FileText size={16} color={colors.violet.primary} />;
+    case 'create_document': return <FileText size={16} color={colors.accent.primary} />;
     default: return null;
   }
 }
@@ -65,10 +65,10 @@ function getActionIcon(type: AgentAction['type']) {
 function getActionColor(type: AgentAction['type']): string {
   switch (type) {
     case 'delete': return colors.semantic.error;
-    case 'rename': return colors.amber.primary;
+    case 'rename': return colors.accent.primary;
     case 'create_branch': return colors.semantic.success;
-    case 'create_document': return colors.violet.primary;
-    default: return colors.contrast.grayDark;
+    case 'create_document': return colors.accent.primary;
+    default: return colors.fg.quaternary;
   }
 }
 
@@ -293,18 +293,18 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
         {/* Header */}
         <div style={{
           padding: spacing[4],
-          borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+          borderBottom: '1px solid var(--border-primary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-            <AlertTriangle size={20} color={colors.amber.primary} />
+            <AlertTriangle size={20} color={colors.accent.primary} />
             <h2 style={{
               margin: 0,
               fontSize: '1.1rem',
               fontWeight: 600,
-              color: colors.contrast.white,
+              color: colors.fg.primary,
               fontFamily: typography.fonts.heading,
             }}>
               Review Agent Actions ({result.actions.length})
@@ -317,9 +317,9 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
           <div style={{
             padding: `${spacing[2]} ${spacing[4]}`,
             fontSize: typography.sizes.xs,
-            color: colors.contrast.grayDark,
+            color: colors.fg.quaternary,
             fontFamily: typography.fonts.body,
-            borderBottom: `1px solid rgba(99, 102, 241, 0.1)`,
+            borderBottom: '1px solid var(--border-secondary)',
           }}>
             {result.summary}
           </div>
@@ -340,7 +340,7 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                   style={{
                     padding: spacing[1],
                     fontSize: typography.sizes.xs,
-                    color: colors.contrast.gray,
+                    color: colors.fg.secondary,
                     fontFamily: typography.fonts.body,
                   }}
                 >
@@ -361,10 +361,10 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                     padding: spacing[2],
                     backgroundColor: approvals[action.id]
                       ? `${getActionColor(action.type)}10`
-                      : colors.navy.dark,
+                      : colors.bg.inset,
                     border: `1px solid ${approvals[action.id]
                       ? getActionColor(action.type)
-                      : 'rgba(99, 102, 241, 0.2)'}`,
+                      : 'var(--border-secondary)'}`,
                     borderRadius: effects.border.radius.default,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
@@ -386,7 +386,7 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                   <div>
                     <div style={{
                       fontSize: typography.sizes.sm,
-                      color: colors.contrast.white,
+                      color: colors.fg.primary,
                       fontFamily: typography.fonts.body,
                     }}>
                       {action.description}
@@ -412,7 +412,7 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
         {executionLog.length === 0 && (
           <div style={{
             padding: spacing[4],
-            borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
+            borderTop: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: spacing[2],
@@ -423,9 +423,9 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
               style={{
                 padding: `${spacing[1]} ${spacing[2]}`,
                 backgroundColor: 'transparent',
-                border: `1px solid rgba(99, 102, 241, 0.3)`,
+                border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 fontSize: typography.sizes.xs,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
@@ -441,9 +441,9 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
               style={{
                 padding: `${spacing[1]} ${spacing[2]}`,
                 backgroundColor: 'transparent',
-                border: `1px solid rgba(99, 102, 241, 0.3)`,
+                border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 fontSize: typography.sizes.xs,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
@@ -461,9 +461,9 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                 style={{
                   padding: `${spacing[2]} ${spacing[3]}`,
                   backgroundColor: 'transparent',
-                  border: `1px solid rgba(99, 102, 241, 0.3)`,
+                  border: '1px solid var(--border-primary)',
                   borderRadius: effects.border.radius.default,
-                  color: colors.contrast.gray,
+                  color: colors.fg.secondary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   cursor: 'pointer',
@@ -477,15 +477,15 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                 style={{
                   padding: `${spacing[2]} ${spacing[3]}`,
                   backgroundColor: approvedCount === 0 || isExecuting
-                    ? colors.navy.dark
+                    ? colors.bg.inset
                     : destructiveCount > 0
                       ? colors.semantic.error
-                      : colors.violet.primary,
+                      : colors.accent.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
                   color: approvedCount === 0 || isExecuting
-                    ? colors.contrast.grayDark
-                    : colors.contrast.white,
+                    ? colors.fg.quaternary
+                    : colors.fg.primary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: 500,

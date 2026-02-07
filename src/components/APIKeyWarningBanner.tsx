@@ -68,7 +68,7 @@ export function APIKeyWarningBanner({
           <div style={styles.content}>
             {/* Warning icon */}
             <div style={styles.iconContainer}>
-              <AlertTriangle size={18} style={{ color: colors.amber.primary }} />
+              <AlertTriangle size={18} style={{ color: colors.accent.primary }} />
             </div>
 
             {/* Message */}
@@ -174,8 +174,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'flex-start',
     gap: spacing[3],
-    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-    border: `1px solid ${colors.amber.primary}40`,
+    backgroundColor: 'var(--warning-muted)',
+    border: `1px solid ${colors.accent.primary}40`,
     borderRadius: effects.border.radius.default,
     padding: spacing[3],
     maxWidth: 600,
@@ -199,7 +199,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: typography.sizes.sm,
     fontWeight: 600,
-    color: colors.amber.primary,
+    color: colors.accent.primary,
     fontFamily: typography.fonts.body,
     display: 'flex',
     alignItems: 'center',
@@ -208,7 +208,7 @@ const styles: Record<string, React.CSSProperties> = {
   message: {
     margin: 0,
     fontSize: typography.sizes.xs,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     fontFamily: typography.fonts.body,
     lineHeight: 1.4,
   },
@@ -219,7 +219,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 0,
     marginTop: spacing[1],
     fontSize: typography.sizes.xs,
-    color: colors.violet.primary,
+    color: colors.accent.primary,
     cursor: 'pointer',
     textDecoration: 'underline',
     fontFamily: typography.fonts.body,
@@ -228,7 +228,7 @@ const styles: Record<string, React.CSSProperties> = {
   details: {
     marginTop: spacing[2],
     paddingTop: spacing[2],
-    borderTop: '1px solid rgba(251, 191, 36, 0.2)',
+    borderTop: '1px solid var(--warning-solid)',
     overflow: 'hidden',
   },
 
@@ -236,7 +236,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     marginBottom: spacing[1],
     fontSize: typography.sizes.xs,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     fontFamily: typography.fonts.body,
   },
 
@@ -245,7 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: spacing[2],
     paddingLeft: spacing[4],
     fontSize: typography.sizes.xs,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     fontFamily: typography.fonts.body,
     lineHeight: 1.6,
   },
@@ -262,7 +262,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     fontSize: typography.sizes.xs,
-    color: colors.violet.primary,
+    color: colors.accent.primary,
     textDecoration: 'none',
     fontFamily: typography.fonts.body,
   },
@@ -272,7 +272,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     padding: spacing[1],
     cursor: 'pointer',
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     borderRadius: effects.border.radius.default,
     display: 'flex',
     alignItems: 'center',

@@ -195,7 +195,7 @@ function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
       onClick={() => onSelect(model.id)}
       style={{
         ...styles.option,
-        backgroundColor: isSelected ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+        backgroundColor: isSelected ? 'var(--accent-muted)' : 'transparent',
       }}
       role="option"
       aria-selected={isSelected}
@@ -210,7 +210,7 @@ function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
         <span style={styles.optionDescription}>{model.description}</span>
       </div>
       {isSelected && (
-        <Check size={14} style={{ color: colors.violet.primary, flexShrink: 0 }} />
+        <Check size={14} style={{ color: colors.accent.primary, flexShrink: 0 }} />
       )}
     </button>
   );
@@ -230,10 +230,10 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: spacing[2],
     padding: `${spacing[1]} ${spacing[2]}`,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    border: '1px solid rgba(99, 102, 241, 0.3)',
+    backgroundColor: 'var(--accent-muted)',
+    border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
     cursor: 'pointer',
@@ -257,7 +257,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   chevron: {
     transition: 'transform 0.15s ease',
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
   },
 
   dropdown: {
@@ -267,8 +267,8 @@ const styles: Record<string, React.CSSProperties> = {
     right: 0,
     minWidth: 280,
     marginTop: spacing[1],
-    backgroundColor: colors.navy.dark,
-    border: '1px solid rgba(99, 102, 241, 0.3)',
+    backgroundColor: colors.bg.inset,
+    border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
     zIndex: 50,
@@ -279,10 +279,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: `${spacing[2]} ${spacing[3]}`,
     fontSize: typography.sizes.xs,
     fontFamily: typography.fonts.code,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-    borderBottom: '1px solid rgba(99, 102, 241, 0.15)',
+    borderBottom: '1px solid var(--border-secondary)',
   } as React.CSSProperties,
 
   option: {
@@ -313,14 +313,14 @@ const styles: Record<string, React.CSSProperties> = {
   optionName: {
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontWeight: 500,
   },
 
   optionDescription: {
     fontSize: typography.sizes.xs,
     fontFamily: typography.fonts.body,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
   },
 
   noKeys: {
@@ -329,7 +329,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: spacing[2],
     padding: spacing[4],
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
   },

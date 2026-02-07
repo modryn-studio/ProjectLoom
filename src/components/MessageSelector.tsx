@@ -39,10 +39,10 @@ const quickButtonStyles: React.CSSProperties = {
   alignItems: 'center',
   gap: spacing[1],
   padding: `${spacing[1]} ${spacing[2]}`,
-  backgroundColor: colors.navy.dark,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  backgroundColor: colors.bg.inset,
+  border: `1px solid var(--border-primary)`,
   borderRadius: effects.border.radius.default,
-  color: colors.contrast.grayDark,
+  color: colors.fg.quaternary,
   fontSize: typography.sizes.xs,
   fontFamily: typography.fonts.body,
   cursor: 'pointer',
@@ -54,9 +54,9 @@ const messageListStyles: React.CSSProperties = {
   flexDirection: 'column',
   gap: spacing[1],
   padding: spacing[1],
-  backgroundColor: colors.navy.dark,
+  backgroundColor: colors.bg.inset,
   borderRadius: effects.border.radius.default,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  border: `1px solid var(--border-primary)`,
   maxHeight: '300px',
   overflowY: 'auto',
 };
@@ -65,7 +65,7 @@ const statsStyles: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   fontSize: typography.sizes.xs,
-  color: colors.contrast.grayDark,
+  color: colors.fg.quaternary,
   fontFamily: typography.fonts.body,
   padding: `${spacing[1]} 0`,
 };
@@ -132,7 +132,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
         alignItems: 'flex-start',
         gap: spacing[2],
         padding: spacing[2],
-        backgroundColor: isSelected ? `${colors.amber.primary}10` : 'transparent',
+        backgroundColor: isSelected ? `${colors.accent.primary}10` : 'transparent',
         borderRadius: effects.border.radius.default,
         cursor: 'pointer',
         transition: 'background-color 0.15s ease',
@@ -145,8 +145,8 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
           height: 18,
           flexShrink: 0,
           borderRadius: 4,
-          border: `2px solid ${isSelected ? colors.amber.primary : 'rgba(99, 102, 241, 0.4)'}`,
-          backgroundColor: isSelected ? colors.amber.primary : 'transparent',
+          border: `2px solid ${isSelected ? colors.accent.primary : 'var(--border-primary)'}`,
+          backgroundColor: isSelected ? colors.accent.primary : 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -154,7 +154,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
           transition: 'all 0.15s ease',
         }}
       >
-        {isSelected && <Check size={12} color={colors.navy.dark} strokeWidth={3} />}
+        {isSelected && <Check size={12} color={colors.bg.inset} strokeWidth={3} />}
       </div>
 
       {/* Content */}
@@ -170,7 +170,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
             display: 'flex',
             alignItems: 'center',
             gap: 4,
-            color: isUser ? colors.violet.primary : colors.amber.primary,
+            color: isUser ? colors.accent.primary : colors.accent.primary,
             fontSize: typography.sizes.xs,
             fontWeight: 500,
             fontFamily: typography.fonts.body,
@@ -185,10 +185,10 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
               alignItems: 'center',
               gap: 2,
               padding: '2px 6px',
-              backgroundColor: colors.navy.bg,
+              backgroundColor: colors.bg.primary,
               borderRadius: 4,
               fontSize: '10px',
-              color: colors.contrast.grayDark,
+              color: colors.fg.quaternary,
               fontFamily: typography.fonts.code,
             }}>
               <Code size={10} />
@@ -199,10 +199,10 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
           {isLong && (
             <span style={{
               padding: '2px 6px',
-              backgroundColor: colors.navy.bg,
+              backgroundColor: colors.bg.primary,
               borderRadius: 4,
               fontSize: '10px',
-              color: colors.contrast.grayDark,
+              color: colors.fg.quaternary,
               fontFamily: typography.fonts.body,
             }}>
               long
@@ -214,7 +214,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
         <p style={{
           margin: 0,
           fontSize: typography.sizes.xs,
-          color: colors.contrast.gray,
+          color: colors.fg.secondary,
           fontFamily: typography.fonts.body,
           lineHeight: 1.4,
           overflow: 'hidden',

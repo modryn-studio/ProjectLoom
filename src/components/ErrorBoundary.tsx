@@ -84,7 +84,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 height="48"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={colors.amber.primary}
+                stroke={colors.accent.primary}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -119,10 +119,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReset}
                 style={styles.primaryButton}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.amber.dark;
+                  e.currentTarget.style.backgroundColor = colors.accent.emphasis;
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.amber.primary;
+                  e.currentTarget.style.backgroundColor = colors.accent.primary;
                 }}
               >
                 Try Again
@@ -132,7 +132,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReload}
                 style={styles.secondaryButton}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = colors.navy.hover;
+                  e.currentTarget.style.backgroundColor = colors.accent.muted;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
@@ -161,20 +161,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.navy.bg,
+    backgroundColor: colors.bg.primary,
     zIndex: zIndex.top.errorBoundary,
     padding: spacing[4],
   },
   
   card: {
-    backgroundColor: colors.navy.light,
+    backgroundColor: colors.bg.secondary,
     borderRadius: effects.border.radius.lg,
     padding: spacing[8],
     maxWidth: '480px',
     width: '100%',
     textAlign: 'center',
     boxShadow: effects.shadow.xl,
-    border: `1px solid ${colors.navy.hover}`,
+    border: `1px solid ${colors.accent.muted}`,
   },
   
   iconContainer: {
@@ -185,20 +185,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: typography.fonts.heading,
     fontSize: typography.sizes['2xl'],
     fontWeight: typography.weights.semibold,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     marginBottom: spacing[2],
   },
   
   message: {
     fontFamily: typography.fonts.body,
     fontSize: typography.sizes.base,
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     marginBottom: spacing[6],
     lineHeight: typography.lineHeights.relaxed,
   },
   
   errorDetails: {
-    backgroundColor: colors.navy.dark,
+    backgroundColor: colors.bg.inset,
     borderRadius: effects.border.radius.default,
     padding: spacing[4],
     marginBottom: spacing[6],
@@ -218,7 +218,7 @@ const styles: Record<string, React.CSSProperties> = {
   stackTrace: {
     fontFamily: typography.fonts.code,
     fontSize: typography.sizes.xs,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     margin: 0,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
@@ -234,8 +234,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: typography.fonts.body,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
-    color: colors.contrast.black,
-    backgroundColor: colors.amber.primary,
+    color: colors.bg.primary,
+    backgroundColor: colors.accent.primary,
     border: 'none',
     borderRadius: effects.border.radius.default,
     padding: `${spacing[2]} ${spacing[5]}`,
@@ -247,9 +247,9 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: typography.fonts.body,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     backgroundColor: 'transparent',
-    border: `1px solid ${colors.contrast.grayDark}`,
+    border: `1px solid ${colors.fg.quaternary}`,
     borderRadius: effects.border.radius.default,
     padding: `${spacing[2]} ${spacing[5]}`,
     cursor: 'pointer',

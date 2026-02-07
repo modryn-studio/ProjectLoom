@@ -5,14 +5,15 @@ import { Send, Square, AlertCircle, Settings, Paperclip, X, Image as ImageIcon }
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { ModelSelector } from './ModelSelector';
 import type { MessageAttachment } from '@/types';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-const MIN_INPUT_HEIGHT = 80;
-const MAX_INPUT_HEIGHT = 200;
+const MIN_INPUT_HEIGHT = 32;
+const MAX_INPUT_HEIGHT = 96;
 
 // =============================================================================
 // MESSAGE INPUT COMPONENT
@@ -40,6 +41,10 @@ interface MessageInputProps {
   attachments?: MessageAttachment[];
   /** Callback when attachments change */
   onAttachmentsChange?: (attachments: MessageAttachment[]) => void;
+  /** Currently selected model ID */
+  currentModel?: string | null;
+  /** Callback when model is changed */
+  onModelChange?: (modelId: string) => void;
 }
 
 // Vision support constants
@@ -59,6 +64,8 @@ export function MessageInput({
   supportsVision = false,
   attachments = [],
   onAttachmentsChange,
+  currentModel,
+  onModelChange,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -215,8 +222,7 @@ export function MessageInput({
 
   // Handle keyboard events
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Ctrl+Enter or Cmd+Enter to send
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -290,74 +296,85 @@ export function MessageInput({
       />
 
       <form onSubmit={handleSend} style={inputStyles.inputWrapper}>
-        {/* Attachment button */}
-        {supportsVision && (
-          <button
-            type="button"
-            onClick={handleFileSelect}
-            disabled={isStreaming || !hasApiKey || attachments.length >= MAX_ATTACHMENTS}
+        <div style={inputStyles.inputSurface}>
+          <textarea
+            ref={textareaRef}
+            value={inputValue}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={hasApiKey ? "Type a message..." : "Configure API key to start chatting..."}
             style={{
-              ...inputStyles.attachButton,
-              opacity: (!hasApiKey || attachments.length >= MAX_ATTACHMENTS) ? 0.4 : 1,
-              cursor: (!hasApiKey || attachments.length >= MAX_ATTACHMENTS) ? 'not-allowed' : 'pointer',
+              ...inputStyles.textarea,
+              opacity: !hasApiKey ? 0.6 : 1,
             }}
-            title={attachments.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} images` : 'Attach image'}
-            aria-label="Attach image"
-          >
-            <Paperclip size={16} />
-          </button>
-        )}
+            disabled={isStreaming || !hasApiKey}
+            aria-label="Message input"
+          />
 
-        <textarea
-          ref={textareaRef}
-          value={inputValue}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder={hasApiKey ? "Type a message... (Ctrl+Enter to send)" : "Configure API key to start chatting..."}
-          style={{
-            ...inputStyles.textarea,
-            opacity: !hasApiKey ? 0.6 : 1,
-          }}
-          disabled={isStreaming || !hasApiKey}
-          aria-label="Message input"
-        />
-        
-        {/* Stop button during streaming */}
-        {isStreaming ? (
-          <button
-            type="button"
-            onClick={onStop}
-            style={inputStyles.stopButton}
-            title="Stop generating"
-            aria-label="Stop generating"
-          >
-            <Square size={18} />
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled={!canSend}
-            style={{
-              ...inputStyles.sendButton,
-              opacity: canSend ? 1 : 0.5,
-              cursor: canSend ? 'pointer' : 'not-allowed',
-            }}
-            title="Send message (Ctrl+Enter)"
-            aria-label="Send message"
-          >
-            <Send size={18} />
-          </button>
-        )}
+          <div style={inputStyles.inputFooter}>
+            <div style={inputStyles.footerLeft}>
+              {/* Attachment button */}
+              {supportsVision && (
+                <button
+                  type="button"
+                  onClick={handleFileSelect}
+                  disabled={isStreaming || !hasApiKey || attachments.length >= MAX_ATTACHMENTS}
+                  style={{
+                    ...inputStyles.attachButton,
+                    opacity: (!hasApiKey || attachments.length >= MAX_ATTACHMENTS) ? 0.4 : 1,
+                    cursor: (!hasApiKey || attachments.length >= MAX_ATTACHMENTS) ? 'not-allowed' : 'pointer',
+                  }}
+                  title={attachments.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} images` : 'Attach image'}
+                  aria-label="Attach image"
+                >
+                  <Paperclip size={14} />
+                </button>
+              )}
+
+              {/* Model selector */}
+              {onModelChange && (
+                <div style={inputStyles.modelSelectorWrapper}>
+                  <ModelSelector
+                    currentModel={currentModel ?? null}
+                    onModelChange={onModelChange}
+                    hasApiKey={hasApiKey}
+                    compact={true}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div style={inputStyles.footerRight}>
+              {/* Stop button during streaming */}
+              {isStreaming ? (
+                <button
+                  type="button"
+                  onClick={onStop}
+                  style={inputStyles.stopButton}
+                  title="Stop generating"
+                  aria-label="Stop generating"
+                >
+                  <Square size={14} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!canSend}
+                  style={{
+                    ...inputStyles.sendButton,
+                    opacity: canSend ? 1 : 0.5,
+                    cursor: canSend ? 'pointer' : 'not-allowed',
+                  }}
+                  title="Send message"
+                  aria-label="Send message"
+                >
+                  <Send size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </form>
-      
-      {/* Keyboard hint */}
-      <div style={inputStyles.hint}>
-        {isStreaming ? (
-          <span style={{ color: colors.violet.primary }}>AI is responding...</span>
-        ) : (
-          <span>Press <kbd style={inputStyles.kbd}>Ctrl</kbd> + <kbd style={inputStyles.kbd}>Enter</kbd> to send</span>
-        )}
-      </div>
     </div>
   );
 }
@@ -369,8 +386,8 @@ export function MessageInput({
 const inputStyles: Record<string, React.CSSProperties> = {
   container: {
     padding: spacing[3],
-    borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
-    backgroundColor: colors.navy.dark,
+    borderTop: `1px solid ${colors.border.default}`,
+    backgroundColor: colors.bg.inset,
     flexShrink: 0,
   },
 
@@ -380,10 +397,10 @@ const inputStyles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
     padding: spacing[2],
     marginBottom: spacing[2],
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'var(--error-bg)',
+    border: '1px solid var(--error-border)',
     borderRadius: effects.border.radius.default,
-    color: '#ef4444',
+    color: 'var(--error-fg)',
     fontSize: typography.sizes.xs,
     fontFamily: typography.fonts.body,
   },
@@ -394,23 +411,31 @@ const inputStyles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
     padding: spacing[2],
     marginBottom: spacing[2],
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    border: '1px solid rgba(245, 158, 11, 0.3)',
+    backgroundColor: 'var(--warning-bg)',
+    border: '1px solid var(--warning-border)',
     borderRadius: effects.border.radius.default,
-    color: colors.amber.primary,
+    color: 'var(--warning-fg)',
     fontSize: typography.sizes.xs,
     fontFamily: typography.fonts.body,
   },
 
   inputWrapper: {
     display: 'flex',
-    alignItems: 'flex-end',
-    gap: spacing[2],
-    backgroundColor: colors.navy.light,
+    alignItems: 'stretch',
+    backgroundColor: 'transparent',
+    border: 'none',
+    padding: 0,
+  },
+
+  inputSurface: {
+    width: '100%',
+    backgroundColor: colors.bg.secondary,
+    border: `1px solid ${colors.border.default}`,
     borderRadius: effects.border.radius.default,
-    border: `1px solid rgba(99, 102, 241, 0.3)`,
     padding: spacing[2],
-    transition: 'border-color 0.15s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0,
   },
 
   textarea: {
@@ -421,27 +446,27 @@ const inputStyles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: 'none',
     outline: 'none',
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
     lineHeight: typography.lineHeights.relaxed,
-    padding: spacing[1],
+    padding: 0,
     // Discrete scrollbar
     scrollbarWidth: 'thin',
-    scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
+    scrollbarColor: 'var(--fg-quaternary) transparent',
   } as React.CSSProperties,
 
   sendButton: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 40,
-    height: 40,
-    backgroundColor: colors.amber.primary,
+    width: 28,
+    height: 28,
+    backgroundColor: 'transparent',
     border: 'none',
-    borderRadius: effects.border.radius.default,
-    color: colors.navy.dark,
-    transition: 'all 0.15s ease',
+    borderRadius: effects.border.radius.sm || '4px',
+    color: colors.accent.primary,
+    transition: 'color 0.15s ease, opacity 0.15s ease',
     flexShrink: 0,
   },
 
@@ -449,50 +474,56 @@ const inputStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 40,
-    height: 40,
-    backgroundColor: '#ef4444',
+    width: 28,
+    height: 28,
+    backgroundColor: 'transparent',
     border: 'none',
-    borderRadius: effects.border.radius.default,
-    color: colors.contrast.white,
+    borderRadius: effects.border.radius.sm || '4px',
+    color: 'var(--error-solid)',
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    transition: 'color 0.15s ease, opacity 0.15s ease',
     flexShrink: 0,
-  },
-
-  hint: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: spacing[1],
-    marginTop: spacing[1],
-    fontSize: typography.sizes.xs,
-    color: colors.contrast.grayDark,
-    fontFamily: typography.fonts.body,
-  },
-
-  kbd: {
-    display: 'inline-block',
-    padding: `1px ${spacing[1]}`,
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.fonts.code,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    borderRadius: '3px',
-    border: `1px solid rgba(99, 102, 241, 0.3)`,
   },
 
   attachButton: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     backgroundColor: 'transparent',
-    border: `1px solid rgba(99, 102, 241, 0.3)`,
-    borderRadius: effects.border.radius.default,
-    color: colors.contrast.gray,
-    transition: 'all 0.15s ease',
+    border: 'none',
+    borderRadius: effects.border.radius.sm || '4px',
+    color: colors.fg.tertiary,
+    transition: 'color 0.15s ease, opacity 0.15s ease',
     flexShrink: 0,
+  },
+
+  inputFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[2],
+  },
+
+  footerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    minWidth: 0,
+  },
+
+  footerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    flexShrink: 0,
+  },
+
+  modelSelectorWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0,
   },
 
   attachmentPreview: {
@@ -508,7 +539,7 @@ const inputStyles: Record<string, React.CSSProperties> = {
     height: 64,
     borderRadius: effects.border.radius.default,
     overflow: 'hidden',
-    border: `1px solid rgba(99, 102, 241, 0.3)`,
+    border: `1px solid ${colors.border.default}`,
   } as React.CSSProperties,
 
   attachmentImg: {
@@ -526,10 +557,10 @@ const inputStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: colors.bg.overlay,
     border: 'none',
     borderRadius: '50%',
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     cursor: 'pointer',
     transition: 'background 0.15s',
   } as React.CSSProperties,

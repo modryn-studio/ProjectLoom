@@ -34,8 +34,8 @@ export interface ContextMenuProps {
 
 const menuStyles: React.CSSProperties = {
   position: 'fixed',
-  backgroundColor: colors.navy.light,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  backgroundColor: colors.bg.secondary,
+  border: '1px solid var(--border-primary)',
   borderRadius: effects.border.radius.default,
   boxShadow: effects.shadow.lg,
   minWidth: 180,
@@ -61,7 +61,7 @@ const itemStyles: React.CSSProperties = {
 
 const separatorStyles: React.CSSProperties = {
   height: 1,
-  backgroundColor: 'rgba(99, 102, 241, 0.2)',
+  backgroundColor: 'var(--border-secondary)',
   margin: `${spacing[1]} 0`,
 };
 
@@ -272,8 +272,8 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
                   color: item.danger
                     ? colors.semantic.error
                     : item.disabled
-                      ? colors.contrast.grayDark
-                      : colors.contrast.white,
+                      ? colors.fg.quaternary
+                      : colors.fg.primary,
                   opacity: item.disabled ? 0.5 : 1,
                   cursor: item.disabled ? 'not-allowed' : 'pointer',
                 }}
@@ -281,7 +281,7 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
                   if (!item.disabled) {
                     const hoverBg = item.danger
                       ? `${colors.semantic.error}15`
-                      : colors.navy.dark;
+                      : colors.bg.inset;
                     (e.target as HTMLButtonElement).style.backgroundColor = hoverBg;
                   }
                 }}
@@ -291,7 +291,7 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
               >
                 {item.icon && (
                   <span style={{
-                    color: item.danger ? colors.semantic.error : colors.contrast.grayDark,
+                    color: item.danger ? colors.semantic.error : colors.fg.quaternary,
                   }}>
                     {item.icon}
                   </span>
@@ -299,7 +299,7 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.shortcut && (
                   <span style={{
-                    color: colors.contrast.grayDark,
+                    color: colors.fg.quaternary,
                     fontSize: typography.sizes.xs,
                     fontFamily: typography.fonts.code,
                   }}>

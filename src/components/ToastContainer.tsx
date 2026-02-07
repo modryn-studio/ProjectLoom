@@ -20,24 +20,24 @@ import { zIndex } from '@/constants/zIndex';
 // =============================================================================
 
 const ICONS: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle className="w-4 h-4 text-emerald-400" />,
-  error: <AlertCircle className="w-4 h-4 text-red-400" />,
-  warning: <AlertTriangle className="w-4 h-4 text-amber-400" />,
-  info: <Info className="w-4 h-4 text-blue-400" />,
+  success: <CheckCircle className="w-4 h-4 text-success-solid" />,
+  error: <AlertCircle className="w-4 h-4 text-error-solid" />,
+  warning: <AlertTriangle className="w-4 h-4 text-warning-solid" />,
+  info: <Info className="w-4 h-4 text-accent-primary" />,
 };
 
 const BORDER_COLORS: Record<ToastType, string> = {
-  success: 'border-emerald-500/30',
-  error: 'border-red-500/30',
-  warning: 'border-amber-500/30',
-  info: 'border-blue-500/30',
+  success: 'border-success-solid/30',
+  error: 'border-error-solid/30',
+  warning: 'border-warning-solid/30',
+  info: 'border-accent-primary/30',
 };
 
 const PROGRESS_COLORS: Record<ToastType, string> = {
-  success: 'bg-emerald-500',
-  error: 'bg-red-500',
-  warning: 'bg-amber-500',
-  info: 'bg-blue-500',
+  success: 'bg-success-solid',
+  error: 'bg-error-solid',
+  warning: 'bg-warning-solid',
+  info: 'bg-accent-primary',
 };
 
 // =============================================================================
@@ -88,13 +88,13 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       className="relative"
     >
       <div 
-        className={`flex items-center gap-3 px-4 py-3 bg-zinc-900 border ${BORDER_COLORS[toast.type]} rounded-lg shadow-xl shadow-black/40 min-w-70 max-w-100`}
+        className={`flex items-center gap-3 px-4 py-3 bg-bg-secondary border ${BORDER_COLORS[toast.type]} rounded-lg shadow-xl shadow-black/40 min-w-70 max-w-100`}
       >
         {/* Icon */}
         {ICONS[toast.type]}
         
         {/* Message */}
-        <span className="text-sm text-zinc-200 flex-1">
+        <span className="text-sm text-fg-primary flex-1">
           {toast.message}
         </span>
         
@@ -103,7 +103,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
           {toast.action && (
             <button
               onClick={handleActionClick}
-              className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 rounded transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-accent-primary hover:text-accent-secondary hover:bg-accent-muted rounded transition-colors"
             >
               {toast.action.label}
             </button>
@@ -111,7 +111,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
           
           <button
             onClick={() => onDismiss(toast.id)}
-            className="p-1 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 rounded transition-colors"
+            className="p-1 text-fg-tertiary hover:text-fg-secondary hover:bg-bg-tertiary rounded transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

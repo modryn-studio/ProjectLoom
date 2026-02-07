@@ -2,13 +2,14 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2 } from 'lucide-react';
 import type { Message as ChatMessage } from 'ai';
 
 import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
+import { useToast } from '@/stores/toast-store';
 import type { Conversation, Message, MessageAttachment } from '@/types';
 
 // =============================================================================
@@ -23,13 +24,19 @@ interface MessageThreadProps {
   isStreaming?: boolean;
 }
 
-export function MessageThread({ 
-  conversation, 
+export function MessageThread({
+  conversation,
   streamingMessages = [],
   isStreaming = false,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  // Detect touch device
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
   
   // Use streaming messages when actively streaming, otherwise use store messages
   // Store messages (conversation.content) preserve attachments and metadata;
@@ -124,6 +131,7 @@ export function MessageThread({
               index={index}
               isHovered={hoveredMessageIndex === index}
               isStreamingMessage={!!(message.metadata as { isStreaming?: boolean } | undefined)?.isStreaming}
+              isTouchDevice={isTouchDevice}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
               onBranchClick={handleBranchClick}
@@ -150,23 +158,28 @@ interface MessageBubbleProps {
   index: number;
   isHovered: boolean;
   isStreamingMessage?: boolean;
+  isTouchDevice?: boolean;
   onMouseEnter: (index: number) => void;
   onMouseLeave: () => void;
   onBranchClick: (index: number, e: React.MouseEvent) => void;
 }
 
-const MessageBubble = memo(function MessageBubble({ 
-  message, 
-  index, 
+const MessageBubble = memo(function MessageBubble({
+  message,
+  index,
   isHovered,
   isStreamingMessage = false,
-  onMouseEnter, 
+  isTouchDevice = false,
+  onMouseEnter,
   onMouseLeave,
   onBranchClick,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
   const isSystem = message.role === 'system';
+
+  // Toast for feedback
+  const toast = useToast();
 
   // Get model from metadata if available
   const modelName = (message.metadata as { model?: string } | undefined)?.model;
@@ -198,61 +211,43 @@ const MessageBubble = memo(function MessageBubble({
     onBranchClick(index, e);
   }, [index, onBranchClick]);
 
+  const handleCopyClickLocal = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(message.content);
+      toast.success('Copied to clipboard');
+    } catch (err) {
+      console.error('[MessageBubble] Failed to copy:', err);
+      toast.error('Failed to copy');
+    }
+  }, [message.content, toast]);
+
+  const handleEditClickLocal = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast.info('Edit feature coming soon');
+  }, [toast]);
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.15 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.1 }}
       style={{
         ...bubbleStyles.wrapper,
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
+        flexDirection: 'column',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
       }}
       onMouseEnter={handleMouseEnterLocal}
       onMouseLeave={onMouseLeave}
     >
-      {/* Branch icon for assistant messages (left side) */}
-      {isAssistant && !isStreamingMessage && (
-        <AnimatePresence>
-          {isHovered && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.1 }}
-              onClick={handleBranchClickLocal}
-              style={bubbleStyles.branchIcon}
-              title={`Branch from message ${index + 1}`}
-              aria-label={`Branch from message ${index + 1}`}
-            >
-              <GitBranch size={14} />
-            </motion.button>
-          )}
-        </AnimatePresence>
-      )}
-
-      {/* Message bubble */}
+      {/* Message content */}
       <div
         style={{
-          ...bubbleStyles.bubble,
-          backgroundColor: isUser 
-            ? colors.navy.dark 
-            : isSystem
-              ? 'rgba(99, 102, 241, 0.1)'
-              : 'transparent',
-          borderLeft: isAssistant ? `3px solid ${colors.violet.primary}` : 'none',
-          maxWidth: isUser ? '80%' : '100%',
+          ...bubbleStyles.message,
+          ...(isUser ? bubbleStyles.userBubble : {}),
         }}
       >
-        {/* Role label for system messages */}
-        {isSystem && (
-          <span style={bubbleStyles.roleLabel}>System</span>
-        )}
-
-        {/* Model badge for assistant messages */}
-        {isAssistant && modelName && (
-          <span style={bubbleStyles.modelBadge}>{formatModelName(modelName)}</span>
-        )}
 
         {/* Message content */}
         <div
@@ -295,33 +290,107 @@ const MessageBubble = memo(function MessageBubble({
             ))}
           </div>
         )}
-
-        {/* Timestamp - hide during streaming */}
-        {!isStreamingMessage && (
-          <span style={bubbleStyles.timestamp}>{timestamp}</span>
-        )}
       </div>
 
-      {/* Branch icon for user messages (right side) */}
-      {isUser && (
-        <AnimatePresence>
-          {isHovered && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.1 }}
-              onClick={handleBranchClickLocal}
-              style={bubbleStyles.branchIcon}
-              title={`Branch from message ${index + 1}`}
-              aria-label={`Branch from message ${index + 1}`}
-            >
-              <GitBranch size={14} />
-            </motion.button>
+      {/* Timestamp row - outside bubble */}
+      {!isStreamingMessage && !isSystem && (
+        <div 
+          style={{
+            ...bubbleStyles.timestampRow,
+            opacity: isUser ? (isHovered || isTouchDevice ? 1 : 0) : 1,
+            width: isUser ? 'auto' : '100%',
+          }}
+        >
+          {/* Timestamp - only shown for user messages */}
+          {isUser && (
+            <span style={bubbleStyles.timestamp}>{timestamp}</span>
           )}
-        </AnimatePresence>
+
+          {/* Action buttons - always rendered to preserve space */}
+          <div style={{ 
+            opacity: (isHovered || isTouchDevice) ? 1 : 0,
+            pointerEvents: (isHovered || isTouchDevice) ? 'auto' : 'none',
+            transition: 'opacity 0.15s ease',
+          }}>
+            <MessageActionButtons
+              messageIndex={index}
+              isUserMessage={isUser}
+              onCopyClick={handleCopyClickLocal}
+              onEditClick={handleEditClickLocal}
+              onBranchClick={handleBranchClickLocal}
+            />
+          </div>
+        </div>
       )}
     </motion.div>
+  );
+});
+
+// =============================================================================
+// MESSAGE ACTION BUTTONS COMPONENT
+// =============================================================================
+
+interface MessageActionButtonsProps {
+  messageIndex: number;
+  isUserMessage: boolean;
+  onCopyClick: (e: React.MouseEvent) => void;
+  onEditClick: (e: React.MouseEvent) => void;
+  onBranchClick: (e: React.MouseEvent) => void;
+}
+
+const MessageActionButtons = memo(function MessageActionButtons({
+  messageIndex,
+  isUserMessage,
+  onCopyClick,
+  onEditClick,
+  onBranchClick,
+}: MessageActionButtonsProps) {
+  const [hoveredButton, setHoveredButton] = useState<string | null>(null);
+
+  return (
+    <div style={actionButtonGroupStyles.container}>
+      <button
+        onClick={onCopyClick}
+        onMouseEnter={() => setHoveredButton('copy')}
+        onMouseLeave={() => setHoveredButton(null)}
+        style={{
+          ...actionButtonGroupStyles.button,
+          color: hoveredButton === 'copy' ? colors.fg.secondary : colors.fg.tertiary,
+        }}
+        title="Copy message"
+        aria-label="Copy message"
+      >
+        <Copy size={12} />
+      </button>
+      {isUserMessage && (
+        <button
+          onClick={onEditClick}
+          onMouseEnter={() => setHoveredButton('edit')}
+          onMouseLeave={() => setHoveredButton(null)}
+          style={{
+            ...actionButtonGroupStyles.button,
+            color: hoveredButton === 'edit' ? colors.fg.secondary : colors.fg.tertiary,
+          }}
+          title="Edit message"
+          aria-label="Edit message"
+        >
+          <Edit2 size={12} />
+        </button>
+      )}
+      <button
+        onClick={onBranchClick}
+        onMouseEnter={() => setHoveredButton('branch')}
+        onMouseLeave={() => setHoveredButton(null)}
+        style={{
+          ...actionButtonGroupStyles.button,
+          color: hoveredButton === 'branch' ? colors.accent.emphasis : colors.accent.primary,
+        }}
+        title={`Branch from message ${messageIndex + 1}`}
+        aria-label={`Branch from message ${messageIndex + 1}`}
+      >
+        <GitBranch size={12} />
+      </button>
+    </div>
   );
 });
 
@@ -351,10 +420,10 @@ const threadStyles: Record<string, React.CSSProperties> = {
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
-    padding: spacing[4],
+    padding: '16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: spacing[3],
+    gap: spacing[5],
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
@@ -365,7 +434,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    color: colors.contrast.grayDark,
+    color: colors.fg.tertiary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
   },
@@ -375,39 +444,28 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   wrapper: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: spacing[2],
     width: '100%',
     position: 'relative',
   } as React.CSSProperties,
 
-  bubble: {
-    padding: spacing[3],
-    borderRadius: effects.border.radius.default,
+  message: {
+    padding: '12px 16px',
     position: 'relative',
+    width: '100%',
   },
 
-  roleLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.violet.light,
-    fontFamily: typography.fonts.code,
-    marginBottom: spacing[1],
-    display: 'block',
-  },
-
-  modelBadge: {
-    fontSize: '10px',
-    color: colors.violet.primary,
-    fontFamily: typography.fonts.code,
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    marginBottom: spacing[1],
-    display: 'inline-block',
+  userBubble: {
+    backgroundColor: colors.bg.inset,
+    borderRadius: effects.border.radius.default,
+    marginLeft: 'auto',
+    width: 'fit-content',
+    maxWidth: '75%',
+    minWidth: '100px',
   },
 
   content: {
     fontSize: typography.sizes.sm,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     lineHeight: typography.lineHeights.relaxed,
     fontFamily: typography.fonts.body,
     whiteSpace: 'pre-wrap',
@@ -419,31 +477,36 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     marginLeft: spacing[1],
-    color: colors.violet.primary,
+    color: colors.accent.primary,
   },
 
   timestamp: {
     fontSize: typography.sizes.xs,
-    color: colors.contrast.grayDark,
+    color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
-    marginTop: spacing[1],
-    display: 'block',
-    textAlign: 'right',
   } as React.CSSProperties,
 
-  branchIcon: {
+  timestampRow: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[2],
+    marginTop: spacing[1],
+    minHeight: 20,
+    transition: 'opacity 0.15s ease',
+    paddingTop: '2px',
+  } as React.CSSProperties,
+
+  timestampBranchIcon: {
+    display: 'inline-flex',
+    alignItems: 'center',
     justifyContent: 'center',
-    width: 28,
-    height: 28,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    border: '1px solid rgba(245, 158, 11, 0.4)',
-    borderRadius: '50%',
-    color: colors.amber.primary,
+    padding: 0,
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: colors.fg.tertiary,
     cursor: 'pointer',
-    flexShrink: 0,
-    transition: 'all 0.15s ease',
+    transition: 'opacity 0.15s ease',
   } as React.CSSProperties,
 
   attachmentRow: {
@@ -465,7 +528,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     maxHeight: 180,
     objectFit: 'cover',
     borderRadius: effects.border.radius.default,
-    border: `1px solid rgba(99, 102, 241, 0.2)`,
+    border: `1px solid ${colors.border.default}`,
     cursor: 'pointer',
     transition: 'opacity 0.15s',
   } as React.CSSProperties,
@@ -475,11 +538,33 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '4px',
     fontSize: '10px',
-    color: colors.contrast.grayDark,
+    color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  } as React.CSSProperties,
+};
+
+const actionButtonGroupStyles: Record<string, React.CSSProperties> = {
+  container: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[1],
+  } as React.CSSProperties,
+
+  button: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+    height: 20,
+    padding: 0,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: effects.border.radius.sm || '4px',
+    cursor: 'pointer',
+    transition: 'opacity 0.15s ease, color 0.15s ease',
   } as React.CSSProperties,
 };
 

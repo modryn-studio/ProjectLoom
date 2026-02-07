@@ -2,9 +2,9 @@
  * User Preferences Store
  * 
  * Manages user preferences for branching behavior, UI settings,
- * and other customizable options. Persists to localStorage.
+ * theme preferences, and other customizable options. Persists to localStorage.
  * 
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import { create } from 'zustand';
@@ -21,6 +21,8 @@ import { STORAGE_KEYS, VersionedStorage, CURRENT_SCHEMA_VERSION } from '@/lib/st
 // TYPES
 // =============================================================================
 
+export type ThemeMode = 'light' | 'dark' | 'system';
+
 export interface UserPreferences {
   /** Branching-related preferences */
   branching: BranchingPreferences;
@@ -34,6 +36,8 @@ export interface UserPreferences {
     confirmOnDelete: boolean;
     /** Chat panel width (persisted, min: 400, max: 800) */
     chatPanelWidth: number;
+    /** Theme mode: light, dark, or system */
+    theme: ThemeMode;
   };
 }
 
@@ -51,6 +55,8 @@ interface PreferencesActions {
   setBranchingPreferences: (prefs: Partial<BranchingPreferences>) => void;
   /** Update UI preferences */
   setUIPreferences: (prefs: Partial<UserPreferences['ui']>) => void;
+  /** Set theme mode and apply to document */
+  setTheme: (theme: ThemeMode) => void;
   /** Reset to defaults */
   resetToDefaults: () => void;
   /** Get current inheritance mode (considering defaults) */
@@ -79,6 +85,7 @@ const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
   showInheritedContext: true,
   confirmOnDelete: true,
   chatPanelWidth: 480, // Default 30% of 1600px viewport
+  theme: 'system', // Follow system preference by default
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -100,6 +107,31 @@ const preferencesStorage = new VersionedStorage<UserPreferences>({
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * Apply theme to document root
+ */
+function applyTheme(theme: ThemeMode): void {
+  if (typeof window === 'undefined') return;
+  
+  const root = document.documentElement;
+  
+  if (theme === 'system') {
+    // Remove data-theme to let CSS media query handle it
+    root.removeAttribute('data-theme');
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
+}
+
+/**
+ * Get resolved theme (accounts for system preference)
+ */
+function getResolvedTheme(theme: ThemeMode): 'light' | 'dark' {
+  if (theme !== 'system') return theme;
+  if (typeof window === 'undefined') return 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 /**
  * Merge loaded preferences with defaults to ensure all fields exist
@@ -128,8 +160,13 @@ function loadInitialPreferences(): { preferences: UserPreferences; isLoaded: boo
   
   const result = preferencesStorage.load();
   if (result.success) {
-    return { preferences: mergeWithDefaults(result.data), isLoaded: true };
+    const prefs = mergeWithDefaults(result.data);
+    // Apply theme on initial load
+    applyTheme(prefs.ui.theme);
+    return { preferences: prefs, isLoaded: true };
   }
+  // Apply default theme
+  applyTheme(DEFAULT_UI_PREFERENCES.theme);
   return { preferences: DEFAULT_PREFERENCES, isLoaded: true };
 }
 
@@ -194,8 +231,23 @@ export const usePreferencesStore = create<PreferencesState & PreferencesActions>
       get().savePreferences();
     },
 
+    setTheme: (theme: ThemeMode) => {
+      applyTheme(theme);
+      set((state) => ({
+        preferences: {
+          ...state.preferences,
+          ui: {
+            ...state.preferences.ui,
+            theme,
+          },
+        },
+      }));
+      get().savePreferences();
+    },
+
     resetToDefaults: () => {
       set({ preferences: DEFAULT_PREFERENCES });
+      applyTheme(DEFAULT_UI_PREFERENCES.theme);
       get().savePreferences();
     },
 
@@ -224,3 +276,9 @@ export const selectDefaultInheritanceMode = (state: PreferencesState) =>
 
 export const selectAlwaysAskOnBranch = (state: PreferencesState) => 
   state.preferences.branching.alwaysAskOnBranch;
+
+export const selectTheme = (state: PreferencesState) => 
+  state.preferences.ui.theme;
+
+// Export helper for resolved theme
+export { getResolvedTheme };

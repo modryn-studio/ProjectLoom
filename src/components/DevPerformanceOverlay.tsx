@@ -168,14 +168,14 @@ const styles: Record<string, React.CSSProperties> = {
     top: '50%',
     right: spacing[4],
     transform: 'translateY(-50%)',
-    backgroundColor: `${colors.navy.dark}ee`,
+    backgroundColor: `${colors.bg.inset}ee`,
     borderRadius: effects.border.radius.default,
     padding: spacing[3],
     minWidth: '140px',
     zIndex: zIndex.overlay.devOverlay,
     fontFamily: typography.fonts.code,
     fontSize: typography.sizes.xs,
-    border: `1px solid ${colors.navy.hover}`,
+    border: `1px solid ${colors.accent.muted}`,
     backdropFilter: `blur(${effects.blur.sm})`,
   },
   
@@ -185,11 +185,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     marginBottom: spacing[2],
     paddingBottom: spacing[2],
-    borderBottom: `1px solid ${colors.navy.hover}`,
+    borderBottom: `1px solid ${colors.accent.muted}`,
   },
   
   title: {
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     fontWeight: typography.weights.medium,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
@@ -198,7 +198,7 @@ const styles: Record<string, React.CSSProperties> = {
   closeButton: {
     background: 'none',
     border: 'none',
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     cursor: 'pointer',
     fontSize: typography.sizes.base,
     padding: 0,
@@ -218,22 +218,22 @@ const styles: Record<string, React.CSSProperties> = {
   },
   
   statLabel: {
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
   },
   
   statValue: {
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontWeight: typography.weights.medium,
   },
   
   footer: {
     marginTop: spacing[2],
     paddingTop: spacing[2],
-    borderTop: `1px solid ${colors.navy.hover}`,
+    borderTop: `1px solid ${colors.accent.muted}`,
   },
   
   footerText: {
-    color: colors.violet.muted,
+    color: colors.accent.muted,
     fontSize: typography.sizes.xs,
   },
   
@@ -244,8 +244,8 @@ const styles: Record<string, React.CSSProperties> = {
     transform: 'translateY(-50%)',
     width: '32px',
     height: '32px',
-    backgroundColor: `${colors.navy.dark}ee`,
-    border: `1px solid ${colors.navy.hover}`,
+    backgroundColor: `${colors.bg.inset}ee`,
+    border: `1px solid ${colors.accent.muted}`,
     borderRadius: effects.border.radius.default,
     cursor: 'pointer',
     display: 'flex',

@@ -32,6 +32,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ onFocusNode }: ChatPanelProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const panelWidthRef = useRef<number>(480); // Track current width for mouseup handler
   
   // State from stores — use targeted selector to only re-render when active conversation changes
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
@@ -53,6 +54,12 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
   const [panelWidth, setPanelWidth] = useState(uiPrefs.chatPanelWidth || 480);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    panelWidthRef.current = panelWidth;
+  }, [panelWidth]);
 
   // Determine current model for conversation
   const currentModel = useMemo(() => {
@@ -185,12 +192,8 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      // Persist width to preferences when resize ends
-      // Use functional update to get current width (avoid stale closure)
-      setPanelWidth(currentWidth => {
-        setUIPreferences({ chatPanelWidth: currentWidth });
-        return currentWidth;
-      });
+      // Persist width to preferences when resize ends using ref value
+      setUIPreferences({ chatPanelWidth: panelWidthRef.current });
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -205,38 +208,54 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
   // Handle close
   const handleClose = useCallback(() => {
     closeChatPanel();
+    setIsMaximized(false);
   }, [closeChatPanel]);
+
+  const handleMaximize = useCallback(() => {
+    setIsMaximized(!isMaximized);
+  }, [isMaximized]);
 
   // Memoized panel styles to prevent object recreation on every render
   const panelStyles = useMemo<React.CSSProperties>(() => ({
     position: 'fixed',
     top: 0,
+    left: isMaximized ? 0 : 'auto',
     right: 0,
-    width: panelWidth,
-    minWidth: MIN_PANEL_WIDTH,
-    maxWidth: MAX_PANEL_WIDTH,
-    backgroundColor: colors.navy.light,
-    borderLeft: `1px solid rgba(99, 102, 241, 0.2)`,
+    width: isMaximized ? '100vw' : panelWidth,
+    minWidth: isMaximized ? '100vw' : MIN_PANEL_WIDTH,
+    maxWidth: isMaximized ? '100vw' : MAX_PANEL_WIDTH,
+    backgroundColor: colors.bg.secondary,
+    borderLeft: isMaximized ? 'none' : `1px solid ${colors.border.default}`,
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
     maxHeight: '100vh',
     overflow: 'hidden',
     userSelect: isResizing ? 'none' : 'auto',
-    zIndex: 100,
-  }), [panelWidth, isResizing]);
+    zIndex: isMaximized ? 200 : 100,
+  }), [panelWidth, isResizing, isMaximized]);
 
   // Memoized resize handle styles
   const resizeHandleStyles = useMemo<React.CSSProperties>(() => ({
     position: 'absolute',
     top: 0,
-    left: -2,
-    width: isResizing || isResizeHovered ? 4 : 4,
+    left: 0,
+    width: 16,
     height: '100%',
     cursor: 'ew-resize',
-    backgroundColor: isResizing || isResizeHovered ? colors.amber.primary : 'transparent',
-    transition: isResizing ? 'none' : 'background-color 0.15s ease, width 0.15s ease',
     zIndex: 30,
+    display: isMaximized ? 'none' : 'block',
+  }), [isMaximized]);
+  
+  const resizeLineStyles = useMemo<React.CSSProperties>(() => ({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 3,
+    height: '100%',
+    backgroundColor: isResizing || isResizeHovered ? colors.accent.primary : 'transparent',
+    transition: isResizing ? 'none' : 'background-color 0.15s ease',
+    pointerEvents: 'none',
   }), [isResizing, isResizeHovered]);
 
   // Stable callback for resize hover
@@ -260,9 +279,9 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
       {chatPanelOpen && (
         <motion.aside
           ref={panelRef}
-          initial={{ x: panelWidth }}
+          initial={{ x: isMaximized ? 0 : panelWidth }}
           animate={{ x: 0 }}
-          exit={{ x: panelWidth }}
+          exit={{ x: isMaximized ? 0 : panelWidth }}
           transition={animation.spring.snappy}
           style={panelStyles}
         >
@@ -272,7 +291,9 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
             onMouseDown={handleMouseDown}
             onMouseEnter={handleResizeEnter}
             onMouseLeave={handleResizeLeave}
-          />
+          >
+            <div style={resizeLineStyles} />
+          </div>
 
           {/* Content */}
           {activeConversation ? (
@@ -281,9 +302,7 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
               <ChatPanelHeader
                 conversation={activeConversation}
                 onClose={handleClose}
-                currentModel={currentModel}
-                onModelChange={handleModelChange}
-                hasApiKey={hasAnyApiKey}
+                onMaximize={handleMaximize}
               />
 
               {/* Message Thread */}
@@ -306,6 +325,8 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
                 supportsVision={supportsVision}
                 attachments={pendingAttachments}
                 onAttachmentsChange={setPendingAttachments}
+                currentModel={currentModel}
+                onModelChange={handleModelChange}
               />
             </>
           ) : (
@@ -338,7 +359,7 @@ const emptyStateStyles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     flex: 1,
     padding: spacing[6],
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     textAlign: 'center',
   } as React.CSSProperties,
   icon: {

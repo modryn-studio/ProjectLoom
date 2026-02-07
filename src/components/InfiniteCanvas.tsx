@@ -11,6 +11,7 @@ import {
   Connection,
   NodeTypes,
   OnConnect,
+  OnConnectEnd,
   OnNodesChange,
   OnEdgesChange,
   ReactFlowInstance,
@@ -89,7 +90,7 @@ const canvasStyles: React.CSSProperties = {
 };
 
 const connectionLineStyle: React.CSSProperties = {
-  stroke: colors.violet.primary,
+  stroke: colors.accent.primary,
   strokeWidth: 2,
 };
 
@@ -101,8 +102,8 @@ const minimapStyle: React.CSSProperties = {
 };
 
 const controlsStyle: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
-  borderColor: colors.navy.hover,
+  backgroundColor: colors.bg.secondary,
+  borderColor: colors.border.default,
 };
 
 const defaultViewport = { x: 0, y: 0, zoom: canvasConfig.viewport.defaultZoom };
@@ -291,9 +292,48 @@ export function InfiniteCanvas() {
 
   // Handle canvas click (deselect and close chat panel)
   const handlePaneClick = useCallback(() => {
-    clearSelection();
-    // Don't close chat panel on pane click - keep conversation context
-  }, [clearSelection]);
+    // Use React Flow instance to ensure proper deselection
+    if (reactFlowInstance.current) {
+      const currentNodes = reactFlowInstance.current.getNodes();
+      const hasSelectedNodes = currentNodes.some((node) => node.selected);
+      
+      if (hasSelectedNodes) {
+        // Explicitly clear selection through React Flow's state management
+        reactFlowInstance.current.setNodes(
+          currentNodes.map((node) => ({
+            ...node,
+            selected: false,
+          })) as Node<ConversationNodeData>[]
+        );
+      }
+    }
+    
+    // Close chat panel (which also clears our internal selection state)
+    closeChatPanel();
+  }, [closeChatPanel]);
+
+  // Handle connection drag end - create new card if dropped on empty canvas
+  // Uses React Flow v12 connectionState API
+  const handleConnectEnd: OnConnectEnd = useCallback(
+    (event, connectionState) => {
+      // Check if we had an active connection (fromNode will be set)
+      // and if we dropped on empty canvas (toHandle will be null)
+      // Also ensure we have a valid drop position
+      if (connectionState.fromNode && !connectionState.toHandle && connectionState.to) {
+        const targetIsPane = (event.target as Element)?.classList?.contains('react-flow__pane');
+        
+        if (targetIsPane) {
+          // Use the drop position from connectionState (already in flow coordinates)
+          const sourceNodeId = connectionState.fromNode.id;
+          const dropPosition = connectionState.to;
+
+          // Open branch dialog with the target position
+          openBranchDialog(sourceNodeId, undefined, dropPosition);
+        }
+      }
+    },
+    [openBranchDialog]
+  );
 
   // Handle creating a new conversation
   const handleAddConversation = useCallback((explicitPosition?: { x: number; y: number }) => {
@@ -603,6 +643,7 @@ export function InfiniteCanvas() {
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={handleConnect}
+            onConnectEnd={handleConnectEnd}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             onNodeDragStart={handleNodeDragStart}

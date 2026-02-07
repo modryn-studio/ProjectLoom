@@ -46,9 +46,9 @@ const overlayStyles: React.CSSProperties = {
 };
 
 const dialogStyles: React.CSSProperties = {
-  backgroundColor: colors.navy.light,
+  backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.md,
-  border: `1px solid rgba(99, 102, 241, 0.3)`,
+  border: '1px solid var(--border-primary)',
   boxShadow: effects.shadow.lg,
   width: '90%',
   maxWidth: '650px',
@@ -313,18 +313,18 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
           {/* Header */}
           <div style={{
             padding: spacing[4],
-            borderBottom: `1px solid rgba(99, 102, 241, 0.2)`,
+            borderBottom: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-              <Bot size={24} color={colors.violet.primary} />
+              <Bot size={24} color={colors.accent.primary} />
               <h2 style={{
                 margin: 0,
                 fontSize: '1.25rem',
                 fontWeight: 600,
-                color: colors.contrast.white,
+                color: colors.fg.primary,
                 fontFamily: typography.fonts.heading,
               }}>
                 Agent Workflows
@@ -338,7 +338,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                 cursor: 'pointer',
                 padding: spacing[1],
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.grayDark,
+                color: colors.fg.quaternary,
                 display: 'flex',
               }}
             >
@@ -357,7 +357,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                     marginBottom: spacing[2],
                     fontSize: typography.sizes.sm,
                     fontWeight: 500,
-                    color: colors.contrast.gray,
+                    color: colors.fg.secondary,
                     fontFamily: typography.fonts.body,
                   }}>
                     Choose an Agent
@@ -372,11 +372,11 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                           gap: spacing[2],
                           padding: spacing[2],
                           backgroundColor: selectedAgent === agent.id
-                            ? `${colors.violet.primary}15`
-                            : colors.navy.dark,
+                            ? `${colors.accent.primary}15`
+                            : colors.bg.inset,
                           border: `1px solid ${selectedAgent === agent.id
-                            ? colors.violet.primary
-                            : 'rgba(99, 102, 241, 0.3)'}`,
+                            ? colors.accent.primary
+                            : 'var(--border-primary)'}`,
                           borderRadius: effects.border.radius.default,
                           cursor: 'pointer',
                           transition: 'all 0.15s ease',
@@ -391,7 +391,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                           style={{ marginTop: '2px' }}
                         />
                         <div style={{
-                          color: selectedAgent === agent.id ? colors.violet.primary : colors.contrast.grayDark,
+                          color: selectedAgent === agent.id ? colors.accent.primary : colors.fg.quaternary,
                           marginTop: '2px',
                         }}>
                           {agent.icon}
@@ -399,7 +399,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                         <div>
                           <div style={{
                             fontWeight: 500,
-                            color: colors.contrast.white,
+                            color: colors.fg.primary,
                             marginBottom: '2px',
                             fontFamily: typography.fonts.body,
                           }}>
@@ -407,7 +407,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                           </div>
                           <div style={{
                             fontSize: typography.sizes.xs,
-                            color: colors.contrast.grayDark,
+                            color: colors.fg.quaternary,
                             fontFamily: typography.fonts.body,
                           }}>
                             {agent.description}
@@ -426,7 +426,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                       marginBottom: spacing[1],
                       fontSize: typography.sizes.sm,
                       fontWeight: 500,
-                      color: colors.contrast.gray,
+                      color: colors.fg.secondary,
                       fontFamily: typography.fonts.body,
                     }}>
                       What should the agent do?
@@ -439,10 +439,10 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                       style={{
                         width: '100%',
                         padding: spacing[2],
-                        backgroundColor: colors.navy.dark,
-                        border: `1px solid rgba(99, 102, 241, 0.3)`,
+                        backgroundColor: colors.bg.inset,
+                        border: '1px solid var(--border-primary)',
                         borderRadius: effects.border.radius.default,
-                        color: colors.contrast.white,
+                        color: colors.fg.primary,
                         fontSize: typography.sizes.sm,
                         fontFamily: typography.fonts.body,
                         resize: 'vertical',
@@ -455,13 +455,13 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                 {/* Workspace Info */}
                 <div style={{
                   padding: spacing[2],
-                  backgroundColor: colors.navy.dark,
+                  backgroundColor: colors.bg.inset,
                   borderRadius: effects.border.radius.default,
                   fontSize: typography.sizes.xs,
-                  color: colors.contrast.grayDark,
+                  color: colors.fg.quaternary,
                   fontFamily: typography.fonts.body,
                 }}>
-                  <strong style={{ color: colors.contrast.gray }}>Workspace:</strong>{' '}
+                  <strong style={{ color: colors.fg.secondary }}>Workspace:</strong>{' '}
                   {workspaceSnapshot.totalCards} cards, {workspaceSnapshot.totalEdges} connections
                 </div>
               </>
@@ -478,12 +478,12 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
               }}>
                 <Loader2
                   size={32}
-                  color={colors.violet.primary}
+                  color={colors.accent.primary}
                   style={{ animation: 'spin 1s linear infinite' }}
                 />
                 <div style={{
                   fontSize: typography.sizes.sm,
-                  color: colors.contrast.white,
+                  color: colors.fg.primary,
                   fontFamily: typography.fonts.body,
                 }}>
                   Agent is working...
@@ -492,10 +492,10 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   <div style={{
                     width: '100%',
                     padding: spacing[2],
-                    backgroundColor: colors.navy.dark,
+                    backgroundColor: colors.bg.inset,
                     borderRadius: effects.border.radius.default,
                     fontSize: typography.sizes.xs,
-                    color: colors.contrast.grayDark,
+                    color: colors.fg.quaternary,
                     fontFamily: typography.fonts.body,
                     maxHeight: 150,
                     overflowY: 'auto',
@@ -539,10 +539,10 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
 
                 <div style={{
                   padding: spacing[2],
-                  backgroundColor: colors.navy.dark,
+                  backgroundColor: colors.bg.inset,
                   borderRadius: effects.border.radius.default,
                   fontSize: typography.sizes.sm,
-                  color: colors.contrast.gray,
+                  color: colors.fg.secondary,
                   fontFamily: typography.fonts.body,
                   whiteSpace: 'pre-wrap',
                 }}>
@@ -552,7 +552,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                 {result.usage.totalTokens > 0 && (
                   <div style={{
                     fontSize: typography.sizes.xs,
-                    color: colors.contrast.grayDark,
+                    color: colors.fg.quaternary,
                     fontFamily: typography.fonts.body,
                   }}>
                     Tokens used: {result.usage.totalTokens.toLocaleString()} |
@@ -586,7 +586,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
           {/* Footer */}
           <div style={{
             padding: spacing[4],
-            borderTop: `1px solid rgba(99, 102, 241, 0.2)`,
+            borderTop: '1px solid var(--border-primary)',
             display: 'flex',
             justifyContent: 'flex-end',
             gap: spacing[2],
@@ -596,9 +596,9 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
               style={{
                 padding: `${spacing[2]} ${spacing[3]}`,
                 backgroundColor: 'transparent',
-                border: `1px solid rgba(99, 102, 241, 0.3)`,
+                border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.contrast.gray,
+                color: colors.fg.secondary,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
@@ -615,7 +615,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   backgroundColor: colors.semantic.error,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: colors.contrast.white,
+                  color: colors.fg.primary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: 500,
@@ -634,10 +634,10 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                 disabled={!selectedAgent}
                 style={{
                   padding: `${spacing[2]} ${spacing[3]}`,
-                  backgroundColor: !selectedAgent ? colors.navy.dark : colors.violet.primary,
+                  backgroundColor: !selectedAgent ? colors.bg.inset : colors.accent.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: !selectedAgent ? colors.contrast.grayDark : colors.contrast.white,
+                  color: !selectedAgent ? colors.fg.quaternary : colors.fg.primary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: 500,

@@ -43,10 +43,10 @@ const styles = {
     pointerEvents: 'auto' as const,
     width: '400px',
     maxWidth: '90vw',
-    backgroundColor: colors.navy.light,
+    backgroundColor: colors.bg.secondary,
     borderRadius: effects.border.radius.lg,
     boxShadow: effects.shadow.lg,
-    border: `1px solid ${colors.navy.hover}`,
+    border: `1px solid ${colors.accent.muted}`,
     overflow: 'hidden',
   },
   searchBox: {
@@ -54,10 +54,10 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     padding: '12px 16px',
-    borderBottom: `1px solid rgba(255, 255, 255, 0.1)`,
+    borderBottom: `1px solid var(--border-secondary)`,
   },
   searchIcon: {
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     flexShrink: 0,
   },
   input: {
@@ -65,13 +65,13 @@ const styles = {
     backgroundColor: 'transparent',
     border: 'none',
     outline: 'none',
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     fontSize: '14px',
     fontFamily: 'inherit',
   },
   resultCount: {
     fontSize: '12px',
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     flexShrink: 0,
   },
   resultsList: {
@@ -81,21 +81,21 @@ const styles = {
   resultItem: {
     padding: '10px 16px',
     cursor: 'pointer',
-    borderBottom: `1px solid rgba(255, 255, 255, 0.05)`,
+    borderBottom: `1px solid var(--border-secondary)`,
     transition: 'background-color 150ms',
   },
   resultItemActive: {
-    backgroundColor: colors.navy.bg,
+    backgroundColor: colors.bg.primary,
   },
   resultTitle: {
     fontSize: '13px',
     fontWeight: 500,
-    color: colors.contrast.white,
+    color: colors.fg.primary,
     marginBottom: '4px',
   },
   resultSnippet: {
     fontSize: '12px',
-    color: colors.contrast.gray,
+    color: colors.fg.secondary,
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -105,22 +105,22 @@ const styles = {
     fontSize: '10px',
     padding: '2px 6px',
     borderRadius: '4px',
-    backgroundColor: colors.violet.muted,
-    color: colors.violet.light,
+    backgroundColor: colors.accent.muted,
+    color: colors.accent.secondary,
     marginLeft: '8px',
     textTransform: 'uppercase' as const,
   },
   noResults: {
     padding: '24px 16px',
     textAlign: 'center' as const,
-    color: colors.contrast.grayDark,
+    color: colors.fg.quaternary,
     fontSize: '13px',
   },
   hint: {
     padding: '8px 16px',
     fontSize: '11px',
-    color: colors.contrast.grayDark,
-    backgroundColor: colors.navy.bg,
+    color: colors.fg.quaternary,
+    backgroundColor: colors.bg.primary,
     display: 'flex',
     justifyContent: 'space-between',
   },
@@ -129,9 +129,9 @@ const styles = {
     padding: '1px 5px',
     fontSize: '10px',
     fontFamily: 'monospace',
-    backgroundColor: colors.navy.bg,
+    backgroundColor: colors.bg.primary,
     borderRadius: '3px',
-    border: `1px solid ${colors.navy.hover}`,
+    border: `1px solid ${colors.accent.muted}`,
     marginLeft: '4px',
   },
 };
@@ -249,8 +249,8 @@ export function CanvasSearch() {
           <span 
             key={i} 
             style={{ 
-              backgroundColor: colors.violet.muted,
-              color: colors.violet.light,
+              backgroundColor: colors.accent.muted,
+              color: colors.accent.secondary,
               padding: '0 2px',
               borderRadius: '2px',
             }}
