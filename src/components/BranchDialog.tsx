@@ -6,16 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCanvasStore, selectBranchDialogOpen, selectBranchSourceId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectDefaultInheritanceMode } from '@/stores/preferences-store';
 import { colors, spacing, effects, animation, typography } from '@/lib/design-tokens';
-import { smartTruncate } from '@/utils/formatters';
 import { 
-  getTruncationPreview, 
   estimateTokens, 
-  getSmartInitialSelection,
-  validateBranchData,
-  TRUNCATION_CONFIG,
 } from '@/lib/context-utils';
-import { MessageSelector } from './MessageSelector';
-import type { InheritanceMode, Message, TruncationPreview } from '@/types';
+import { estimateMessagesTokens, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { apiKeyManager } from '@/lib/api-key-manager';
+import type { InheritanceMode, Message } from '@/types';
 
 // =============================================================================
 // ICONS (inline SVG to avoid lucide-react dependency issues)
@@ -122,20 +118,14 @@ const modeOptions: ModeOption[] = [
   {
     id: 'full',
     label: 'Full Context',
-    description: 'Include all messages from the conversation',
+    description: 'Include all messages up to branch point (like ChatGPT/Claude)',
     icon: <FileTextIcon />,
   },
   {
     id: 'summary',
-    label: 'Summary',
-    description: 'Smart selection of important messages',
+    label: 'AI Summary',
+    description: 'Generate a concise AI summary of the conversation',
     icon: <ScissorsIcon />,
-  },
-  {
-    id: 'custom',
-    label: 'Custom Selection',
-    description: 'Choose which messages to include',
-    icon: <CheckSquareIcon />,
   },
 ];
 
@@ -158,11 +148,13 @@ export function BranchDialog() {
 
   // Local state
   const [branchReason, setBranchReason] = useState('');
-  const [inheritanceMode, setInheritanceMode] = useState<InheritanceMode>(defaultInheritanceMode);
-  const [customSelection, setCustomSelection] = useState<Set<string>>(new Set());
+  const [inheritanceMode, setInheritanceMode] = useState<InheritanceMode>(
+    defaultInheritanceMode
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [rememberChoice, setRememberChoice] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -172,6 +164,7 @@ export function BranchDialog() {
       setRememberChoice(false);
       setValidationError(null);
       setValidationWarning(null);
+      setIsGeneratingSummary(false);
     }
   }, [branchDialogOpen, defaultInheritanceMode]);
 
@@ -182,14 +175,6 @@ export function BranchDialog() {
   );
 
   const messages: Message[] = sourceConversation?.content || [];
-
-  // Initialize custom selection with smart defaults
-  useEffect(() => {
-    if (branchDialogOpen && messages.length > 0) {
-      const smartSelection = getSmartInitialSelection(messages);
-      setCustomSelection(new Set(smartSelection));
-    }
-  }, [branchDialogOpen, messages]);
 
   // Calculate stats for preview
   const stats = useMemo(() => {
@@ -204,17 +189,10 @@ export function BranchDialog() {
     if (inheritanceMode === 'full') {
       selectedMessages = totalMessages;
       selectedTokens = totalTokens;
-    } else if (inheritanceMode === 'summary') {
-      const preview = getTruncationPreview(messages, {
-        type: TRUNCATION_CONFIG.summary.strategy,
-        maxMessages: TRUNCATION_CONFIG.summary.maxMessages,
-      });
-      selectedMessages = preview.truncated.length;
-      selectedTokens = totalTokens - preview.tokensSaved;
     } else {
-      const selectedMsgs = messages.filter((m: Message) => customSelection.has(m.id));
-      selectedMessages = selectedMsgs.length;
-      selectedTokens = estimateTokens(selectedMsgs);
+      // AI Summary mode: estimate cost of summarization call
+      selectedMessages = totalMessages; // AI sees all messages to create summary
+      selectedTokens = totalTokens;
     }
 
     return {
@@ -224,24 +202,29 @@ export function BranchDialog() {
       selectedTokens,
       saved: totalMessages - selectedMessages,
     };
-  }, [messages, inheritanceMode, customSelection]);
+  }, [messages, inheritanceMode]);
 
   // Validate on change
   useEffect(() => {
-    const validation = validateBranchData(
-      inheritanceMode,
-      Array.from(customSelection),
-      messages
-    );
-    setValidationError(validation.valid ? null : validation.error || null);
-    setValidationWarning(validation.warning || null);
-  }, [inheritanceMode, customSelection, messages]);
+    setValidationError(null);
+    if (inheritanceMode === 'summary') {
+      const hasKey = !!apiKeyManager.getKey('anthropic') || !!apiKeyManager.getKey('openai');
+      if (!hasKey) {
+        setValidationError('API key required for AI summary generation. Configure in Settings.');
+      } else {
+        const costEstimate = estimateCost(stats?.totalTokens ?? 0, 500, 'claude-sonnet-4-20250514');
+        setValidationWarning(`AI will summarize ${messages.length} messages. Estimated cost: ${formatCost(costEstimate)}`);
+      }
+    } else {
+      setValidationWarning(null);
+    }
+  }, [inheritanceMode, messages, stats]);
 
   // Constants for validation
   const MAX_REASON_LENGTH = 200;
 
   // Handle submit
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!branchReason.trim()) {
       setValidationError('Please provide a reason for this branch');
       return;
@@ -259,16 +242,85 @@ export function BranchDialog() {
       setBranchingPreferences({ defaultInheritanceMode: inheritanceMode });
     }
 
-    // Use the new v4 branchFromMessage API
+    // For summary mode, generate AI summary first
+    if (inheritanceMode === 'summary') {
+      setIsGeneratingSummary(true);
+      setValidationError(null);
+      setValidationWarning('Generating AI summary...');
+
+      try {
+        // Determine which API key and model to use
+        const anthropicKey = apiKeyManager.getKey('anthropic');
+        const openaiKey = apiKeyManager.getKey('openai');
+        const apiKey = anthropicKey || openaiKey;
+        const model = anthropicKey ? 'claude-sonnet-4-20250514' : 'gpt-4o';
+
+        if (!apiKey) {
+          setValidationError('No API key configured. Add one in Settings.');
+          setIsGeneratingSummary(false);
+          return;
+        }
+
+        // Get messages up to branch point
+        const messageIndex = branchMessageIndex ?? messages.length - 1;
+        const messagesForSummary = messages.slice(0, messageIndex + 1).map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+        const response = await fetch('/api/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: messagesForSummary,
+            model,
+            apiKey,
+            parentTitle: sourceConversation?.metadata.title,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          setValidationError(errorData.error || 'Failed to generate summary.');
+          setIsGeneratingSummary(false);
+          return;
+        }
+
+        const { summary } = await response.json();
+
+        // Create branch with the generated summary
+        const newConversation = branchFromMessage({
+          sourceCardId: branchSourceId!,
+          messageIndex,
+          inheritanceMode: 'summary',
+          branchReason: branchReason.trim(),
+          summaryText: summary,
+        });
+
+        if (!newConversation) {
+          setValidationError('Failed to create branch. Please try again.');
+          setIsGeneratingSummary(false);
+          return;
+        }
+
+        setIsGeneratingSummary(false);
+        handleClose();
+      } catch (error) {
+        console.error('[BranchDialog] Summary generation failed:', error);
+        setValidationError('Failed to generate summary. Check your connection and try again.');
+        setIsGeneratingSummary(false);
+      }
+      return;
+    }
+
+    // Full context mode - just create the branch
     const newConversation = branchFromMessage({
       sourceCardId: branchSourceId!,
       messageIndex: branchMessageIndex ?? messages.length - 1,
       inheritanceMode,
-      customMessageIds: inheritanceMode === 'custom' ? Array.from(customSelection) : undefined,
       branchReason: branchReason.trim(),
     });
 
-    // Check if branch creation succeeded
     if (!newConversation) {
       setValidationError('Failed to create branch. Please try again.');
       return;
@@ -281,10 +333,10 @@ export function BranchDialog() {
   const handleClose = () => {
     setBranchReason('');
     setInheritanceMode(defaultInheritanceMode);
-    setCustomSelection(new Set());
     setValidationError(null);
     setValidationWarning(null);
     setRememberChoice(false);
+    setIsGeneratingSummary(false);
     closeBranchDialog();
   };
 
@@ -471,17 +523,6 @@ export function BranchDialog() {
               </div>
             </div>
 
-            {/* Custom Message Selector */}
-            {inheritanceMode === 'custom' && (
-              <div style={{ marginBottom: spacing[4] }}>
-                <MessageSelector
-                  messages={messages}
-                  selectedIds={customSelection}
-                  onSelectionChange={setCustomSelection}
-                />
-              </div>
-            )}
-
             {/* Stats Preview */}
             {stats && (
               <div style={{
@@ -493,12 +534,10 @@ export function BranchDialog() {
                 fontFamily: typography.fonts.body,
               }}>
                 <strong style={{ color: colors.contrast.gray }}>Context preview:</strong>{' '}
-                {stats.selectedMessages} of {stats.totalMessages} messages ({stats.selectedTokens.toLocaleString()} tokens)
-                {stats.saved > 0 && (
-                  <span style={{ color: colors.semantic.success }}>
-                    {' '}• {stats.saved} messages excluded
-                  </span>
-                )}
+                {inheritanceMode === 'full' 
+                  ? `${stats.totalMessages} messages (${stats.totalTokens.toLocaleString()} tokens) — full context passed to AI`
+                  : `${stats.totalMessages} messages → AI will generate a concise summary`
+                }
               </div>
             )}
 
@@ -591,28 +630,28 @@ export function BranchDialog() {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!branchReason.trim() || !!validationError}
+              disabled={!branchReason.trim() || !!validationError || isGeneratingSummary}
               style={{
                 padding: `${spacing[2]} ${spacing[3]}`,
-                backgroundColor: !branchReason.trim() || validationError 
+                backgroundColor: !branchReason.trim() || validationError || isGeneratingSummary
                   ? colors.navy.dark 
                   : colors.amber.primary,
                 border: 'none',
                 borderRadius: effects.border.radius.default,
-                color: !branchReason.trim() || validationError 
+                color: !branchReason.trim() || validationError || isGeneratingSummary
                   ? colors.contrast.grayDark 
                   : colors.navy.dark,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 fontWeight: 500,
-                cursor: !branchReason.trim() || validationError ? 'not-allowed' : 'pointer',
+                cursor: !branchReason.trim() || validationError || isGeneratingSummary ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: spacing[1],
               }}
             >
               <GitBranchIcon size={16} />
-              Create Branch
+              {isGeneratingSummary ? 'Generating Summary...' : 'Create Branch'}
             </button>
           </div>
         </motion.div>

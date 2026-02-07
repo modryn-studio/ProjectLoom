@@ -185,7 +185,6 @@ function ConversationCardComponent({
           sourceCardId: conversation.id,
           messageIndex: messages.length - 1,
           inheritanceMode: branchingPrefs.defaultInheritanceMode,
-          customMessageIds: undefined,
           branchReason: 'Quick branch',
         });
       }

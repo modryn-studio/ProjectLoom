@@ -96,6 +96,20 @@ export interface MessageMetadata {
 /**
  * A single message in a conversation
  */
+/**
+ * An attachment on a message (e.g. image for vision models)
+ */
+export interface MessageAttachment {
+  /** Unique identifier */
+  id: string;
+  /** MIME type (e.g. image/png, image/jpeg) */
+  contentType: string;
+  /** Display name */
+  name: string;
+  /** Base64 data URL or object URL */
+  url: string;
+}
+
 export interface Message {
   /** Unique identifier */
   id: string;
@@ -107,6 +121,8 @@ export interface Message {
   timestamp: Date;
   /** Optional metadata */
   metadata?: MessageMetadata;
+  /** Optional file/image attachments */
+  attachments?: MessageAttachment[];
 }
 
 // =============================================================================
@@ -382,7 +398,7 @@ export interface ContextSnapshot {
 /**
  * How context is inherited
  */
-export type InheritanceMode = 'full' | 'summary' | 'custom';
+export type InheritanceMode = 'full' | 'summary';
 
 /**
  * Message selection for custom inheritance
@@ -416,12 +432,12 @@ export interface BranchFromMessageData {
   sourceCardId: string;
   /** Message index to branch from (0-indexed) */
   messageIndex: number;
-  /** How to inherit context */
+  /** How to inherit context: 'full' or 'summary' */
   inheritanceMode: InheritanceMode;
-  /** Selected message IDs (for custom mode) */
-  customMessageIds?: string[];
   /** Optional reason for the branch */
   branchReason?: string;
+  /** Pre-generated AI summary text (for summary mode) */
+  summaryText?: string;
 }
 
 /**
@@ -434,8 +450,10 @@ export interface CreateMergeNodeData {
   position: Position;
   /** Optional synthesis prompt */
   synthesisPrompt?: string;
-  /** Inheritance mode for each source */
-  inheritanceMode?: InheritanceMode;
+  /** Per-parent inheritance mode (defaults to 'full' if not specified) */
+  inheritanceModes?: Record<string, InheritanceMode>;
+  /** Pre-generated summaries keyed by parent card ID */
+  summaryTexts?: Record<string, string>;
 }
 
 /**

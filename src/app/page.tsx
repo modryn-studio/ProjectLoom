@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -8,7 +8,9 @@ import { InfiniteCanvas } from '@/components/InfiniteCanvas';
 import { ToastContainer } from '@/components/ToastContainer';
 import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
 import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
+import { APIKeySetupModal } from '@/components/APIKeySetupModal';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { apiKeyManager } from '@/lib/api-key-manager';
 import { colors } from '@/lib/design-tokens';
 
 // =============================================================================
@@ -16,12 +18,42 @@ import { colors } from '@/lib/design-tokens';
 // =============================================================================
 
 export default function CanvasPage() {
+  const [showAPIKeySetup, setShowAPIKeySetup] = useState(false);
+
   // Expose store globally for debugging
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).useCanvasStore = useCanvasStore;
     }
   }, []);
+
+  // Check for first launch or missing API keys
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if this is first launch (no keys configured)
+    const keysConfigured = localStorage.getItem('projectloom:keys-configured');
+    const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
+    const hasOpenAIKey = !!apiKeyManager.getKey('openai');
+
+    // Show modal if:
+    // 1. Never configured keys before AND
+    // 2. No keys currently available (no env vars, no localStorage)
+    if (!keysConfigured && !hasAnthropicKey && !hasOpenAIKey) {
+      // Small delay to let the app initialize first
+      const timer = setTimeout(() => setShowAPIKeySetup(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleAPIKeySetupClose = () => {
+    setShowAPIKeySetup(false);
+  };
+
+  const handleAPIKeySetupSuccess = () => {
+    setShowAPIKeySetup(false);
+    // Keys are marked as configured in the modal's save handler
+  };
 
   return (
     <ErrorBoundary>
@@ -31,6 +63,11 @@ export default function CanvasPage() {
       <ToastContainer />
       <HierarchicalMergeDialog />
       <KeyboardShortcutsPanelProvider />
+      <APIKeySetupModal 
+        isOpen={showAPIKeySetup}
+        onClose={handleAPIKeySetupClose}
+        onSuccess={handleAPIKeySetupSuccess}
+      />
     </ErrorBoundary>
   );
 }

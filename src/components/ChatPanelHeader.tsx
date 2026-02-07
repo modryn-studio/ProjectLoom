@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, memo } from 'react';
 import { X, GitBranch, Zap } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
+import { ModelSelector } from './ModelSelector';
 import type { Conversation } from '@/types';
 
 // =============================================================================
@@ -15,9 +16,21 @@ import type { Conversation } from '@/types';
 interface ChatPanelHeaderProps {
   conversation: Conversation;
   onClose: () => void;
+  /** Currently selected model ID */
+  currentModel?: string | null;
+  /** Callback when model is changed */
+  onModelChange?: (modelId: string) => void;
+  /** Whether any API key is configured */
+  hasApiKey?: boolean;
 }
 
-export function ChatPanelHeader({ conversation, onClose }: ChatPanelHeaderProps) {
+export const ChatPanelHeader = memo(function ChatPanelHeader({ 
+  conversation, 
+  onClose,
+  currentModel,
+  onModelChange,
+  hasApiKey = true,
+}: ChatPanelHeaderProps) {
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
@@ -42,7 +55,6 @@ export function ChatPanelHeader({ conversation, onClose }: ChatPanelHeaderProps)
         sourceCardId: conversation.id,
         messageIndex: messageCount - 1,
         inheritanceMode: branchingPrefs.defaultInheritanceMode,
-        customMessageIds: undefined,
         branchReason: 'Quick branch',
       });
     }
@@ -87,6 +99,16 @@ export function ChatPanelHeader({ conversation, onClose }: ChatPanelHeaderProps)
 
       {/* Right side: Actions */}
       <div style={headerStyles.actions}>
+        {/* Model Selector */}
+        {onModelChange && (
+          <ModelSelector
+            currentModel={currentModel ?? null}
+            onModelChange={onModelChange}
+            hasApiKey={hasApiKey}
+            compact
+          />
+        )}
+
         {/* Branch button */}
         <button
           onClick={handleBranch}
@@ -109,7 +131,7 @@ export function ChatPanelHeader({ conversation, onClose }: ChatPanelHeaderProps)
       </div>
     </div>
   );
-}
+});
 
 // =============================================================================
 // STYLES

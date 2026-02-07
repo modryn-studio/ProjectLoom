@@ -15,6 +15,7 @@ import {
   GitBranch,
   Zap,
   Settings,
+  Bot,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -712,12 +713,13 @@ function WorkspaceItem({
 
 interface CanvasTreeSidebarProps {
   onOpenSettings: () => void;
+  onOpenAgents?: () => void;
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onFocusNode?: (nodeId: string) => void;
 }
 
-export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onToggle, onFocusNode }: CanvasTreeSidebarProps) {
+export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: externalIsOpen, onToggle, onFocusNode }: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
@@ -972,7 +974,36 @@ export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onTo
         justifyContent: 'space-between',
       }}>
         <span>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
-        <button
+        <div style={{ display: 'flex', gap: spacing[1] }}>
+          {onOpenAgents && (
+            <button
+              onClick={onOpenAgents}
+              title="Agent Workflows"
+              style={{
+                padding: spacing[2],
+                backgroundColor: 'transparent',
+                border: `1px solid rgba(99, 102, 241, 0.3)`,
+                borderRadius: effects.border.radius.default,
+                color: colors.contrast.gray,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.navy.dark;
+                e.currentTarget.style.color = colors.violet.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = colors.contrast.gray;
+              }}
+            >
+              <Bot size={14} />
+            </button>
+          )}
+          <button
           onClick={onOpenSettings}
           title="Settings"
           style={{
@@ -998,6 +1029,7 @@ export function CanvasTreeSidebar({ onOpenSettings, isOpen: externalIsOpen, onTo
         >
           <Settings size={14} />
         </button>
+        </div>
       </div>
     </motion.aside>
   );

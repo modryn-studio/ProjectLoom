@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, GitBranch, FileText, Scissors, CheckSquare, RotateCcw } from 'lucide-react';
+import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 
 import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences } from '@/stores/preferences-store';
+import { apiKeyManager, type ProviderType } from '@/lib/api-key-manager';
 import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
 import type { InheritanceMode } from '@/types';
 
@@ -130,12 +131,6 @@ const INHERITANCE_MODE_OPTIONS: Array<{
     description: 'Inherit only the most recent relevant messages',
     icon: <Scissors size={14} />,
   },
-  {
-    id: 'custom',
-    label: 'Custom Selection',
-    description: 'Choose which messages to inherit each time',
-    icon: <CheckSquare size={14} />,
-  },
 ];
 
 // =============================================================================
@@ -156,10 +151,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const resetToDefaults = usePreferencesStore((s) => s.resetToDefaults);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
-  // Load preferences on mount
+  // API Keys state
+  const [anthropicKey, setAnthropicKey] = useState('');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [keysLoaded, setKeysLoaded] = useState(false);
+
+  // Load preferences and API keys on mount
   useEffect(() => {
     loadPreferences();
   }, [loadPreferences]);
+
+  useEffect(() => {
+    if (isOpen && !keysLoaded) {
+      const savedAnthropicKey = apiKeyManager.getKey('anthropic');
+      const savedOpenAIKey = apiKeyManager.getKey('openai');
+      if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
+      if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
+      setKeysLoaded(true);
+    }
+  }, [isOpen, keysLoaded]);
 
   // Handle escape key
   useEffect(() => {
@@ -177,6 +189,28 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       resetToDefaults();
     }
   };
+
+  // API Key handlers
+  const handleSaveKey = useCallback((provider: ProviderType, key: string) => {
+    if (key.trim()) {
+      apiKeyManager.saveKey(provider, key.trim());
+      // Mark setup as complete
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('projectloom:keys-configured', 'true');
+      }
+    }
+  }, []);
+
+  const handleDeleteKey = useCallback((provider: ProviderType) => {
+    if (window.confirm(`Delete ${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key?`)) {
+      apiKeyManager.removeKey(provider);
+      if (provider === 'anthropic') {
+        setAnthropicKey('');
+      } else {
+        setOpenaiKey('');
+      }
+    }
+  }, []);
 
   return (
     <AnimatePresence>
@@ -375,6 +409,134 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     </p>
                   </div>
                 </label>
+              </div>
+
+              {/* API Keys Section */}
+              <div style={sectionStyles}>
+                <div style={sectionTitleStyles}>
+                  <Key size={16} color={colors.semantic.success} />
+                  API Keys
+                </div>
+
+                <p style={{ ...descriptionStyles, marginBottom: spacing[3] }}>
+                  Your API keys are stored locally in your browser and never sent to our servers.
+                </p>
+
+                {/* Anthropic Key */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>Anthropic API Key</label>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type={showAnthropicKey ? 'text' : 'password'}
+                        value={anthropicKey}
+                        onChange={(e) => setAnthropicKey(e.target.value)}
+                        onBlur={() => handleSaveKey('anthropic', anthropicKey)}
+                        placeholder="sk-ant-..."
+                        style={{
+                          ...selectStyles,
+                          fontFamily: typography.fonts.code,
+                          paddingRight: '40px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                        style={{
+                          position: 'absolute',
+                          right: spacing[2],
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: colors.contrast.grayDark,
+                          cursor: 'pointer',
+                          padding: spacing[1],
+                        }}
+                      >
+                        {showAnthropicKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    {anthropicKey && (
+                      <>
+                        <span style={{ display: 'flex', alignItems: 'center', color: '#10b981' }}>
+                          <CheckCircle size={16} />
+                        </span>
+                        <button
+                          onClick={() => handleDeleteKey('anthropic')}
+                          title="Delete key"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: colors.contrast.grayDark,
+                            cursor: 'pointer',
+                            padding: spacing[1],
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* OpenAI Key */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>OpenAI API Key</label>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type={showOpenAIKey ? 'text' : 'password'}
+                        value={openaiKey}
+                        onChange={(e) => setOpenaiKey(e.target.value)}
+                        onBlur={() => handleSaveKey('openai', openaiKey)}
+                        placeholder="sk-..."
+                        style={{
+                          ...selectStyles,
+                          fontFamily: typography.fonts.code,
+                          paddingRight: '40px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOpenAIKey(!showOpenAIKey)}
+                        style={{
+                          position: 'absolute',
+                          right: spacing[2],
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: colors.contrast.grayDark,
+                          cursor: 'pointer',
+                          padding: spacing[1],
+                        }}
+                      >
+                        {showOpenAIKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    {openaiKey && (
+                      <>
+                        <span style={{ display: 'flex', alignItems: 'center', color: '#10b981' }}>
+                          <CheckCircle size={16} />
+                        </span>
+                        <button
+                          onClick={() => handleDeleteKey('openai')}
+                          title="Delete key"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: colors.contrast.grayDark,
+                            cursor: 'pointer',
+                            padding: spacing[1],
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

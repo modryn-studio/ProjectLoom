@@ -11,7 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Paperclip, FileText, Settings2, X, Check, AlertCircle } from 'lucide-react';
+import { GitBranch, Paperclip, FileText, X, Check, AlertCircle } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
 import type { InheritanceMode } from '@/types';
 
@@ -50,12 +50,6 @@ const INHERITANCE_OPTIONS: { value: InheritanceMode; label: string; description:
     label: 'Smart Summary',
     description: 'AI-condensed context for efficiency',
     icon: <Paperclip className="w-4 h-4" />,
-  },
-  {
-    value: 'custom',
-    label: 'Custom Selection',
-    description: 'Choose specific messages to include',
-    icon: <Settings2 className="w-4 h-4" />,
   },
 ];
 

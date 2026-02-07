@@ -36,6 +36,7 @@ import { CanvasBreadcrumb } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { APIKeyWarningBanner } from './APIKeyWarningBanner';
 import { SettingsPanel } from './SettingsPanel';
+import { AgentDialog } from './AgentDialog';
 import { ChatPanel } from './ChatPanel';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -133,6 +134,9 @@ export function InfiniteCanvas() {
 
   // Settings panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Agent dialog state
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -145,7 +149,6 @@ export function InfiniteCanvas() {
   const {
     nodes,
     edges,
-    conversations,
     selectedNodeIds,
     expandedNodeIds,
     activeWorkspaceId,
@@ -153,7 +156,6 @@ export function InfiniteCanvas() {
   } = useCanvasStore(useShallow((s) => ({
     nodes: s.nodes,
     edges: s.edges,
-    conversations: s.conversations,
     selectedNodeIds: s.selectedNodeIds,
     expandedNodeIds: s.expandedNodeIds,
     activeWorkspaceId: s.activeWorkspaceId,
@@ -235,8 +237,10 @@ export function InfiniteCanvas() {
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
       
-      const targetConversation = conversations.get(connection.target);
-      const sourceConversation = conversations.get(connection.source);
+      // Read conversations from store state directly to avoid subscribing to the entire Map
+      const currentConversations = useCanvasStore.getState().conversations;
+      const targetConversation = currentConversations.get(connection.target);
+      const sourceConversation = currentConversations.get(connection.source);
       
       if (!targetConversation || !sourceConversation) {
         // Fallback to regular edge if conversations not found
@@ -264,7 +268,7 @@ export function InfiniteCanvas() {
         onConnect(connection);
       }
     },
-    [onConnect, conversations]
+    [onConnect]
   );
 
   // Handle node selection - single click opens chat panel
@@ -479,7 +483,6 @@ export function InfiniteCanvas() {
               sourceCardId: firstSelectedId,
               messageIndex: 0, // Branch from first message by default
               inheritanceMode: branchingPrefs.defaultInheritanceMode,
-              customMessageIds: undefined,
               branchReason: 'Quick branch',
             });
           }
@@ -510,7 +513,7 @@ export function InfiniteCanvas() {
       },
       // Selection
       onSelectAll: () => {
-        const allIds = Array.from(conversations.keys());
+        const allIds = Array.from(useCanvasStore.getState().conversations.keys());
         setSelected(allIds);
       },
       // Search
@@ -545,6 +548,10 @@ export function InfiniteCanvas() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
+  // Agent dialog handlers
+  const openAgents = useCallback(() => setAgentDialogOpen(true), []);
+  const closeAgents = useCallback(() => setAgentDialogOpen(false), []);
+
   // Focus on a specific node with smooth animation
   const focusOnNode = useCallback((nodeId: string) => {
     if (reactFlowInstance.current) {
@@ -561,7 +568,8 @@ export function InfiniteCanvas() {
       {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
       {isPrefsLoaded && uiPrefs.showCanvasTree && (
         <CanvasTreeSidebar 
-          onOpenSettings={openSettings} 
+          onOpenSettings={openSettings}
+          onOpenAgents={openAgents}
           isOpen={isSidebarOpen}
           onToggle={setIsSidebarOpen}
           onFocusNode={focusOnNode}
@@ -669,6 +677,9 @@ export function InfiniteCanvas() {
 
           {/* Settings Panel */}
           <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+
+          {/* Agent Dialog */}
+          <AgentDialog isOpen={agentDialogOpen} onClose={closeAgents} />
 
           {/* Canvas Context Menu */}
           <ContextMenu

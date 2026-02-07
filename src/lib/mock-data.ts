@@ -1009,7 +1009,7 @@ export function generateMockData(): MockDataResult {
     [performance.id],
     makeBranchPoint(performance.id, 3),
     {
-      [performance.id]: makeInheritedContext('custom', performanceMessages.slice(0, 2), performanceMessages.length),
+      [performance.id]: makeInheritedContext('full', performanceMessages.slice(0, 2), performanceMessages.length),
     },
     false
   );

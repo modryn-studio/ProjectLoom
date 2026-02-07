@@ -11,9 +11,11 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, X, Check, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { GitMerge, X, Check, AlertTriangle, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
-import type { Conversation, Position } from '@/types';
+import { apiKeyManager } from '@/lib/api-key-manager';
+import { estimateMessagesTokens, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import type { Conversation, Position, InheritanceMode } from '@/types';
 
 // =============================================================================
 // TYPES
@@ -55,6 +57,9 @@ export function MergeNodeCreator({
   
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>(initialCardIds);
   const [synthesisPrompt, setSynthesisPrompt] = useState('');
+  const [inheritanceModes, setInheritanceModes] = useState<Record<string, InheritanceMode>>({});
+  const [summaryTexts, setSummaryTexts] = useState<Record<string, string>>({});
+  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +105,58 @@ export function MergeNodeCreator({
 
   const handleRemoveCard = useCallback((cardId: string) => {
     setSelectedCardIds((prev) => prev.filter((id) => id !== cardId));
+    // Clean up mode/summary for removed card
+    setInheritanceModes((prev) => { const next = { ...prev }; delete next[cardId]; return next; });
+    setSummaryTexts((prev) => { const next = { ...prev }; delete next[cardId]; return next; });
   }, []);
+
+  // Toggle inheritance mode for a specific parent
+  const handleToggleMode = useCallback(async (cardId: string) => {
+    const currentMode = inheritanceModes[cardId] || 'full';
+    
+    if (currentMode === 'full') {
+      // Switch to summary mode — generate summary
+      const conv = conversations.get(cardId);
+      if (!conv || !Array.isArray(conv.content) || conv.content.length === 0) return;
+      
+      const apiKey = apiKeyManager.getKey('anthropic') || apiKeyManager.getKey('openai');
+      if (!apiKey) {
+        setError('Configure an API key to generate summaries.');
+        return;
+      }
+      
+      setGeneratingFor(cardId);
+      setError(null);
+      
+      try {
+        const provider = apiKeyManager.getKey('anthropic') ? 'anthropic' : 'openai';
+        const modelId = provider === 'anthropic' ? 'claude-sonnet-4-20250514' : 'gpt-4o';
+        const messagesForApi = conv.content.map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+        
+        const res = await fetch('/api/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: messagesForApi, apiKey, model: modelId }),
+        });
+        
+        if (!res.ok) throw new Error('Summary generation failed');
+        const data = await res.json();
+        
+        setSummaryTexts(prev => ({ ...prev, [cardId]: data.summary }));
+        setInheritanceModes(prev => ({ ...prev, [cardId]: 'summary' }));
+      } catch {
+        setError(`Failed to generate summary for "${conv.metadata.title}".`);
+      } finally {
+        setGeneratingFor(null);
+      }
+    } else {
+      // Switch back to full
+      setInheritanceModes(prev => ({ ...prev, [cardId]: 'full' }));
+    }
+  }, [inheritanceModes, conversations]);
 
   const handleCreateMerge = useCallback(async () => {
     if (!canCreate) return;
@@ -113,6 +169,8 @@ export function MergeNodeCreator({
         sourceCardIds: selectedCardIds,
         position,
         synthesisPrompt: synthesisPrompt.trim() || undefined,
+        inheritanceModes,
+        summaryTexts,
       });
 
       if (result) {
@@ -127,7 +185,7 @@ export function MergeNodeCreator({
     } finally {
       setIsCreating(false);
     }
-  }, [createMergeNode, selectedCardIds, position, synthesisPrompt, canCreate, onClose, onComplete]);
+  }, [createMergeNode, selectedCardIds, position, synthesisPrompt, inheritanceModes, summaryTexts, canCreate, onClose, onComplete]);
 
   // Get merge node style based on parent count
   const getMergeStyle = () => {
@@ -187,23 +245,55 @@ export function MergeNodeCreator({
                 Select at least 2 cards below to merge
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {selectedCards.map((card) => (
-                  <div
-                    key={card.id}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${mergeStyle.border} border bg-zinc-800`}
-                  >
-                    <span className="text-zinc-200 max-w-[120px] truncate">
-                      {card.metadata.title}
-                    </span>
-                    <button
-                      onClick={() => handleRemoveCard(card.id)}
-                      className="p-0.5 rounded-full hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200"
+              <div className="space-y-2">
+                {selectedCards.map((card) => {
+                  const mode = inheritanceModes[card.id] || 'full';
+                  const msgCount = Array.isArray(card.content) ? card.content.length : 0;
+                  const isGenerating = generatingFor === card.id;
+                  
+                  return (
+                    <div
+                      key={card.id}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg ${mergeStyle.border} border bg-zinc-800`}
                     >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-zinc-200 text-sm truncate max-w-[140px]">
+                          {card.metadata.title}
+                        </span>
+                        <span className="text-zinc-500 text-xs whitespace-nowrap">{msgCount} msgs</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Inheritance mode toggle */}
+                        <button
+                          onClick={() => handleToggleMode(card.id)}
+                          disabled={isGenerating || isCreating}
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                            mode === 'summary'
+                              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/40'
+                              : 'bg-zinc-700 text-zinc-400 border border-zinc-600 hover:text-zinc-200'
+                          } ${isGenerating ? 'opacity-60' : ''}`}
+                          title={mode === 'full' ? 'Click for AI Summary' : 'Click for Full Context'}
+                        >
+                          {isGenerating ? (
+                            <span className="flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Summarizing…
+                            </span>
+                          ) : (
+                            mode === 'summary' ? '📝 Summary' : '📄 Full'
+                          )}
+                        </button>
+                        {/* Remove button */}
+                        <button
+                          onClick={() => handleRemoveCard(card.id)}
+                          className="p-0.5 rounded-full hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

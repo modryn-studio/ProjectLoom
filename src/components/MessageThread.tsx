@@ -2,13 +2,14 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon } from 'lucide-react';
+import type { Message as ChatMessage } from 'ai';
 
 import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
-import type { Conversation, Message } from '@/types';
+import type { Conversation, Message, MessageAttachment } from '@/types';
 
 // =============================================================================
 // MESSAGE THREAD COMPONENT
@@ -16,25 +17,75 @@ import type { Conversation, Message } from '@/types';
 
 interface MessageThreadProps {
   conversation: Conversation;
+  /** Messages from useChat hook during streaming */
+  streamingMessages?: ChatMessage[];
+  /** Whether AI is currently streaming a response */
+  isStreaming?: boolean;
 }
 
-export function MessageThread({ conversation }: MessageThreadProps) {
+export function MessageThread({ 
+  conversation, 
+  streamingMessages = [],
+  isStreaming = false,
+}: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
   
-  const messages = conversation.content;
+  // Use streaming messages when actively streaming, otherwise use store messages
+  // Store messages (conversation.content) preserve attachments and metadata;
+  // useChat messages are only needed during active streaming for real-time display.
+  const displayMessages = useMemo(() => {
+    if (isStreaming && streamingMessages.length > 0) {
+      // During active streaming, convert useChat messages to our format
+      // Pre-index store messages by content+role for O(1) lookups instead of O(n) find per message
+      const storeMessages = conversation.content;
+      const storeIndex = new Map<string, Message>();
+      for (const sm of storeMessages) {
+        storeIndex.set(`${sm.role}:${sm.content}`, sm);
+      }
+      
+      // Stable fallback timestamp to avoid creating new Date objects per render
+      const fallbackTimestamp = storeMessages[0]?.timestamp || new Date(0);
+      
+      return streamingMessages.map((msg, idx) => {
+        // O(1) lookup instead of O(n) find
+        const storeMsg = storeIndex.get(`${msg.role}:${msg.content}`);
+        return {
+          id: msg.id || `streaming-${idx}`,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+          timestamp: storeMsg?.timestamp || fallbackTimestamp,
+          metadata: {
+            ...storeMsg?.metadata,
+            // Mark streaming message
+            isStreaming: idx === streamingMessages.length - 1 && msg.role === 'assistant',
+          },
+          // Preserve attachments from store message
+          attachments: storeMsg?.attachments,
+        };
+      });
+    }
+    return conversation.content;
+  }, [streamingMessages, conversation.content, isStreaming]);
   
   // Branch actions
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when new messages arrive or streaming content updates
+  // Use displayMessages.length for new messages and streamingMessages.length for
+  // "new streaming message added" (not content changes within existing messages).
+  // The last streaming message content length triggers scroll during active streaming.
+  const lastStreamingContent = isStreaming && streamingMessages.length > 0
+    ? streamingMessages[streamingMessages.length - 1]?.content.length ?? 0
+    : 0;
+
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  }, [messages.length]);
+  }, [displayMessages.length, streamingMessages.length, lastStreamingContent]);
 
   // Handle branch from specific message
   const handleBranchClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
@@ -47,7 +98,6 @@ export function MessageThread({ conversation }: MessageThreadProps) {
         sourceCardId: conversation.id,
         messageIndex,
         inheritanceMode: branchingPrefs.defaultInheritanceMode,
-        customMessageIds: undefined,
         branchReason: 'Quick branch',
       });
     }
@@ -65,7 +115,7 @@ export function MessageThread({ conversation }: MessageThreadProps) {
   return (
     <div ref={scrollContainerRef} style={threadStyles.container}>
       <AnimatePresence mode="sync">
-        {messages
+        {displayMessages
           .filter((m): m is Message => m != null && typeof m.id === 'string')
           .map((message: Message, index: number) => (
             <MessageBubble
@@ -73,6 +123,7 @@ export function MessageThread({ conversation }: MessageThreadProps) {
               message={message}
               index={index}
               isHovered={hoveredMessageIndex === index}
+              isStreamingMessage={!!(message.metadata as { isStreaming?: boolean } | undefined)?.isStreaming}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
               onBranchClick={handleBranchClick}
@@ -81,7 +132,7 @@ export function MessageThread({ conversation }: MessageThreadProps) {
       </AnimatePresence>
       
       {/* Empty state */}
-      {messages.length === 0 && (
+      {displayMessages.length === 0 && (
         <div style={threadStyles.emptyState}>
           <p>No messages yet. Start the conversation!</p>
         </div>
@@ -98,6 +149,7 @@ interface MessageBubbleProps {
   message: Message;
   index: number;
   isHovered: boolean;
+  isStreamingMessage?: boolean;
   onMouseEnter: (index: number) => void;
   onMouseLeave: () => void;
   onBranchClick: (index: number, e: React.MouseEvent) => void;
@@ -106,7 +158,8 @@ interface MessageBubbleProps {
 const MessageBubble = memo(function MessageBubble({ 
   message, 
   index, 
-  isHovered, 
+  isHovered,
+  isStreamingMessage = false,
   onMouseEnter, 
   onMouseLeave,
   onBranchClick,
@@ -114,6 +167,9 @@ const MessageBubble = memo(function MessageBubble({
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
   const isSystem = message.role === 'system';
+
+  // Get model from metadata if available
+  const modelName = (message.metadata as { model?: string } | undefined)?.model;
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
@@ -156,7 +212,7 @@ const MessageBubble = memo(function MessageBubble({
       onMouseLeave={onMouseLeave}
     >
       {/* Branch icon for assistant messages (left side) */}
-      {isAssistant && (
+      {isAssistant && !isStreamingMessage && (
         <AnimatePresence>
           {isHovered && (
             <motion.button
@@ -193,6 +249,11 @@ const MessageBubble = memo(function MessageBubble({
           <span style={bubbleStyles.roleLabel}>System</span>
         )}
 
+        {/* Model badge for assistant messages */}
+        {isAssistant && modelName && (
+          <span style={bubbleStyles.modelBadge}>{formatModelName(modelName)}</span>
+        )}
+
         {/* Message content */}
         <div
           style={{
@@ -203,10 +264,42 @@ const MessageBubble = memo(function MessageBubble({
           }}
         >
           {message.content}
+          {/* Streaming indicator */}
+          {isStreamingMessage && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={bubbleStyles.streamingIndicator}
+            >
+              <Loader size={12} style={{ display: 'inline', marginLeft: 4 }} className="animate-spin" />
+            </motion.span>
+          )}
         </div>
 
-        {/* Timestamp */}
-        <span style={bubbleStyles.timestamp}>{timestamp}</span>
+        {/* Image attachments */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div style={bubbleStyles.attachmentRow}>
+            {message.attachments.map((att: MessageAttachment) => (
+              <div key={att.id} style={bubbleStyles.attachmentContainer}>
+                <img
+                  src={att.url}
+                  alt={att.name}
+                  style={bubbleStyles.attachmentImage}
+                  onClick={() => window.open(att.url, '_blank')}
+                />
+                <span style={bubbleStyles.attachmentLabel}>
+                  <ImageIcon size={10} style={{ flexShrink: 0 }} />
+                  {att.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Timestamp - hide during streaming */}
+        {!isStreamingMessage && (
+          <span style={bubbleStyles.timestamp}>{timestamp}</span>
+        )}
       </div>
 
       {/* Branch icon for user messages (right side) */}
@@ -231,6 +324,23 @@ const MessageBubble = memo(function MessageBubble({
     </motion.div>
   );
 });
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/** Format model ID to human-readable name */
+function formatModelName(modelId: string): string {
+  // Claude models
+  if (modelId.includes('opus')) return 'Opus';
+  if (modelId.includes('sonnet')) return 'Sonnet';
+  if (modelId.includes('haiku')) return 'Haiku';
+  // OpenAI models
+  if (modelId.includes('gpt-4o-mini')) return 'GPT-4o Mini';
+  if (modelId.includes('gpt-4o')) return 'GPT-4o';
+  // Fallback
+  return modelId.split('-').slice(0, 2).join(' ');
+}
 
 // =============================================================================
 // STYLES
@@ -284,6 +394,17 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     display: 'block',
   },
 
+  modelBadge: {
+    fontSize: '10px',
+    color: colors.violet.primary,
+    fontFamily: typography.fonts.code,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    marginBottom: spacing[1],
+    display: 'inline-block',
+  },
+
   content: {
     fontSize: typography.sizes.sm,
     color: colors.contrast.white,
@@ -292,6 +413,13 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
+  },
+
+  streamingIndicator: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    marginLeft: spacing[1],
+    color: colors.violet.primary,
   },
 
   timestamp: {
@@ -316,6 +444,42 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     flexShrink: 0,
     transition: 'all 0.15s ease',
+  } as React.CSSProperties,
+
+  attachmentRow: {
+    display: 'flex',
+    gap: spacing[2],
+    marginTop: spacing[2],
+    flexWrap: 'wrap',
+  } as React.CSSProperties,
+
+  attachmentContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    maxWidth: 200,
+  } as React.CSSProperties,
+
+  attachmentImage: {
+    width: '100%',
+    maxHeight: 180,
+    objectFit: 'cover',
+    borderRadius: effects.border.radius.default,
+    border: `1px solid rgba(99, 102, 241, 0.2)`,
+    cursor: 'pointer',
+    transition: 'opacity 0.15s',
+  } as React.CSSProperties,
+
+  attachmentLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '10px',
+    color: colors.contrast.grayDark,
+    fontFamily: typography.fonts.body,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   } as React.CSSProperties,
 };
 

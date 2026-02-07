@@ -3,7 +3,7 @@
 ## Summary
 Applied critical performance optimizations to ensure smooth 60 FPS during canvas interactions.
 
-**Last Updated:** February 4, 2026
+**Last Updated:** February 6, 2026
 
 ## Changes Made
 
@@ -283,6 +283,111 @@ const handleActionClick = useCallback(() => {
 **Impact:** Currently negligible at 10 nodes. May need optimization at 50+ nodes with large message histories.
 
 **Update (Feb 5, 2026):** Search debounce increased from 100ms to 150ms for better performance balance.
+
+### 16. ChatPanel Targeted Selector (ChatPanel.tsx) — Feb 6, 2026
+**Problem:** `conversations` selector `(s) => s.conversations` subscribed to entire Map — triggered re-render on ANY conversation change (message added to any card, not just the active one)
+**Solution:** Replaced broad Map subscription with targeted selector that only returns the active conversation
+```typescript
+// Before (BAD - re-renders on ANY conversation mutation)
+const conversations = useCanvasStore((s) => s.conversations);
+const activeConversation = conversations.get(activeConversationId);
+
+// After (GOOD - only re-renders when active conversation changes)
+const activeConversation = useCanvasStore(
+  useCallback((s) => s.activeConversationId ? s.conversations.get(s.activeConversationId) ?? null : null, [])
+);
+```
+**Impact:** ChatPanel no longer re-renders when messages are added to non-active cards. Major reduction in unnecessary renders during multi-card workflows.
+
+### 17. ChatPanelHeader Memoization (ChatPanelHeader.tsx) — Feb 6, 2026
+**Problem:** ChatPanelHeader re-rendered on every parent render because it wasn't wrapped in `React.memo`
+**Solution:** Wrapped component in `memo()` + stabilized parent props with `useCallback`
+```typescript
+// Component wrapped in memo
+export const ChatPanelHeader = memo(function ChatPanelHeader({ ... }) { ... });
+
+// Parent stabilized onModelChange with useCallback
+const handleModelChange = useCallback((model: string) => {
+  if (activeConversationId) setConversationModel(activeConversationId, model);
+}, [activeConversationId, setConversationModel]);
+```
+**Impact:** ChatPanelHeader skips re-renders when only streaming content changes (which is every ~50ms during AI responses)
+
+### 18. Inline Arrow Functions Eliminated (ChatPanel.tsx) — Feb 6, 2026
+**Problem:** Inline arrow functions in JSX created new references every render, defeating memoization
+**Solution:** Extracted all inline handlers to `useCallback`
+```typescript
+// Before (BAD - new function every render)
+onMouseEnter={() => setIsResizeHovered(true)}
+onModelChange={(model) => { setConversationModel(id, model); }}
+
+// After (GOOD - stable references)
+const handleResizeEnter = useCallback(() => setIsResizeHovered(true), []);
+const handleModelChange = useCallback((model) => { ... }, [deps]);
+```
+**Impact:** Memoized child components (ChatPanelHeader) now properly skip re-renders
+
+### 19. Empty State Styles Extracted (ChatPanel.tsx) — Feb 6, 2026
+**Problem:** Inline style objects in empty state JSX created new objects every render
+**Solution:** Extracted to module-level constant `emptyStateStyles`
+**Impact:** Zero GC pressure from style object allocation during re-renders
+
+### 20. `hasAnyApiKey` Stale Memo Fixed (ChatPanel.tsx) — Feb 6, 2026
+**Problem:** `useMemo` with empty dependency array `[]` never recalculated — keys added mid-session were ignored
+**Solution:** Removed `useMemo` wrapper; computation is cheap (2 sync localStorage reads) and now always fresh
+```typescript
+// Before (BUG - never picks up new keys)
+const hasAnyApiKey = useMemo(() => { ... }, []);
+
+// After (CORRECT - always current)
+const hasAnyApiKey = !!apiKeyManager.getKey('anthropic') || !!apiKeyManager.getKey('openai');
+```
+**Impact:** Bug fix — API key warning banner now disappears immediately when user configures a key
+
+### 21. MessageThread O(n*m) → O(n+m) Streaming Lookup (MessageThread.tsx) — Feb 6, 2026
+**Problem:** During streaming, `displayMessages` used `.find()` per streaming message to cross-reference store messages — O(n*m) per render where n=streaming messages, m=store messages
+**Solution:** Pre-index store messages into a Map keyed by `role:content` for O(1) lookup
+```typescript
+// Before (O(n*m))
+const storeMsg = storeMessages.find(sm => sm.content === msg.content && sm.role === msg.role);
+
+// After (O(n+m))
+const storeIndex = new Map<string, Message>();
+for (const sm of storeMessages) storeIndex.set(`${sm.role}:${sm.content}`, sm);
+const storeMsg = storeIndex.get(`${msg.role}:${msg.content}`);
+```
+**Impact:** Streaming display no longer slows down as conversation grows. With 100+ messages, this eliminates a significant bottleneck.
+
+### 22. Auto-Scroll Stabilized (MessageThread.tsx) — Feb 6, 2026
+**Problem:** Auto-scroll `useEffect` depended on `streamingMessages` array reference, which changes on every streaming token (~20-50ms), causing scroll operations on every chunk
+**Solution:** Changed dependency to `streamingMessages.length` + `lastStreamingContent` for distinct change detection
+```typescript
+// Before (fires on every streaming chunk - ~20-50 times/sec)
+useEffect(() => { ... }, [displayMessages.length, streamingMessages]);
+
+// After (fires when message count changes + scrolls with content growth)
+const lastStreamingContent = isStreaming ? streamingMessages[streamingMessages.length - 1]?.content.length : 0;
+useEffect(() => { ... }, [displayMessages.length, streamingMessages.length, lastStreamingContent]);
+```
+**Impact:** Reduced scroll operations from ~20-50/sec to only when meaningful content changes occur
+
+### 23. InfiniteCanvas Conversations Unsubscribed (InfiniteCanvas.tsx) — Feb 6, 2026
+**Problem:** InfiniteCanvas subscribed to entire `conversations` Map via `useShallow` — re-rendered on ANY conversation mutation (message typing, AI streaming, etc.)
+**Solution:** Removed `conversations` from the `useShallow` selector; event handlers now use `useCanvasStore.getState().conversations` for on-demand reads
+```typescript
+// Before (re-renders on every message/conversation change)
+const { nodes, edges, conversations, ... } = useCanvasStore(useShallow((s) => ({
+  conversations: s.conversations, // ← triggers on EVERY change
+  ...
+})));
+
+// After (no subscription — reads on demand in callbacks)
+const { nodes, edges, ... } = useCanvasStore(useShallow((s) => ({
+  // conversations removed — read via getState() in handlers
+  ...
+})));
+```
+**Impact:** InfiniteCanvas no longer re-renders when messages are added/edited. Only re-renders for node/edge/selection changes (which is the correct behavior).
 
 ### Auto-Layout Algorithms (layout-utils.ts)
 **Performance characteristics:**

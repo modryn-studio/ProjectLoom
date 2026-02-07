@@ -1,7 +1,7 @@
 # ProjectLoom User Tutorial
 
-> **Version:** v4.0.0  
-> **Last Updated:** February 4, 2026  
+> **Version:** v4.2.0 (Phase 2 Complete)  
+> **Last Updated:** February 6, 2026  
 > **Time to Complete:** 15-20 minutes  
 > **Prerequisites:** None - starts with mock data
 
@@ -31,7 +31,31 @@ Open your browser to `http://localhost:3000`
 - Controls (zoom/fit) in bottom-left corner
 - Performance overlay (dev mode only) on right side
 
-### 1.2 Basic Navigation
+### 1.2 Configure API Keys (Required for AI Responses)
+
+**ProjectLoom uses BYOK (Bring Your Own Key) for AI providers:**
+
+1. **Open Settings** - Click the gear icon (⚙️) in the bottom-right corner
+2. **Navigate to API Keys tab**
+3. **Add your API key(s):**
+   - **Anthropic (Claude):** Get from [console.anthropic.com](https://console.anthropic.com)
+   - **OpenAI (GPT):** Get from [platform.openai.com](https://platform.openai.com)
+   - You need at least one provider key to use AI chat
+4. **Save:** Keys are stored locally in your browser (localStorage)
+5. **Close Settings**
+
+**Security Notes:**
+- Your API keys are stored locally in your browser only
+- Keys are never sent to ProjectLoom servers
+- Keys are obfuscated (but not encrypted) in localStorage
+- For production, use environment variables (see docs)
+
+**First-Time Setup Flow:**
+- If you try to send a message without API keys, you'll see a warning banner
+- Click "Configure API Keys" to open the setup modal
+- Add at least one provider key to continue
+
+### 1.3 Basic Navigation
 
 **Try these interactions:**
 
@@ -80,10 +104,33 @@ Open your browser to `http://localhost:3000`
 - **Close:** Press `Escape` or click the X button
 
 **What you'll see in the chat panel:**
-- Header with conversation title and indicators
+- Header with conversation title, model selector, and indicators
 - Scrollable message thread (user messages on right, AI on left)
 - Message input at bottom with "Type a message..." placeholder
 - Branch button to create branches from current conversation
+
+**Model selection:**
+- Click the model dropdown in the chat panel header
+- Choose from available models:
+  - **Anthropic Claude:** Opus 4 (Premium), Sonnet 4 (Balanced), Haiku 4 (Efficient)
+  - **OpenAI:** GPT-4o (Premium), GPT-4o Mini (Efficient)
+- Each model shows cost tier badge and context window size
+- Model is saved per conversation (different cards can use different models)
+
+**Sending messages:**
+- Type in the message input at the bottom
+- Press **Ctrl+Enter** to send (or click the send button)
+- AI responds with streaming text (watch it appear in real-time!)
+- Click **Stop** button during generation to cancel
+- Model badge shows which AI generated each response
+
+**Attaching images (Vision support):**
+- Click the **paperclip icon** (📎) when using vision-capable models (Claude Opus/Sonnet/Haiku 4, GPT-4o, GPT-4o Mini)
+- Select up to 3 images (PNG, JPEG, WebP, GIF, max 5MB each)
+- Thumbnail previews appear above the input
+- Click **X** on thumbnail to remove
+- Send with or without text - images are included in AI context
+- AI can analyze, describe, and answer questions about images
 
 **Hover over messages in the panel:**
 - A **branch icon** (🌿) appears on each message
@@ -206,6 +253,24 @@ This is the **core v4 feature**! You can branch from any message in any card.
 1. Click and drag from any card's **right handle**
 2. Connect to another card's **left handle**
 3. System detects if target should become a merge node
+
+**Method 3: Multi-Select and Create Merge (With Per-Parent Control)**
+
+1. **Select multiple cards** (Shift+Click or Ctrl+A)
+2. Right-click → "Create merge node from selection"
+3. **Merge Node Creator dialog appears** with per-parent controls:
+   - Each selected card shown with its title and message count
+   - Toggle **"📄 Full"** / **"📝 Summary"** for each parent independently
+   - When switching to Summary mode, AI generates a summary on-demand
+   - Cost estimate shown during summary generation
+   - Loading spinner per parent during generation
+4. Click **"Create Merge Node"** to finalize
+5. New merge node created with configured inheritance modes per parent
+
+**Per-Parent Inheritance Benefits:**
+- Use Full context for critical parents, Summary for background context
+- Reduces token costs while preserving key information
+- Each parent can have different treatment based on importance
 
 ### 4.2 Merge Node Limits
 
@@ -576,6 +641,8 @@ ProjectLoom enforces these limits:
 **You've completed the tutorial! 🎉**
 
 You now understand:
+- ✅ API key setup and model selection
+- ✅ Real-time streaming AI chat
 - ✅ Canvas navigation and card management
 - ✅ Branching from messages and cards
 - ✅ Context inheritance modes
@@ -585,6 +652,8 @@ You now understand:
 **Ready to level up?**
 
 👉 **See [BEST_PRACTICES.md](BEST_PRACTICES.md)** for:
+- AI model selection strategies (when to use each model)
+- Cost optimization tips (start efficient, scale up)
 - Strategic workflow patterns (decision-making, parallel exploration)
 - Optimization tips and efficiency hacks
 - When to branch vs. merge vs. continue
@@ -594,6 +663,14 @@ You now understand:
 ---
 
 ## Troubleshooting Common Issues
+
+### "No API key configured"
+- **Cause:** Need to add API keys first
+- **Solution:** Settings → API Keys → Add Anthropic or OpenAI key
+
+### "AI not responding"
+- **Cause:** Invalid API key or network error
+- **Solution:** Check Settings → API Keys, verify key is correct
 
 ### "I can't connect two cards"
 - **Cause:** Would create a cycle
@@ -619,14 +696,25 @@ You now understand:
 
 ## Additional Resources
 
-**What's coming in Phase 3:**
-- Live AI integration (Claude, OpenAI, Local LLMs)
-- Real conversations within cards
-- Auto-generated summaries
-- AI-powered merge synthesis
+**Phase 2 AI Integration (Completed):**
+- ✅ Real AI integration with streaming responses
+- ✅ Claude (Anthropic) and OpenAI support
+- ✅ BYOK (Bring Your Own Key) security model
+- ✅ Real-time model switching
+- ✅ API key management
+
+**Phase 2 Features (All Complete):**
+- ✅ Real AI integration with streaming responses (Week 1-2)
+- ✅ Claude (Anthropic) and OpenAI support (Week 1-2)
+- ✅ Context inheritance for branching (Week 3)
+- ✅ Auto-generated summaries for long conversations (Week 4)
+- ✅ Multi-parent merge with per-parent inheritance modes (Week 4)
+- ✅ Agent workflows with tool calling (Week 5)
+- ✅ Vision support with image attachments (Must-Have #5)
 
 **Documentation:**
 - **[BEST_PRACTICES.md](BEST_PRACTICES.md)** - Strategic patterns and optimization
+- **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** - Latest features and status
 - **architecture.md** - Technical deep dive
 - **PERFORMANCE_OPTIMIZATIONS.md** - Performance insights
 - **GitHub issue #5** - Complete v4 specification
@@ -645,6 +733,9 @@ MOUSE ACTIONS
 - Click + drag canvas → Pan
 - Scroll wheel → Zoom
 - Click card → Open chat panel
+- Click model dropdown → Select AI model
+- Type in message input → Draft message
+- Press send button → Send to AI
 - Right-click card → Context menu
 - Drag from handle → Create connection
 - Hover message (in chat panel) → Show branch icon
@@ -655,11 +746,14 @@ KEYBOARD SHORTCUTS
 N               New conversation
 Enter / Space   Open chat panel
 Ctrl+B / ⌘+B    Branch from card
-Ctrl+Enter      Send message (in chat)
+Ctrl+Enter      Send message (in chat panel)
 Delete          Delete selected
 Escape          Close chat then deselect
 Ctrl+Z          Undo
 Ctrl+Shift+Z    Redo
+Ctrl+F          Canvas search
+Ctrl+L          Auto-layout
+?               Keyboard shortcuts help
 F2              Rename workspace
 
 VISUAL INDICATORS
@@ -670,6 +764,7 @@ Green border    Merge (2 parents)
 Thick amber     Open in chat panel
 Amber+⚠️        Merge (3-4 parents)
 Red+⚠️          Merge (5 parents, max)
+Model badge     Shows which AI generated each message
 ```
 
 ---

@@ -1,7 +1,7 @@
 # ProjectLoom Best Practices & FAQ
 
-> **Version:** v4.0.0  
-> **Last Updated:** February 5, 2026  
+> **Version:** v4.2.0 (Phase 2 Complete)  
+> **Last Updated:** February 6, 2026  
 > **For:** Users wanting to master efficient workflows
 > **New to ProjectLoom?** Start with [USER_TUTORIAL.md](USER_TUTORIAL.md) for step-by-step feature learning
 
@@ -9,7 +9,34 @@
 
 ## 🎯 Quick Answers
 
-### Interface & Navigation
+### API Keys & AI Configuration
+
+**Q: How do I set up AI chat?**  
+A: You need to provide your own API key(s). Click the gear icon (⚙️) → API Keys tab → add keys for Anthropic and/or OpenAI. Keys are stored locally in your browser only.
+
+**Q: Are my API keys secure?**  
+A: Keys are stored in your browser's localStorage with basic obfuscation. They're never sent to ProjectLoom servers. For production use, set environment variables (`NEXT_PUBLIC_ANTHROPIC_API_KEY` or `NEXT_PUBLIC_OPENAI_API_KEY`).
+
+**Q: Which AI model should I use?**  
+A: It depends on your needs:
+- **Claude Opus 4** - Best quality, highest cost, slowest. Use for complex reasoning.
+- **Claude Sonnet 4** - Balanced quality/speed/cost. Best default for most tasks.
+- **Claude Haiku 4** - Fast and cheap. Good for simple tasks or high-volume.
+- **GPT-4o** - OpenAI's flagship. Similar to Opus in capability.
+- **GPT-4o Mini** - OpenAI's efficient model. Similar to Haiku.
+
+**Q: Can different cards use different models?**  
+A: Yes! Each conversation can use a different model. Switch models anytime in the chat panel header. The model badge shows which AI generated each message.
+
+**Q: What happens if my API key is invalid?**  
+A: You'll see an error banner in the chat panel with a suggestion to check your key in Settings. ProjectLoom validates keys before sending requests.
+
+**Q: Can I switch models mid-conversation?**  
+A: Yes! Click the model dropdown in the chat panel header and select a new model. Future messages in that conversation will use the new model. Previous messages keep their original model badge.
+
+---
+
+## Interface & Navigation
 
 **Q: How do I see all my conversation cards at once?**  
 A: Click the **"fit view"** button (bottom-left) or use the minimap to pan around. The minimap shows your entire workspace.
@@ -25,6 +52,127 @@ A: The breadcrumb shows the workspace title when **no card is selected**. Select
 
 **Q: How do I view the full conversation for a card?**  
 A: Click any card to open the **right chat panel** with the full conversation history. The panel is resizable (drag the left edge) and closes with Escape.
+
+---
+
+## 🤖 AI Model Selection Strategies
+
+### Choosing the Right Model
+
+**By Task Complexity:**
+
+**Simple/Routine Tasks** (Use Efficient Models)
+- ✅ Haiku 4 or GPT-4o Mini
+- ✅ Fast responses (< 2 seconds)
+- ✅ Low cost (1/100th of premium models)
+- ✅ Examples: Code formatting, simple Q&A, data extraction
+
+**Balanced Tasks** (Use Balanced Models)
+- ✅ Sonnet 4 (recommended default)
+- ✅ Good speed/quality trade-off
+- ✅ Moderate cost
+- ✅ Examples: Code generation, technical writing, debugging
+
+**Complex Reasoning** (Use Premium Models)
+- ✅ Opus 4 or GPT-4o
+- ✅ Best quality and reasoning
+- ✅ Highest cost and slowest
+- ✅ Examples: Architecture decisions, complex algorithms, research synthesis
+
+### Cost Optimization Strategies
+
+**Start Efficient, Scale Up:**
+```
+New Card (Exploration)
+├─→ Use Haiku 4 for initial ideas
+├─→ Switch to Sonnet 4 when you find direction
+└─→ Use Opus 4 only for final refinement
+```
+
+**Benefits:**
+- Save 90% on early exploration costs
+- Reserve premium models for decisions that matter
+- Still get high quality when needed
+
+**Branch with Different Models:**
+```
+Problem Definition (Sonnet 4)
+├─→ Quick Solution A (Haiku 4) ───┐
+├─→ Quick Solution B (Haiku 4) ───┤
+└─→ Detailed Analysis (Opus 4) ───┴→ Merge & Decide (Opus 4)
+```
+
+**Pattern:** Explore quickly with cheap models, synthesize with premium.
+
+### Model-Specific Tips
+
+**Claude Haiku 4:**
+- ⚡ Fastest responses (~0.5-1s)
+- 💰 Most cost-effective (1/100th of Opus)
+- ✅ Best for: Quick iterations, simple tasks, high-volume
+- ⚠️ Watch: May oversimplify complex problems
+
+**Claude Sonnet 4:**
+- ⚖️ Balanced speed and quality
+- 💰 Moderate cost (1/5th of Opus)
+- ✅ Best for: Most tasks, default choice
+- ⚠️ Watch: Occasionally needs Opus for very complex reasoning
+
+**Claude Opus 4:**
+- 🧠 Highest reasoning capability
+- 💰 Highest cost
+- ✅ Best for: Architecture, complex algorithms, research
+- ⚠️ Watch: Slower responses (3-10s)
+
+**GPT-4o:**
+- 🧠 Similar to Opus in capability
+- 💰 High cost
+- ✅ Best for: When you prefer OpenAI ecosystem
+- ⚠️ Watch: Different reasoning style than Claude
+
+**GPT-4o Mini:**
+- ⚡ Fast and efficient
+- 💰 Similar cost to Haiku
+- ✅ Best for: OpenAI preference + simple tasks
+- ⚠️ Watch: May not match Haiku's speed
+
+### When to Switch Models
+
+**During a Conversation:**
+
+**Switch UP (to premium) when:**
+- Current model gives superficial answers
+- You need deeper reasoning or analysis
+- Making important decisions
+- Synthesis/merge nodes (combining multiple threads)
+
+**Switch DOWN (to efficient) when:**
+- Doing repetitive tasks
+- Prototyping many variations quickly
+- Cost is a concern
+- Simple implementation after design is done
+
+**Example workflow:**
+```
+1. Start conversation: Sonnet 4
+2. Get initial direction
+3. Switch to Haiku 4: Generate 5 quick variations
+4. Switch to Opus 4: Deep dive on best variation
+5. Switch back to Sonnet 4: Implementation details
+```
+
+### Model Persistence
+
+**How it works:**
+- Each conversation remembers its current model
+- Model persists across page refreshes
+- Branching: Child conversation starts with parent's model (can change immediately)
+- Merging: Merge nodes default to highest-tier model among parents
+
+**Best practice:**
+- Set model before sending first message
+- Review model before important decisions
+- Check model badges on messages to see what generated each response
 
 ---
 
@@ -50,10 +198,12 @@ A: Click any card to open the **right chat panel** with the full conversation hi
 - ✅ Best for: Complex problems requiring all background
 - ⚠️ Watch: Token usage grows with conversation length
 
-**Summary** (future Phase 3 feature)
+**Summary** (✅ Implemented)
 - ✅ Use when: Branch point is clear, but full history is long
-- ✅ Best for: Reducing token costs on long conversations
-- ⚠️ Watch: May lose subtle context
+- ✅ Best for: Reducing token costs on long conversations (50-90% reduction)
+- ✅ How: AI generates concise summary via `/api/summarize` endpoint
+- ✅ Regenerate: Click "Regenerate Summary" in Inherited Context panel
+- ⚠️ Watch: May lose subtle context or nuance from original messages
 
 **Custom**
 - ✅ Use when: Only specific messages are relevant
@@ -143,6 +293,100 @@ F ──┘
 ```
 
 Group related threads → merge groups → final synthesis
+
+### Per-Parent Inheritance Modes
+
+**New Feature:** Each parent in a merge node can use a different inheritance mode!
+
+**When creating merge nodes:**
+- Use **Full context** for primary/critical sources
+- Use **Summary** for secondary/background sources
+- Mix modes based on importance and relevance
+
+**Example strategy:**
+```
+Main Discussion (Full) ──┐
+Research Notes (Full)   ──┤
+Prior Ideas (Summary)   ──┼─→ Decision Node
+Tangential Topic (Summary)──┘
+```
+
+**Benefits:**
+- Reduce token costs by 50-80% vs all-Full mode
+- Preserve critical context where it matters
+- Avoid overwhelming AI with too much information
+- Faster generation with smaller context windows
+
+**Best practice:**
+- Prioritize most recent/relevant parents with Full mode
+- Use Summary for older or tangential threads
+- Test both modes if unsure - summaries usually sufficient
+
+---
+
+## 📷 Vision Support Best Practices
+
+### When to Use Image Attachments
+
+**Vision-capable models:**
+- Claude Opus 4, Sonnet 4, Haiku 4
+- GPT-4o, GPT-4o Mini
+- Look for 📎 paperclip icon in message input
+
+**Ideal use cases:**
+- ✅ UI/UX mockups or screenshots for design feedback
+- ✅ Error messages or stack traces (faster than copy-paste)
+- ✅ Diagrams, flowcharts, or architecture drawings
+- ✅ Code screenshots with context
+- ✅ Data visualizations or charts
+- ✅ Handwritten notes or whiteboard photos
+
+**When NOT to use images:**
+- ❌ Pure text (copy-paste is cheaper and more accurate)
+- ❌ Large documents (use text extraction instead)
+- ❌ Videos (not supported - extract key frames)
+- ❌ Files over 5MB (will be rejected)
+
+### Image Quality Tips
+
+**For best results:**
+- Use PNG or JPEG at reasonable resolution (1000-2000px wide)
+- Ensure text in images is readable (avoid tiny fonts)
+- Crop to relevant area (don't send full desktop screenshot)
+- Use good lighting for photos (avoid glare or shadows)
+- Keep images focused on single topic per image
+
+**Cost considerations:**
+- Images add to token count (varies by model and size)
+- Claude models typically charge per image + base message cost
+- Use images strategically - not every message needs them
+- Haiku 4 is most cost-effective for image analysis
+
+### Image Workflow Patterns
+
+**Design Review Workflow:**
+```
+1. Attach UI mockup image
+2. Ask: "Review this design for accessibility issues"
+3. AI analyzes and provides feedback
+4. Branch with revised mockup
+5. Compare responses
+```
+
+**Error Debugging Workflow:**
+```
+1. Attach error screenshot
+2. Ask: "What's causing this error?"
+3. AI reads stack trace and suggests fixes
+4. Faster than typing out error messages
+```
+
+**Code Review with Context:**
+```
+1. Attach code screenshot showing surrounding context
+2. Ask about specific function or pattern
+3. AI sees full context without manual excerpt
+```
 
 ---
 
@@ -352,6 +596,73 @@ C ──┘             ├─→ Final Decision
 
 ## 🐛 Troubleshooting
 
+### "No Response from AI"
+
+**Problem:** Message sent, but no AI response appears
+
+**Causes:**
+1. No API key configured
+2. Invalid API key
+3. Network error
+4. Provider API is down
+
+**Solution:**
+- Check for error/warning banners in chat panel
+- Open Settings → API Keys → verify key is saved
+- Test key by sending a simple message like "Hi"
+- Check browser console for detailed error messages
+- Try switching to a different provider/model
+
+### "API Key Error"
+
+**Problem:** "Invalid API key" error when sending message
+
+**Solution:**
+1. Open Settings → API Keys
+2. Delete the problematic key
+3. Copy fresh key from provider console:
+   - Anthropic: [console.anthropic.com](https://console.anthropic.com)
+   - OpenAI: [platform.openai.com](https://platform.openai.com)
+4. Paste into Settings and save
+5. Try sending message again
+
+**Common mistakes:**
+- Copied key with extra spaces (trim whitespace)
+- Used expired or revoked key
+- Key belongs to different provider than selected model
+
+### "Streaming Stops Mid-Response"
+
+**Problem:** AI response cuts off before finishing
+
+**Causes:**
+1. Network interruption
+2. Provider rate limit hit
+3. Token limit reached
+4. User clicked stop button
+
+**Solution:**
+- Check network connection
+- Wait a moment and try again (rate limit cooldown)
+- If consistently hitting limits, switch to smaller model
+- Check provider dashboard for usage/limits
+
+### "Model Not Responding Well"
+
+**Problem:** AI gives poor quality responses
+
+**Check:**
+1. Using efficient model for complex task? → Switch to premium
+2. Conversation too long? → Branch to start fresh
+3. Context confusing? → Use "none" inheritance mode
+4. Wrong model for task? → See model selection guide above
+
+**Optimize:**
+- Start new card for new topics (avoid context pollution)
+- Use branching to explore multiple angles
+- Switch to higher-tier model for important decisions
+- Review conversation history for confusing messages
+
 ### "Can't Connect Two Cards"
 
 **Problem:** Drag handle to another card, but connection rejected
@@ -394,13 +705,42 @@ C ──┘             ├─→ Final Decision
 
 **Recovery:**
 - Work auto-saves to localStorage every 300ms
+- All conversations, messages, and AI responses are saved
+- API keys saved separately (persistent across sessions)
 - Refresh page (F5) - should restore immediately
 - Check browser console for errors
-- Clear localStorage only as last resort
+- Clear localStorage only as last resort (will lose API keys too)
+
+**What persists:**
+- ✅ All conversation cards and positions
+- ✅ All messages (user and AI)
+- ✅ Branch relationships and merge nodes
+- ✅ API keys (localStorage)
+- ✅ Model selection per conversation
+- ✅ Panel widths and UI preferences
+
+**What doesn't persist:**
+- ❌ Draft messages (session-only)
+- ❌ Chat panel open/closed state
+- ❌ Current selection
+- ❌ Undo/redo beyond 50 actions
 
 ---
 
 ## ⚙️ Settings Tips
+
+### API Keys Tab
+
+**Security:**
+- Keys stored in browser localStorage (basic obfuscation)
+- For production: Use environment variables instead
+- Set `NEXT_PUBLIC_ANTHROPIC_API_KEY` or `NEXT_PUBLIC_OPENAI_API_KEY`
+
+**Management:**
+- Show/hide toggle to view keys safely
+- Delete button to remove keys from storage
+- Visual indicators (checkmark) show which keys are saved
+- Keys sync immediately (no save button needed)
 
 ### Branching Tab
 
@@ -433,8 +773,59 @@ C ──┘             ├─→ Final Decision
 | Undo history | 50 actions | Persists across refresh |
 | Merge parents | 5 | Hard limit for quality |
 | Cards per workspace | Unlimited | Performance tested to 100+ |
+| API key storage | Browser localStorage | Use env vars for production |
+| Streaming message length | Unlimited | Handled by AI provider |
+| Models per workspace | Unlimited | Each card can use different model |
+
+---
+
+## ✅ Phase 2 Complete!
+
+All Week 1-5 features from Phase 2 are now fully implemented:
+
+### **Context Inheritance for Branching** ✅
+Branched cards automatically receive parent conversation as context:
+- Full context mode (all messages up to branch point)
+- Summary mode with AI-generated summaries (50-90% token reduction)
+- Each conversation inherits context from its parent
+- Inherited Context panel shows what was inherited
+
+### **Multi-Parent Merge with Per-Parent Context** ✅
+Merge nodes combine contexts from multiple parents:
+- Each parent can use Full or Summary mode independently
+- On-demand AI summary generation per parent
+- Cost estimation during summary creation
+- Synthesis across multiple exploration threads
+
+### **Agent Workflows** ✅
+Three AI agents with tool calling and confirmation UI:
+- **Cleanup Agent** - Suggests deletions and renames for workspace organization
+- **Branch Agent** - Generates multiple exploration branches from a card
+- **Summarize Agent** - Creates markdown summaries of card conversations
+- 5-layer safety: User confirmation for all destructive actions
+
+### **Vision Support** ✅
+Upload and analyze images in conversations:
+- Paperclip button (📎) for vision-capable models
+- Up to 3 images per message (max 5MB each)
+- PNG, JPEG, WebP, GIF formats supported
+- Works with Claude Opus/Sonnet/Haiku 4, GPT-4o, GPT-4o Mini
+- Clickable thumbnails in message thread
+
+**See Full Details:** Check [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for technical documentation.
+
+---
+
+## 🏢 Workspace Management
+
+### Current Capabilities
+
+| Metric | Limit | Notes |
+|--------|-------|-------|
 | Workspaces | Unlimited | Stored in localStorage |
-| Storage | ~5-10 MB | Browser localStorage limit |
+| Storage | ~5-10 MB per workspace | Browser localStorage limit |
+| Cards per workspace | Unlimited | Performance tested to 100+ |
+| Merge parents | 5 per node | Hard limit for AI quality |
 
 ### When to Create New Workspace
 
@@ -453,22 +844,37 @@ C ──┘             ├─→ Final Decision
 
 ## 🔮 Phase 3 Preview
 
-### Coming Soon (Live AI Integration)
+### What's Next (Future Development)
 
-**Auto-Summary Mode:**
-- Branch with AI-generated summary instead of full context
-- Reduce token usage on long conversations
-- Intelligent extraction of key points
+**Advanced Summary Features:**
+- Customizable summary templates per use case
+- Summary history and versioning
+- Summary quality feedback and regeneration strategies
 
-**Merge Synthesis:**
-- AI automatically synthesizes multiple parent contexts
-- Generates comparison/decision matrix
-- Suggests optimal path forward
+**Enhanced Merge Synthesis:**
+- AI-generated comparison matrices across merge parents
+- Conflict detection and resolution suggestions
+- Suggested optimal paths based on merge analysis
 
-**Context Warnings:**
-- Real-time token count
-- Inheritance depth alerts
-- Merge complexity analysis
+**Advanced Context Management:**
+- Real-time token count indicators
+- Context depth visualizations
+- Merge complexity analysis dashboard
+- Smart context pruning suggestions
+
+**Desktop Application:**
+- Native Electron app for Windows/Mac/Linux
+- Better performance and reliability
+- Offline-first architecture with sync
+- Native file system integration
+
+**Export & Sharing:**
+- Export conversations as markdown/PDF/HTML
+- Share workspace snapshots
+- Collaborative workspaces (multi-user)
+- Version control integration
+
+**See Roadmap:** Check GitHub issue #9 comments for Phase 3 detailed planning.
 
 ---
 

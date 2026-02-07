@@ -191,14 +191,6 @@ export function selectContextMessages(
         maxMessages: TRUNCATION_CONFIG.summary.maxMessages,
       });
     
-    case 'custom':
-      if (!selectedIds || selectedIds.length === 0) {
-        logger.warn('Custom mode requires selectedIds, falling back to empty');
-        return [];
-      }
-      const idSet = new Set(selectedIds);
-      return messages.filter(m => idSet.has(m.id));
-    
     default:
       return [...messages];
   }
@@ -301,25 +293,9 @@ export function createBranchMetadata(
  */
 export function validateBranchData(
   mode: InheritanceMode,
-  customMessageIds?: string[],
+  _customMessageIds?: string[],
   messages?: Message[]
 ): { valid: boolean; error?: string; warning?: string } {
-  if (mode === 'custom') {
-    if (!customMessageIds || customMessageIds.length === 0) {
-      return {
-        valid: false,
-        error: 'Custom mode requires at least one message to be selected.',
-      };
-    }
-    
-    if (customMessageIds.length === 1) {
-      return {
-        valid: true,
-        warning: 'Only one message selected. Consider selecting more for better context.',
-      };
-    }
-  }
-  
   if (mode === 'summary' && messages) {
     const preview = getTruncationPreview(messages, {
       type: TRUNCATION_CONFIG.summary.strategy,

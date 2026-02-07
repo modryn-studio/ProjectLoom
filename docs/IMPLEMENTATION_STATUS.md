@@ -1,14 +1,263 @@
 # ProjectLoom Implementation Status
 
-**Last Updated:** February 5, 2026  
-**Current Version:** v4.0.0  
-**Overall Status:** 98% Complete - Core features done, minor testing/polish remaining
+**Last Updated:** February 6, 2026  
+**Current Version:** v4.2.0 (AI Provider Integration - Phase 2 Complete)  
+**Overall Status:** Core features complete, AI integration fully implemented including agents
 
 ---
 
 ## ✅ COMPLETED (Ready for Use)
 
-### **Recent Implementation (This Week)**
+### **Agent Workflows (Week 5, Phase 2)** ✅
+
+**Status:** Fully implemented with guardrails, confirmation UI, and 3 agent types
+
+#### **Agent Infrastructure**
+- **Agent Types** (`/lib/agents/types.ts`)
+  - Agent registry: Cleanup, Branch, Summarize agents
+  - Action types: Delete, Rename, CreateBranch, CreateDocument
+  - Configurable guardrails: maxSteps (10), timeout (60s), cost budget ($0.50)
+  - Workspace/Card snapshot types for agent context
+
+- **Agent Runner** (`/lib/agents/agent-runner.ts`)
+  - Shared execution engine using `generateText()` from Vercel AI SDK
+  - Loop detection (sliding window of 3 repeated identical tool calls)
+  - Timeout enforcement via `AbortController` + `Promise.race`
+  - Cost budget checking against `maxCostUsd`
+  - Step tracking with `onStepFinish` callback
+  - Pending confirmation pattern for destructive actions
+
+- **Cleanup Agent** (`/lib/agents/cleanup-agent.ts`)
+  - Tools: `analyzeWorkspace` (read-only), `suggestDeletion`, `suggestRename`
+  - Conservative approach: never auto-deletes, all actions require confirmation
+  - Prioritizes empty/auto-named cards
+
+- **Branch Agent** (`/lib/agents/branch-agent.ts`)
+  - Tool: `createBranch` with branchReason and initialPrompt
+  - Supports optional parentCardId for branching from existing card
+  - Generates 2-5 distinct exploration branches
+
+- **Summarize Agent** (`/lib/agents/summarize-agent.ts`)
+  - Tools: `readCard` (reads up to 50 messages), `createMarkdownDoc`
+  - Creates executive summaries with key decisions and open questions
+  - Per-card summaries for multi-card workspaces
+
+#### **Agent API**
+- **Agent Route** (`/api/agent/route.ts`)
+  - POST endpoint routing to cleanup/branch/summarize agents
+  - Date object hydration from serialized workspace snapshots
+  - BYOK pattern: API key passed per-request
+  - Full error handling with structured responses
+
+#### **Agent UI**
+- **AgentDialog** (`/components/AgentDialog.tsx`)
+  - Agent selection with radio buttons (3 agents)
+  - Optional prompt textarea for branch agent
+  - Workspace snapshot builder from Zustand store
+  - Real-time progress display with step tracking
+  - Result display with token usage and cost
+  - Abort support via AbortController
+
+- **AgentConfirmationDialog** (`/components/AgentConfirmationDialog.tsx`)
+  - Action review with per-action checkboxes
+  - Auto-approved for non-destructive actions, requires approval for deletes
+  - Bulk approve/reject buttons
+  - Execution: delete, rename, create branch, create document actions
+  - Toast notifications for success/failure
+
+- **Sidebar Integration** (`/components/CanvasTreeSidebar.tsx`)
+  - Bot icon button in sidebar footer (next to Settings)
+  - Conditionally rendered when `onOpenAgents` callback provided
+
+---
+
+### **AI Summary Generation (Week 4, Phase 2)** ✅
+
+**Status:** Fully implemented with cost estimation and regeneration UI
+
+#### **Summary Infrastructure**
+- **Summary API Route** (`/api/summarize/route.ts`)
+  - POST endpoint using `generateText()` from Vercel AI SDK
+  - maxTokens: 1000, BYOK pattern
+  - Error handling: 401 (auth), 429 (rate limit), 400 (context too long)
+
+- **Cost Estimation** (`/lib/vercel-ai-integration.ts`)
+  - `COST_PER_1K_INPUT` / `COST_PER_1K_OUTPUT` tables for 5 models
+  - `estimateCost()` - Estimates cost for input/output tokens
+  - `formatCost()` - Formats cost as "$X.XXXX"
+
+#### **Summary UI**
+- **BranchDialog** (`/components/BranchDialog.tsx`)
+  - Simplified to 'full' and 'summary' modes only (removed 'custom')
+  - AI summary generation flow: calls `/api/summarize`
+  - Cost preview via `estimateCost()`/`formatCost()`
+  - Loading state during generation
+
+- **InheritedContextPanel** (`/components/InheritedContextPanel.tsx`)
+  - "Regenerate Summary" button with cost display
+  - Always regenerates from full parent conversation (prevents summary drift)
+  - Spinning RefreshCw icon during regeneration
+  - Error display with recovery
+
+#### **Store Updates**
+- **Canvas Store** (`/stores/canvas-store.ts`)
+  - `updateInheritedSummary()` - Replaces inherited context with new summary
+  - Summary stored as system message with `{ isSummary: true, originalMessageCount }` metadata
+
+#### **Type Changes**
+- `InheritanceMode` simplified: `'full' | 'summary'` (removed `'custom'`)
+- `BranchFromMessageData`: added `summaryText`, removed `customMessageIds`
+
+---
+
+### **Context Inheritance (Week 3, Phase 2)** ✅
+
+**Status:** Already implemented in prior phase — full context inheritance system exists
+
+---
+
+### **Per-Parent Merge Inheritance Modes (Week 4, Phase 2)** ✅
+
+**Status:** Fully implemented — each parent in a merge node can use a different inheritance mode
+
+#### **Changes**
+- **CreateMergeNodeData** (`/types/index.ts`)
+  - Changed `inheritanceMode?: InheritanceMode` → `inheritanceModes?: Record<string, InheritanceMode>`
+  - Added `summaryTexts?: Record<string, string>` for pre-generated summaries
+
+- **Canvas Store** (`/stores/canvas-store.ts`)
+  - `createMergeNode()` now reads per-parent mode from `inheritanceModes[cardId]`
+  - Summary mode stores single system message with `{ isSummary: true }` metadata
+  - Falls back to 'full' mode if no mode specified for a parent
+
+- **MergeNodeCreator** (`/components/MergeNodeCreator.tsx`)
+  - Per-parent inheritance mode toggle (Full / Summary) for each selected card
+  - On-demand AI summary generation per parent via `/api/summarize`
+  - Loading state per-parent during summary generation
+  - Cost-aware: uses existing API key and summarize endpoint
+
+---
+
+### **Vision Support - Image Attachments (Phase 2 Must-Have)** ✅
+
+**Status:** Fully implemented with file upload UI, API handling, and attachment display
+
+#### **Type System**
+- **MessageAttachment** (`/types/index.ts`)
+  - `id`, `contentType`, `name`, `url` (base64 data URL)
+  - Added `attachments?: MessageAttachment[]` to `Message` interface
+
+#### **Upload UI** (`/components/MessageInput.tsx`)
+- Paperclip (📎) button shown when model supports vision
+- Hidden file input: accepts PNG, JPEG, WebP, GIF
+- Constraints: max 5MB per file, max 3 images per message
+- Thumbnail preview with remove buttons
+- Error banners for invalid file type/size
+
+#### **Display** (`/components/MessageThread.tsx`)
+- Images rendered inside message bubbles
+- Clickable thumbnails (opens in new tab)
+- Filename label with image icon
+- Responsive layout with max 200px per image
+
+#### **Chat Integration** (`/components/ChatPanel.tsx`)
+- `pendingAttachments` state managed at panel level
+- Vision detection via `getModelById().supportsVision`
+- Attachments passed to `/api/chat` in request body
+- Attachments cleared after successful send
+
+#### **API Route** (`/api/chat/route.ts`)
+- Accepts `attachments` array in request body
+- Converts base64 data URLs to Vercel AI SDK `image` content parts
+- Injects images into last user message as multimodal content
+- Works with both Anthropic (Claude) and OpenAI (GPT-4o) vision models
+
+#### **Store Integration** (`/stores/canvas-store.ts`)
+- `sendMessage()` accepts optional `attachments` parameter
+- Attachments persisted on user `Message` objects in conversation content
+
+---
+
+### **AI Provider Integration (Week 1-2, Phase 2)** ✅
+
+**Status:** Fully implemented with streaming support and BYOK (Bring Your Own Key) security model
+
+#### **Core Infrastructure**
+- **Chat API Route** (`/api/chat/route.ts`)
+  - Streaming responses using Vercel AI SDK v4.3.19
+  - Supports Claude (Anthropic) and OpenAI models
+  - BYOK pattern: API keys passed per-request, never server-stored
+  - Error handling with graceful degradation
+
+- **Model Management** (`/lib/vercel-ai-integration.ts`)
+  - Model definitions: Claude Opus/Sonnet/Haiku 4, GPT-4o, GPT-4o Mini
+  - Token estimation utilities
+  - Provider detection logic
+  - Cost tier badges (Premium/Balanced/Efficient)
+
+- **API Key Management** (`/lib/api-key-manager.ts`)
+  - Hybrid approach: environment variables (production) + localStorage (dev)
+  - Key obfuscation for client storage
+  - Multi-provider support (Anthropic, OpenAI)
+  - Status checking and validation
+
+#### **UI Components**
+- **ModelSelector** (`/components/ModelSelector.tsx`)
+  - VSCode-style dropdown with keyboard navigation
+  - Grouped by provider (Anthropic, OpenAI)
+  - Cost tier indicators and context window info
+  - Real-time model switching per conversation
+
+- **APIKeySetupModal** (`/components/APIKeySetupModal.tsx`)
+  - First-time setup flow for API keys
+  - Show/hide toggle for key visibility
+  - Validation and save to apiKeyManager
+
+- **Settings Panel - API Keys Tab**
+  - Anthropic and OpenAI key inputs
+  - Delete key functionality
+  - Visual indicators for saved keys
+  - Local storage notice
+
+#### **Chat Panel Integration**
+- **Streaming Support** (`/components/ChatPanel.tsx`)
+  - `useChat` hook from Vercel AI SDK
+  - Real-time streaming message display
+  - Stop button during generation
+  - Sync between streaming state and Zustand store
+
+- **Message Display** (`/components/MessageThread.tsx`)
+  - Streaming indicator animation
+  - Model badges on AI messages
+  - Format model names (e.g., "Claude Sonnet 4")
+
+- **Input Enhancements** (`/components/MessageInput.tsx`)
+  - Stop button during streaming
+  - API key warning banner
+  - Error display with recovery options
+
+#### **Store Integration**
+- **Canvas Store Methods**
+  - `addAIMessage()` - Persist AI responses
+  - `setConversationModel()` - Track model per conversation
+  - `getConversationModel()` - Retrieve conversation model
+  - `getConversationMessages()` - Get messages for AI context
+
+#### **Dependencies**
+- `ai@4.3.19` - Vercel AI SDK core
+- `@ai-sdk/anthropic@1.2.12` - Claude provider
+- `@ai-sdk/openai@1.3.22` - OpenAI provider
+- `zod@3.25.76` - Schema validation (upgraded for compatibility)
+
+#### **Testing Status**
+- ✅ TypeScript compilation: No errors
+- ✅ Production build: Successful
+- ✅ All 63 unit tests: Passing
+- ⏳ Manual testing: Requires real API keys
+
+---
+
+### **UI/UX Features (v4.0)** ✅
 
 All 9 high-priority features from Phase 3 planning have been completed:
 
@@ -217,7 +466,48 @@ All 9 high-priority features from Phase 3 planning have been completed:
 
 ## ⚠️ NEEDS TESTING/VERIFICATION
 
-### **Manual Testing Checklist**
+### **Manual Testing Checklist - AI Integration**
+
+#### **API Key Setup**
+- [ ] Open Settings → API Keys tab
+- [ ] Add Anthropic key → shows success indicator
+- [ ] Add OpenAI key → shows success indicator
+- [ ] Delete key → confirmation and key removed
+- [ ] Refresh page → keys persist (from localStorage)
+- [ ] Show/hide toggle works for both keys
+
+#### **Model Selection**
+- [ ] Open chat panel → model selector shows in header
+- [ ] Click dropdown → see all available models grouped by provider
+- [ ] Select different model → updates immediately
+- [ ] Send message → response uses selected model
+- [ ] Switch model mid-conversation → new messages use new model
+- [ ] Model badge appears on AI messages with correct model name
+
+#### **Streaming Chat**
+- [ ] Send message with valid API key → see streaming response
+- [ ] Text appears word-by-word in real-time
+- [ ] Stop button appears during generation
+- [ ] Click stop → generation cancels immediately
+- [ ] Error with invalid key → shows error banner with suggestion
+- [ ] No API key configured → shows warning banner
+
+#### **Model Persistence**
+- [ ] Set model for conversation A
+- [ ] Switch to conversation B and set different model
+- [ ] Return to conversation A → model persists
+- [ ] Refresh page → both models still correct
+- [ ] Branch from conversation → child inherits parent's model
+
+#### **Error Handling**
+- [ ] Invalid API key → clear error message
+- [ ] Network error → shows recoverable error
+- [ ] Rate limit → suggests retry with backoff
+- [ ] Provider unavailable → graceful degradation
+
+---
+
+### **Manual Testing Checklist - UI Features**
 
 #### **Toast System**
 - [ ] Create merge with 3 parents → warning toast appears
@@ -320,31 +610,30 @@ All 9 high-priority features from Phase 3 planning have been completed:
 
 ## 🔧 KNOWN LIMITATIONS & TODOs
 
-### **AI Integration** 🟡
+### **AI Integration** ✅
 
-**Status:** Mock data only (Phase 2+ feature)
+**Status:** Fully implemented with streaming support (Phase 2 Week 1-2)
 
-**What's Missing:**
-- No actual AI provider integration
-- Messages are added to conversation but no AI response generated
-- Mock data used for testing
+**What's Implemented:**
+- ✅ Vercel AI SDK integration with streaming responses
+- ✅ Multi-provider support (Anthropic Claude, OpenAI)
+- ✅ BYOK (Bring Your Own Key) security model
+- ✅ Real-time model switching per conversation
+- ✅ API key management with localStorage fallback
+- ✅ Error handling and graceful degradation
+- ✅ Stop button for canceling generation
+- ✅ Model selector UI with cost tier indicators
 
-**TODO Comment:**
-```typescript
-// src/stores/canvas-store.ts line 1519
-// TODO: Phase 2 - Trigger AI response here
-```
+**Supported Models:**
+- **Claude:** Opus 4, Sonnet 4, Haiku 4
+- **OpenAI:** GPT-4o, GPT-4o Mini
 
-**Why Deferred:**
-- Core UX needs validation first
-- API integration adds complexity (rate limits, auth, cost)
-- Mock data allows faster iteration
-
-**Next Steps:**
-1. Choose AI provider(s) (OpenAI, Anthropic, etc.)
-2. Implement api-key-manager.ts integration
-3. Add streaming response support (Vercel AI SDK?)
-4. Handle rate limits and errors gracefully
+**Next Steps (Week 3-5):**
+1. Context inheritance for branching (use parent conversation as context)
+2. Summary generation API route (smart truncation)
+3. Multi-parent merge context handling
+4. Agent workflows with 5-layer safety system
+5. Vision support (image file uploads)
 
 ---
 

@@ -11,6 +11,7 @@ import { generateMockData } from '@/lib/mock-data';
 import { createContextSnapshot, createBranchMetadata, selectContextMessages } from '@/lib/context-utils';
 import type { 
   Conversation, 
+  Message,
   Position, 
   EdgeConnection, 
   StorageData, 
@@ -213,6 +214,7 @@ interface WorkspaceState {
   createEdge: (sourceId: string, targetId: string, relationType: EdgeRelationType) => Edge | null;
   canAddMergeParent: (mergeNodeId: string) => boolean;
   getMergeParentCount: (mergeNodeId: string) => number;
+  updateInheritedSummary: (conversationId: string, parentId: string, newSummaryText: string) => void;
 
   // Actions - Branch Dialog (keyboard workflow)
   openBranchDialog: (conversationId: string, messageIndex?: number) => void;
@@ -227,7 +229,13 @@ interface WorkspaceState {
   closeChatPanel: () => void;
   setDraftMessage: (conversationId: string, content: string) => void;
   getDraftMessage: (conversationId: string) => string;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, attachments?: import('@/types').MessageAttachment[]) => Promise<void>;
+
+  // Actions - AI Integration (Phase 2)
+  addAIMessage: (conversationId: string, content: string, model: string) => void;
+  setConversationModel: (conversationId: string, model: string) => void;
+  getConversationModel: (conversationId: string) => string | undefined;
+  getConversationMessages: (conversationId: string) => Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
 
   // Actions - Drag State
   setIsAnyNodeDragging: (isDragging: boolean) => void;
@@ -1121,7 +1129,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
 
     branchFromMessage: (data: BranchFromMessageData) => {
-      const { sourceCardId, messageIndex, inheritanceMode = 'full', branchReason } = data;
+      const { sourceCardId, messageIndex, inheritanceMode = 'full', branchReason, summaryText } = data;
       const { conversations, nodes, activeWorkspaceId } = get();
       
       const sourceConversation = conversations.get(sourceCardId);
@@ -1142,11 +1150,25 @@ export const useCanvasStore = create<WorkspaceState>()(
         y: sourceNode.position.y + 150,
       };
 
-      // Build inherited context based on message index and mode
+      // Build inherited context based on mode
       const messagesUpToIndex = sourceConversation.content.slice(0, messageIndex + 1);
-      const inheritedMessages = inheritanceMode === 'summary' 
-        ? selectContextMessages(messagesUpToIndex, 'summary')
-        : messagesUpToIndex;
+      let inheritedMessages: Message[];
+
+      if (inheritanceMode === 'summary' && summaryText) {
+        // AI-generated summary: store as a single system message
+        inheritedMessages = [{
+          id: nanoid(),
+          role: 'system' as const,
+          content: `Summary of previous conversation (${messagesUpToIndex.length} messages):\n\n${summaryText}`,
+          timestamp: new Date(),
+          metadata: {
+            custom: { isSummary: true, originalMessageCount: messagesUpToIndex.length },
+          },
+        }];
+      } else {
+        // Full context: pass all messages up to branch point
+        inheritedMessages = messagesUpToIndex;
+      }
 
       // Create branch point info
       const branchPoint: BranchPoint = {
@@ -1198,8 +1220,55 @@ export const useCanvasStore = create<WorkspaceState>()(
       return newConversation;
     },
 
+    updateInheritedSummary: (conversationId: string, parentId: string, newSummaryText: string) => {
+      const { conversations } = get();
+      const conversation = conversations.get(conversationId);
+      if (!conversation) {
+        logger.error(`Conversation not found for summary update: ${conversationId}`);
+        return;
+      }
+
+      const entry = conversation.inheritedContext[parentId];
+      if (!entry) {
+        logger.error(`No inherited context from parent ${parentId} in conversation ${conversationId}`);
+        return;
+      }
+
+      // Replace summary message(s) with new summary
+      const updatedMessages: Message[] = [{
+        id: nanoid(),
+        role: 'system' as const,
+        content: `Summary of previous conversation (${entry.totalParentMessages} messages):\n\n${newSummaryText}`,
+        timestamp: new Date(),
+        metadata: {
+          custom: { isSummary: true, originalMessageCount: entry.totalParentMessages },
+        },
+      }];
+
+      const updatedConversation: Conversation = {
+        ...conversation,
+        inheritedContext: {
+          ...conversation.inheritedContext,
+          [parentId]: {
+            ...entry,
+            messages: updatedMessages,
+            timestamp: new Date(),
+          },
+        },
+        metadata: {
+          ...conversation.metadata,
+          updatedAt: new Date(),
+        },
+      };
+
+      const newConversations = new Map(conversations);
+      newConversations.set(conversationId, updatedConversation);
+      set({ conversations: newConversations });
+      get().saveToStorage();
+    },
+
     createMergeNode: (data: CreateMergeNodeData) => {
-      const { sourceCardIds, position, synthesisPrompt, inheritanceMode = 'full' } = data;
+      const { sourceCardIds, position, synthesisPrompt, inheritanceModes = {}, summaryTexts = {} } = data;
       const { conversations, activeWorkspaceId } = get();
       const toast = useToastStore.getState();
       
@@ -1243,12 +1312,34 @@ export const useCanvasStore = create<WorkspaceState>()(
       sourceCardIds.forEach(cardId => {
         const conv = conversations.get(cardId);
         if (conv && Array.isArray(conv.content)) {
-          inheritedContext[cardId] = {
-            mode: inheritanceMode,
-            messages: conv.content,
-            timestamp: now,
-            totalParentMessages: conv.content.length,
-          };
+          const mode = inheritanceModes[cardId] || 'full';
+          if (mode === 'summary' && summaryTexts[cardId]) {
+            // Use pre-generated summary
+            const summaryMessage: Message = {
+              id: nanoid(),
+              role: 'system',
+              content: summaryTexts[cardId],
+              timestamp: now,
+              metadata: { custom: { isSummary: true, originalMessageCount: conv.content.length } },
+            };
+            inheritedContext[cardId] = {
+              mode: 'summary',
+              messages: [summaryMessage],
+              timestamp: now,
+              totalParentMessages: conv.content.length,
+            };
+          } else {
+            // If user requested summary but text is missing, warn and fall back to full
+            if (mode === 'summary' && !summaryTexts[cardId]) {
+              logger.warn(`Summary text missing for card ${cardId} in merge node creation, falling back to full context`);
+            }
+            inheritedContext[cardId] = {
+              mode: 'full',
+              messages: conv.content,
+              timestamp: now,
+              totalParentMessages: conv.content.length,
+            };
+          }
         }
       });
 
@@ -1286,8 +1377,18 @@ export const useCanvasStore = create<WorkspaceState>()(
       // Create merge edges from all source cards
       // Use edge bundling visual style if 4+ parents for visual simplification
       if (sourceCardIds.length >= MERGE_CONFIG.BUNDLE_THRESHOLD) {
+        // Validate all connections first (cycle detection)
+        const { edges: currentEdges } = get();
+        const validSourceIds = sourceCardIds.filter(sourceId => {
+          const check = canConnect(sourceId, mergeNode.id, currentEdges, get().conversations);
+          if (!check.valid) {
+            logger.warn(`Skipping edge ${sourceId} → ${mergeNode.id}: ${check.reason}`);
+          }
+          return check.valid;
+        });
+
         // Render all edges but with reduced opacity, plus label on first
-        const newEdges: Edge[] = sourceCardIds.map((sourceId, index) => ({
+        const newEdges: Edge[] = validSourceIds.map((sourceId, index) => ({
           id: `edge-merge-${sourceId}-${mergeNode.id}`,
           source: sourceId,
           target: mergeNode.id,
@@ -1298,7 +1399,7 @@ export const useCanvasStore = create<WorkspaceState>()(
             strokeWidth: 2,
             opacity: 0.6, // Reduced opacity for bundled appearance
           },
-          label: index === 0 ? `${sourceCardIds.length} sources` : undefined, // Only first edge gets label
+          label: index === 0 ? `${validSourceIds.length} sources` : undefined, // Only first edge gets label
           data: { 
             relationType: 'merge',
             isBundled: true,
@@ -1450,7 +1551,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       return get().draftMessages.get(conversationId) || '';
     },
 
-    sendMessage: async (content: string) => {
+    sendMessage: async (content: string, attachments?: import('@/types').MessageAttachment[]) => {
       const { activeConversationId, conversations, draftMessages } = get();
       
       if (!activeConversationId || !content.trim()) {
@@ -1464,11 +1565,12 @@ export const useCanvasStore = create<WorkspaceState>()(
       }
 
       // Create new user message
-      const newMessage = {
+      const newMessage: Message = {
         id: nanoid(),
         role: 'user' as const,
         content: content.trim(),
         timestamp: new Date(),
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
       };
 
       // Update conversation with new message
@@ -1516,7 +1618,138 @@ export const useCanvasStore = create<WorkspaceState>()(
       
       logger.debug(`Sent message to conversation ${activeConversationId}`);
       
-      // TODO: Phase 2 - Trigger AI response here
+      // AI response is now handled by ChatPanel via useChat hook
+    },
+
+    // =========================================================================
+    // AI Integration (Phase 2)
+    // =========================================================================
+
+    addAIMessage: (conversationId: string, content: string, model: string) => {
+      const { conversations, nodes } = get();
+      const conversation = conversations.get(conversationId);
+      
+      if (!conversation) {
+        logger.warn(`Cannot add AI message: conversation ${conversationId} not found`);
+        return;
+      }
+
+      // Create new AI message
+      const aiMessage = {
+        id: nanoid(),
+        role: 'assistant' as const,
+        content: content,
+        timestamp: new Date(),
+        metadata: {
+          model,
+        },
+      };
+
+      // Update conversation
+      const updatedConversation = {
+        ...conversation,
+        content: [...conversation.content, aiMessage],
+        metadata: {
+          ...conversation.metadata,
+          updatedAt: new Date(),
+          messageCount: conversation.content.length + 1,
+        },
+      };
+
+      // Update store
+      const newConversations = new Map(conversations);
+      newConversations.set(conversationId, updatedConversation);
+
+      // Update nodes
+      const updatedNodes = nodes.map(node => {
+        if (node.id === conversationId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              conversation: updatedConversation,
+            },
+          };
+        }
+        return node;
+      });
+
+      set({
+        conversations: newConversations,
+        nodes: updatedNodes,
+      });
+
+      // Save to storage
+      get().saveToStorage();
+      
+      logger.debug(`Added AI message to conversation ${conversationId}`);
+    },
+
+    setConversationModel: (conversationId: string, model: string) => {
+      const { conversations, nodes } = get();
+      const conversation = conversations.get(conversationId);
+      
+      if (!conversation) {
+        logger.warn(`Cannot set model: conversation ${conversationId} not found`);
+        return;
+      }
+
+      // Store model in conversation metadata
+      const updatedConversation = {
+        ...conversation,
+        metadata: {
+          ...conversation.metadata,
+          // Using custom metadata for model storage
+        },
+        // Store model at conversation level for easy access
+        model: model,
+      } as Conversation & { model?: string };
+
+      // Update store
+      const newConversations = new Map(conversations);
+      newConversations.set(conversationId, updatedConversation);
+
+      // Update nodes
+      const updatedNodes = nodes.map(node => {
+        if (node.id === conversationId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              conversation: updatedConversation,
+            },
+          };
+        }
+        return node;
+      });
+
+      set({
+        conversations: newConversations,
+        nodes: updatedNodes,
+      });
+
+      logger.debug(`Set model for conversation ${conversationId}: ${model}`);
+    },
+
+    getConversationModel: (conversationId: string) => {
+      const { conversations } = get();
+      const conversation = conversations.get(conversationId) as (Conversation & { model?: string }) | undefined;
+      return conversation?.model;
+    },
+
+    getConversationMessages: (conversationId: string) => {
+      const { conversations } = get();
+      const conversation = conversations.get(conversationId);
+      
+      if (!conversation) {
+        return [];
+      }
+
+      // Convert messages to format expected by useChat
+      return conversation.content.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }));
     },
 
     // =========================================================================

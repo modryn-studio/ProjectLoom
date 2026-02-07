@@ -1,8 +1,8 @@
 # ProjectLoom Architecture Documentation
 
-> **Version:** 4.0.0 (Card-Level Branching)  
-> **Last Updated:** February 4, 2026  
-> **Status:** v4 Card-Level Branching Implemented (see GitHub issue #5)  
+> **Version:** 4.2.0 (Phase 2 Complete)  
+> **Last Updated:** February 6, 2026  
+> **Status:** v4 Card-Level Branching + Phase 2 AI Integration Complete (see GitHub issues #5, #9)  
 > **Previous Architecture:** v1-v3 used canvas-level branching (deprecated)
 
 ## Overview
@@ -209,9 +209,367 @@ Inherited Context Panel: Shows parent tree and inherited messages
 
 ---
 
-## AI Provider Abstraction (Phase 2)
+## AI Provider Architecture (Phase 2 - Implemented)
 
-> **Implementation Status:** Interface designed for Phase 2 implementation
+> **Implementation Status:** ✅ Week 1-2 Complete (Streaming chat with BYOK)
+
+### Architecture Overview
+
+ProjectLoom uses the **Vercel AI SDK** for provider abstraction with a **BYOK (Bring Your Own Key)** security model.
+
+**Key Design Decisions:**
+1. **Client-side key storage** - Keys stored in localStorage (dev) or environment variables (prod)
+2. **Per-request authentication** - Keys passed in request body, never stored on server
+3. **No proxy layer** - Direct communication with AI providers
+4. **Streaming responses** - Real-time text generation using Server-Sent Events (SSE)
+
+### Implementation Files
+
+```typescript
+// 1. API Route - Streaming endpoint
+// src/app/api/chat/route.ts
+
+export async function POST(req: Request): Promise<Response> {
+  const { messages, model, apiKey } = await req.json();
+  
+  // Detect provider from model name
+  const providerType = detectProvider(model); // 'anthropic' | 'openai'
+  
+  // Initialize provider with user's API key
+  let aiModel;
+  if (providerType === 'anthropic') {
+    const anthropic = createAnthropic({ apiKey });
+    aiModel = anthropic(model);
+  } else {
+    const openai = createOpenAI({ apiKey });
+    aiModel = openai(model);
+  }
+  
+  // Stream response
+  const result = streamText({
+    model: aiModel,
+    messages,
+  });
+  
+  return result.toTextStreamResponse();
+}
+
+// 2. Model Definitions
+// src/lib/vercel-ai-integration.ts
+
+interface ModelDefinition {
+  id: string;                    // e.g., 'claude-sonnet-4-20250514'
+  displayName: string;           // e.g., 'Claude Sonnet 4'
+  provider: 'anthropic' | 'openai';
+  costTier: 'premium' | 'balanced' | 'efficient';
+  contextWindow: number;         // e.g., 200000
+}
+
+export const AVAILABLE_MODELS: ModelDefinition[] = [
+  // Anthropic Claude
+  {
+    id: 'claude-opus-4-20250514',
+    displayName: 'Claude Opus 4',
+    provider: 'anthropic',
+    costTier: 'premium',
+    contextWindow: 200000,
+  },
+  {
+    id: 'claude-sonnet-4-20250514',
+    displayName: 'Claude Sonnet 4',
+    provider: 'anthropic',
+    costTier: 'balanced',
+    contextWindow: 200000,
+  },
+  {
+    id: 'claude-haiku-4-20250514',
+    displayName: 'Claude Haiku 4',
+    provider: 'anthropic',
+    costTier: 'efficient',
+    contextWindow: 200000,
+  },
+  // OpenAI
+  {
+    id: 'gpt-4o',
+    displayName: 'GPT-4o',
+    provider: 'openai',
+    costTier: 'premium',
+    contextWindow: 128000,
+  },
+  {
+    id: 'gpt-4o-mini',
+    displayName: 'GPT-4o Mini',
+    provider: 'openai',
+    costTier: 'efficient',
+    contextWindow: 128000,
+  },
+];
+
+// 3. API Key Management
+// src/lib/api-key-manager.ts
+
+class APIKeyManager {
+  /**
+   * Get API key for a provider
+   * Priority: Environment variables > localStorage
+   */
+  getKey(provider: ProviderType): string | null {
+    // 1. Check environment variables (production)
+    const envKey = this.getEnvKey(provider);
+    if (envKey) return envKey;
+    
+    // 2. Fall back to localStorage (development)
+    const storedKeys = this.getStoredKeys();
+    return storedKeys[provider] || null;
+  }
+  
+  /**
+   * Save API key to localStorage (development only)
+   */
+  saveKey(provider: ProviderType, key: string): boolean {
+    if (!this.isStorageAvailable()) return false;
+    
+    const keys = this.getStoredKeys();
+    keys[provider] = key;
+    
+    // Obfuscate before storing (NOT encryption, just basic protection)
+    const obfuscated = Object.entries(keys).reduce((acc, [k, v]) => {
+      acc[k] = this.obfuscate(v);
+      return acc;
+    }, {} as Record<string, string>);
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obfuscated));
+    return true;
+  }
+}
+
+export const apiKeyManager = new APIKeyManager();
+```
+
+### Client-Side Integration
+
+```typescript
+// 4. React Hook Integration
+// src/components/ChatPanel.tsx
+
+import { useChat } from 'ai/react';
+
+export function ChatPanel() {
+  const conversation = useCanvasStore(selectActiveConversation);
+  const currentModel = getConversationModel(conversation.id);
+  const currentApiKey = apiKeyManager.getKey(detectProvider(currentModel));
+  
+  const {
+    messages: chatMessages,
+    input,
+    setInput,
+    handleSubmit,
+    isLoading: isStreaming,
+    stop,
+    error: chatError,
+    setMessages,
+  } = useChat({
+    api: '/api/chat',
+    id: conversation.id,
+    body: {
+      model: currentModel,
+      apiKey: currentApiKey,  // Passed per-request
+    },
+    onFinish: (message: { content: string }) => {
+      // Persist AI message to Zustand store
+      addAIMessage(conversation.id, message.content, currentModel);
+    },
+    onError: (error: Error) => {
+      console.error('[ChatPanel] AI Error:', error);
+    },
+  });
+  
+  return (
+    <ChatPanelContainer>
+      <ChatPanelHeader model={currentModel} onModelChange={setModel} />
+      <MessageThread messages={chatMessages} isStreaming={isStreaming} />
+      <MessageInput
+        input={input}
+        setInput={setInput}
+        onSubmit={handleSubmit}
+        isStreaming={isStreaming}
+        onStop={stop}
+        hasApiKey={!!currentApiKey}
+        error={chatError}
+      />
+    </ChatPanelContainer>
+  );
+}
+```
+
+### Security Model
+
+**Development (localStorage):**
+```
+User enters key in Settings
+    ↓
+Stored in localStorage (obfuscated with btoa)
+    ↓
+Retrieved when sending message
+    ↓
+Passed in request body to /api/chat
+    ↓
+Used to authenticate with AI provider
+    ↓
+Response streamed back to client
+```
+
+**Production (environment variables):**
+```
+Set NEXT_PUBLIC_ANTHROPIC_API_KEY in .env
+    ↓
+APIKeyManager checks env vars first
+    ↓
+Used automatically (no user input needed)
+    ↓
+Same flow as above
+```
+
+**Security Notes:**
+- Client-side storage is NOT secure encryption, just obfuscation
+- For production apps, use server-side API routes with non-public keys
+- ProjectLoom prioritizes development UX over production security
+- Users responsible for API key costs and security
+
+### Streaming Implementation
+
+**Server-Sent Events (SSE) Flow:**
+```
+Client sends POST to /api/chat
+    ↓
+Server calls streamText() from Vercel AI SDK
+    ↓
+AI provider streams response chunks
+    ↓
+Server forwards chunks as SSE
+    ↓
+useChat hook receives chunks in real-time
+    ↓
+React renders partial message (streaming state)
+    ↓
+On finish: Message synced to Zustand store
+```
+
+**User Experience:**
+- Text appears word-by-word as generated
+- Stop button cancels mid-generation
+- Error handling with retry suggestions
+- Model badge shows which AI generated response
+
+### Error Handling
+
+```typescript
+// API Route Error Handling
+function handleProviderError(error: unknown): Response {
+  if (error instanceof APICallError) {
+    return Response.json({
+      error: 'AI provider request failed',
+      code: 'PROVIDER_ERROR',
+      recoverable: true,
+      suggestion: 'Check your API key in Settings',
+    }, { status: 500 });
+  }
+  
+  if (error instanceof InvalidAPIKeyError) {
+    return Response.json({
+      error: 'Invalid API key',
+      code: 'INVALID_KEY',
+      recoverable: true,
+      suggestion: 'Verify your API key in Settings',
+    }, { status: 401 });
+  }
+  
+  // Generic error
+  return Response.json({
+    error: 'Unexpected error',
+    code: 'UNKNOWN_ERROR',
+    recoverable: false,
+  }, { status: 500 });
+}
+```
+
+### Model Selection UI
+
+**ModelSelector Component:**
+- VSCode-style dropdown with keyboard navigation
+- Grouped by provider (Anthropic, OpenAI)
+- Cost tier badges (Premium/Balanced/Efficient)
+- Context window indicators
+- Real-time switching (no page reload)
+
+**Features:**
+- Persists per conversation
+- Shows in chat panel header
+- Badge on each AI message shows generation model
+- Keyboard shortcuts: Arrow keys to navigate, Enter to select
+
+### Storage Integration
+
+**Conversation Schema Update:**
+```typescript
+interface Conversation {
+  // ... existing fields
+  model?: string;  // e.g., 'claude-sonnet-4-20250514'
+}
+
+interface Message {
+  // ... existing fields
+  metadata?: {
+    model?: string;  // Tracks which model generated this message
+    tokens?: number; // Optional token usage
+  };
+}
+```
+
+**Store Methods:**
+```typescript
+// canvas-store.ts
+setConversationModel(conversationId: string, model: string): void
+getConversationModel(conversationId: string): string
+addAIMessage(conversationId: string, content: string, model: string): void
+getConversationMessages(conversationId: string): Message[]
+```
+
+### Dependencies
+
+```json
+{
+  "dependencies": {
+    "ai": "^4.3.19",                    // Vercel AI SDK core
+    "@ai-sdk/anthropic": "^1.2.12",     // Claude provider
+    "@ai-sdk/openai": "^1.3.22",        // OpenAI provider
+    "zod": "^3.25.76"                   // Schema validation
+  }
+}
+```
+
+### Completed Phase 2 Enhancements (Week 3-5) ✅
+
+**All features implemented:**
+1. ✅ **Context Inheritance** - Parent conversations passed as AI context when branching
+2. ✅ **Summary Generation** - AI-generated summaries via `/api/summarize` endpoint
+3. ✅ **Multi-Parent Merge** - DAG support with per-parent inheritance modes
+4. ✅ **Agent Workflows** - Cleanup, Branch, and Summarize agents with confirmation UI
+5. ✅ **Vision Support** - Image file uploads for multimodal models (Claude, GPT-4o)
+
+**Vision Support Implementation:**
+- Base64 data URL encoding for client-side image handling
+- File upload UI with validation (max 5MB, max 3 images, PNG/JPEG/WebP/GIF)
+- Multimodal content parts using Vercel AI SDK
+- Image display in message thread with click-to-open
+- Vision capability detection per model
+- Works with Anthropic Claude and OpenAI GPT-4o models
+
+---
+
+## AI Provider Abstraction (Phase 2 - Original Interface Design)
+
+> **Note:** Below is the original interface design from Phase 2 planning. The actual implementation (above) uses Vercel AI SDK instead of custom abstraction, but follows similar principles.
 
 ### Provider-Agnostic Architecture
 
