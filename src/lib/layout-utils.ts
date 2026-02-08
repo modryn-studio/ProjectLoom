@@ -319,10 +319,12 @@ export function spreadLayout(nodes: Node<ConversationNodeData>[]): LayoutResult 
   return { positions, hasChanges };
 }
 
-export default {
+const layoutUtils = {
   detectOverlaps,
   getOverlapCount,
   gridLayout,
   treeLayout,
   spreadLayout,
 };
+
+export default layoutUtils;

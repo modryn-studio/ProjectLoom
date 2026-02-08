@@ -105,6 +105,7 @@ function ConversationCardComponent({
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
+  const requestDeleteConversation = useCanvasStore((s) => s.requestDeleteConversation);
   
   // Chat panel state - detect if this card is active
   const activeConversationId = useCanvasStore(selectActiveConversationId);
@@ -154,15 +155,13 @@ function ConversationCardComponent({
     onDelete: () => {
       // Check if confirmation is required
       if (uiPrefs.confirmOnDelete) {
-        if (window.confirm('Delete this conversation?')) {
-          deleteConversation(conversation.id);
-        }
+        requestDeleteConversation([conversation.id]);
       } else {
         deleteConversation(conversation.id);
       }
     },
     // No onExpand - cards are fixed size, conversation happens in chat panel
-  }, isMac), [conversation.id, deleteConversation, isMac, uiPrefs.confirmOnDelete]);
+  }, isMac), [conversation.id, deleteConversation, requestDeleteConversation, uiPrefs.confirmOnDelete]);
 
   // Handle right-click: Check if clicked item is "Branch from here"
   // If so, open dialog directly (centered modal per phase_2.md spec)

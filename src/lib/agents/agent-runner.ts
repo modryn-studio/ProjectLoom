@@ -24,7 +24,6 @@ import type {
   AgentRunResult,
   AgentAction,
   AgentStep,
-  DEFAULT_AGENT_CONFIG,
 } from './types';
 
 // =============================================================================

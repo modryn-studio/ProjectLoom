@@ -6,9 +6,8 @@ import { nanoid } from 'nanoid';
 import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
 
 import { VersionedStorage, STORAGE_KEYS, CURRENT_SCHEMA_VERSION, clearLegacyStorage } from '@/lib/storage';
-import { smartTruncate } from '@/utils/formatters';
 import { generateMockData } from '@/lib/mock-data';
-import { createContextSnapshot, createBranchMetadata, selectContextMessages } from '@/lib/context-utils';
+import { clearKnowledgeBaseStorage, deleteWorkspaceKnowledgeBase } from '@/lib/knowledge-base-db';
 import type { 
   Conversation, 
   Message,
@@ -17,16 +16,13 @@ import type {
   StorageData, 
   ConversationNodeData,
   Workspace,
-  WorkspaceMetadata,
   BranchFromMessageData,
   CreateMergeNodeData,
-  InheritanceMode,
-  ContextSnapshot,
   EdgeRelationType,
   BranchPoint,
   InheritedContextEntry,
   MergeMetadata,
-  MERGE_NODE_CONFIG,
+  WorkspaceContext,
 } from '@/types';
 import { logger } from '@/lib/logger';
 import { useToastStore } from '@/stores/toast-store';
@@ -169,6 +165,9 @@ interface WorkspaceState {
   activeConversationId: string | null;
   draftMessages: Map<string, string>;
 
+  // Pending conversation delete request (session-only)
+  pendingDeleteConversationIds: string[];
+
   // History for undo/redo
   history: HistoryState[];
   historyIndex: number;
@@ -208,6 +207,7 @@ interface WorkspaceState {
   getWorkspaces: () => Workspace[];
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
   deleteWorkspace: (workspaceId: string) => void;
+  clearCanvas: (workspaceId: string) => void;
 
   // Actions - Card-Level Branching (v4)
   branchFromMessage: (data: BranchFromMessageData) => Conversation | null;
@@ -231,6 +231,8 @@ interface WorkspaceState {
   setDraftMessage: (conversationId: string, content: string) => void;
   getDraftMessage: (conversationId: string) => string;
   sendMessage: (content: string, attachments?: import('@/types').MessageAttachment[]) => Promise<void>;
+  requestDeleteConversation: (conversationIds: string[]) => void;
+  clearDeleteConversationRequest: () => void;
 
   // Actions - AI Integration (Phase 2)
   addAIMessage: (conversationId: string, content: string, model: string) => void;
@@ -272,12 +274,31 @@ function createDefaultWorkspace(): Workspace {
     conversations: [],
     edges: [],
     tags: [],
+    context: createDefaultWorkspaceContext(),
     metadata: {
       title: 'Main Workspace',
       createdAt: now,
       updatedAt: now,
       schemaVersion: CURRENT_SCHEMA_VERSION,
     },
+  };
+}
+
+function createDefaultWorkspaceContext(): WorkspaceContext {
+  return {
+    instructions: '',
+    knowledgeBaseFiles: [],
+    updatedAt: new Date(),
+  };
+}
+
+function normalizeWorkspaceContext(context?: WorkspaceContext): WorkspaceContext {
+  if (!context) return createDefaultWorkspaceContext();
+
+  return {
+    instructions: context.instructions || '',
+    knowledgeBaseFiles: Array.isArray(context.knowledgeBaseFiles) ? context.knowledgeBaseFiles : [],
+    updatedAt: context.updatedAt || new Date(),
   };
 }
 
@@ -397,6 +418,9 @@ export const useCanvasStore = create<WorkspaceState>()(
     chatPanelOpen: false,
     activeConversationId: null,
     draftMessages: new Map(),
+
+    // Pending delete request
+    pendingDeleteConversationIds: [],
     
     history: [],
     historyIndex: -1,
@@ -451,7 +475,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
 
     addConversation: (conversation, position) => {
-      const { nodes, edges, conversations, expandedNodeIds, selectedNodeIds } = get();
+      const { nodes, conversations } = get();
 
       // Generate position if not provided
       const pos = position ?? { x: Math.random() * 500, y: Math.random() * 500 };
@@ -473,7 +497,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     deleteConversation: (id) => {
-      const { nodes, edges, conversations, expandedNodeIds, selectedNodeIds, history, historyIndex } = get();
+      const { nodes, edges, conversations, history, historyIndex } = get();
 
       // Remove node
       const newNodes = nodes.filter((n) => n.id !== id);
@@ -812,10 +836,6 @@ export const useCanvasStore = create<WorkspaceState>()(
                                      result.data.conversations && 
                                      result.data.conversations.length > 0;
       
-      const hasWorkspaces = workspaceResult.success && 
-                           workspaceResult.data.workspaces && 
-                           workspaceResult.data.workspaces.length > 0;
-      
       // Load mock data if there are no conversations in storage
       // (even if a workspace structure exists)
       if (!hasStoredConversations) {
@@ -850,7 +870,10 @@ export const useCanvasStore = create<WorkspaceState>()(
       let activeWorkspaceId = '';
       
       if (workspaceResult.success && workspaceResult.data.workspaces.length > 0) {
-        workspaces = workspaceResult.data.workspaces;
+        workspaces = workspaceResult.data.workspaces.map((workspace) => ({
+          ...workspace,
+          context: normalizeWorkspaceContext(workspace.context),
+        }));
         activeWorkspaceId = workspaceResult.data.activeWorkspaceId || workspaces[0]?.id || '';
       } else {
         // Create default workspace
@@ -993,6 +1016,9 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     clearAll: () => {
       storage.clear();
+      void clearKnowledgeBaseStorage().catch((error) => {
+        logger.warn('Failed to clear knowledge base storage', error);
+      });
 
       set({
         nodes: [],
@@ -1023,6 +1049,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         conversations: [],
         edges: [],
         tags: [],
+        context: createDefaultWorkspaceContext(),
         metadata: {
           title,
           createdAt: now,
@@ -1106,24 +1133,72 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     deleteWorkspace: (workspaceId: string) => {
       const { workspaces, activeWorkspaceId } = get();
-      
-      // Don't delete the last workspace
-      if (workspaces.length <= 1) {
-        logger.warn('Cannot delete the last workspace');
-        return;
-      }
+      const remainingWorkspaces = workspaces.filter(w => w.id !== workspaceId);
 
-      set((state) => ({
-        workspaces: state.workspaces.filter(w => w.id !== workspaceId),
-      }));
+      set({
+        workspaces: remainingWorkspaces,
+      });
+
+      void deleteWorkspaceKnowledgeBase(workspaceId).catch((error) => {
+        logger.warn('Failed to delete workspace knowledge base files', error);
+      });
 
       // If we deleted the active workspace, navigate to first remaining
       if (workspaceId === activeWorkspaceId) {
-        const remaining = get().workspaces[0];
+        const remaining = remainingWorkspaces[0];
         if (remaining) {
           get().navigateToWorkspace(remaining.id);
+        } else {
+          set({
+            nodes: [],
+            edges: [],
+            conversations: new Map(),
+            activeWorkspaceId: '',
+            expandedNodeIds: new Set(),
+            selectedNodeIds: new Set(),
+            chatPanelOpen: false,
+            activeConversationId: null,
+            draftMessages: new Map(),
+            history: [],
+            historyIndex: -1,
+          });
         }
       }
+
+      get().saveToStorage();
+    },
+
+    clearCanvas: (workspaceId: string) => {
+      const { workspaces } = get();
+      const targetWorkspace = workspaces.find(w => w.id === workspaceId);
+
+      if (!targetWorkspace) {
+        logger.warn(`Workspace ${workspaceId} not found`);
+        return;
+      }
+
+      void deleteWorkspaceKnowledgeBase(workspaceId).catch((error) => {
+        logger.warn('Failed to clear canvas knowledge base files', error);
+      });
+
+      set((state) => ({
+        workspaces: state.workspaces.map(w =>
+          w.id === workspaceId
+            ? {
+                ...w,
+                context: {
+                  ...w.context,
+                  knowledgeBaseFiles: [],
+                  updatedAt: new Date(),
+                },
+                metadata: {
+                  ...w.metadata,
+                  updatedAt: new Date(),
+                },
+              }
+            : w
+        ),
+      }));
 
       get().saveToStorage();
     },
@@ -1514,7 +1589,6 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
 
     openChatPanel: (conversationId: string) => {
-      const { activeConversationId, draftMessages } = get();
       const conversation = get().conversations.get(conversationId);
       
       if (!conversation) {
@@ -1575,8 +1649,16 @@ export const useCanvasStore = create<WorkspaceState>()(
       return get().draftMessages.get(conversationId) || '';
     },
 
+    requestDeleteConversation: (conversationIds: string[]) => {
+      set({ pendingDeleteConversationIds: conversationIds });
+    },
+
+    clearDeleteConversationRequest: () => {
+      set({ pendingDeleteConversationIds: [] });
+    },
+
     sendMessage: async (content: string, attachments?: import('@/types').MessageAttachment[]) => {
-      const { activeConversationId, conversations, draftMessages } = get();
+      const { activeConversationId, conversations, draftMessages, workspaces, activeWorkspaceId } = get();
       
       if (!activeConversationId || !content.trim()) {
         return;
@@ -1588,12 +1670,23 @@ export const useCanvasStore = create<WorkspaceState>()(
         return;
       }
 
+      const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+      const instructions = activeWorkspace?.context?.instructions?.trim() || '';
+      const knowledgeBaseFileIds = activeWorkspace?.context?.knowledgeBaseFiles?.map(file => file.id) || [];
+      const contextSnapshot = (instructions || knowledgeBaseFileIds.length > 0)
+        ? {
+            instructions: instructions || undefined,
+            knowledgeBaseFileIds: knowledgeBaseFileIds.length > 0 ? knowledgeBaseFileIds : undefined,
+          }
+        : undefined;
+
       // Create new user message
       const newMessage: Message = {
         id: nanoid(),
         role: 'user' as const,
         content: content.trim(),
         timestamp: new Date(),
+        ...(contextSnapshot ? { contextSnapshot } : {}),
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
       };
 

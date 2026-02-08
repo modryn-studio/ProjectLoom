@@ -59,7 +59,7 @@ export interface RunBranchAgentOptions {
 export async function runBranchAgent(
   options: RunBranchAgentOptions
 ): Promise<AgentRunResult> {
-  const { userPrompt, parentCardId, parentTitle, workspace, config, abortSignal, onStep } = options;
+  const { userPrompt, parentCardId, parentTitle, config, abortSignal, onStep } = options;
 
   const tools = {
     createBranch: tool({

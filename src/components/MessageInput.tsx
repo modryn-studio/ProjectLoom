@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { Send, Square, AlertCircle, Settings, Paperclip, X, Image as ImageIcon } from 'lucide-react';
+import { Send, Square, AlertCircle, Settings, Paperclip, X } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -144,8 +144,6 @@ export function MessageInput({
       return;
     }
     
-    const newAttachments: MessageAttachment[] = [];
-    
     for (const file of files) {
       if (!ACCEPTED_TYPES.includes(file.type)) {
         setAttachmentError(`Unsupported format: ${file.name}. Use PNG, JPEG, WebP, or GIF.`);
@@ -268,6 +266,7 @@ export function MessageInput({
         <div style={inputStyles.attachmentPreview}>
           {attachments.map(att => (
             <div key={att.id} style={inputStyles.attachmentThumb}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={att.url}
                 alt={att.name}

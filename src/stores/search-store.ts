@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand';
-import type { Conversation, Message } from '@/types';
+import type { Conversation } from '@/types';
 
 // =============================================================================
 // TYPES

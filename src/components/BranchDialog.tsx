@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useCanvasStore, selectBranchDialogOpen, selectBranchSourceId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectDefaultInheritanceMode } from '@/stores/preferences-store';
-import { colors, spacing, effects, animation, typography } from '@/lib/design-tokens';
+import { colors, spacing, effects, typography } from '@/lib/design-tokens';
 import { 
   estimateTokens, 
 } from '@/lib/context-utils';
-import { estimateMessagesTokens, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { estimateCost, formatCost } from '@/lib/vercel-ai-integration';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import type { InheritanceMode, Message } from '@/types';
 
@@ -38,12 +38,6 @@ const FileTextIcon = () => (
 const ScissorsIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
-  </svg>
-);
-
-const CheckSquareIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
   </svg>
 );
 
@@ -103,6 +97,8 @@ const footerStyles: React.CSSProperties = {
   gap: spacing[2],
 };
 
+const EMPTY_MESSAGES: Message[] = [];
+
 // =============================================================================
 // INHERITANCE MODE OPTIONS
 // =============================================================================
@@ -158,6 +154,7 @@ export function BranchDialog() {
 
   // Reset form when dialog opens
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (branchDialogOpen) {
       setInheritanceMode(defaultInheritanceMode);
       setBranchReason('');
@@ -166,6 +163,7 @@ export function BranchDialog() {
       setValidationWarning(null);
       setIsGeneratingSummary(false);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [branchDialogOpen, defaultInheritanceMode]);
 
   // Get source conversation
@@ -174,7 +172,7 @@ export function BranchDialog() {
     [conversations, branchSourceId]
   );
 
-  const messages: Message[] = sourceConversation?.content || [];
+  const messages = sourceConversation?.content ?? EMPTY_MESSAGES;
 
   // Calculate stats for preview
   const stats = useMemo(() => {
@@ -206,25 +204,41 @@ export function BranchDialog() {
 
   // Validate on change
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setValidationError(null);
     if (inheritanceMode === 'summary') {
       const hasKey = !!apiKeyManager.getKey('anthropic') || !!apiKeyManager.getKey('openai');
       if (!hasKey) {
+         
         setValidationError('API key required for AI summary generation. Configure in Settings.');
       } else {
         const costEstimate = estimateCost(stats?.totalTokens ?? 0, 500, 'claude-sonnet-4-20250514');
+         
         setValidationWarning(`AI will summarize ${messages.length} messages. Estimated cost: ${formatCost(costEstimate)}`);
       }
     } else {
+       
       setValidationWarning(null);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [inheritanceMode, messages, stats]);
 
   // Constants for validation
   const MAX_REASON_LENGTH = 200;
 
+  // Handle close
+  const handleClose = useCallback(() => {
+    setBranchReason('');
+    setInheritanceMode(defaultInheritanceMode);
+    setValidationError(null);
+    setValidationWarning(null);
+    setRememberChoice(false);
+    setIsGeneratingSummary(false);
+    closeBranchDialog();
+  }, [defaultInheritanceMode, closeBranchDialog]);
+
   // Handle submit
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!branchReason.trim()) {
       setValidationError('Please provide a reason for this branch');
       return;
@@ -327,29 +341,41 @@ export function BranchDialog() {
     }
 
     handleClose();
-  };
-
-  // Handle close
-  const handleClose = () => {
-    setBranchReason('');
-    setInheritanceMode(defaultInheritanceMode);
-    setValidationError(null);
-    setValidationWarning(null);
-    setRememberChoice(false);
-    setIsGeneratingSummary(false);
-    closeBranchDialog();
-  };
+  }, [
+    branchReason,
+    branchMessageIndex,
+    branchSourceId,
+    branchFromMessage,
+    handleClose,
+    inheritanceMode,
+    messages,
+    rememberChoice,
+    setBranchingPreferences,
+    sourceConversation,
+    validationError,
+  ]);
 
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && branchDialogOpen) {
+      if (!branchDialogOpen) return;
+
+      if (e.key === 'Escape') {
         handleClose();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement | null;
+        const tagName = target?.tagName?.toLowerCase();
+        if (tagName === 'textarea' || tagName === 'button') return;
+        if (isGeneratingSummary) return;
+        handleSubmit();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [branchDialogOpen]);
+  }, [branchDialogOpen, handleClose, handleSubmit, isGeneratingSummary]);
 
   if (!branchDialogOpen || !sourceConversation) return null;
 
@@ -384,7 +410,7 @@ export function BranchDialog() {
                 color: colors.fg.primary,
                 fontFamily: typography.fonts.heading,
               }}>
-                Branch from "{sourceConversation.metadata.title}"
+                {`Branch from "${sourceConversation.metadata.title}"`}
               </h2>
             </div>
             <button

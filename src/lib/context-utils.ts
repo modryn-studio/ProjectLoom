@@ -179,8 +179,9 @@ export function truncateContext(
 export function selectContextMessages(
   messages: Message[],
   mode: InheritanceMode,
-  selectedIds?: string[]
+  _selectedIds?: string[]
 ): Message[] {
+  void _selectedIds;
   switch (mode) {
     case 'full':
       return [...messages];

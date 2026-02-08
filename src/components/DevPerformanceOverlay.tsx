@@ -37,18 +37,14 @@ export function DevPerformanceOverlay({ nodeCount, edgeCount }: Props) {
     edgeCount,
   });
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
-  const frameRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(performance.now());
-  const framesRef = useRef<number>(0);
 
-  // Only render in development
-  if (process.env.NODE_ENV !== 'development') {
-    return null;
-  }
+  const isDev = process.env.NODE_ENV === 'development';
+  const lastTimeRef = useRef<number>(0);
+  const framesRef = useRef<number>(0);
 
   // FPS counter - only runs when overlay is visible (pauses when collapsed)
   useEffect(() => {
+    if (!isDev) return;
     // Don't run FPS counter when collapsed - saves CPU cycles
     if (isCollapsed) return;
     
@@ -92,13 +88,17 @@ export function DevPerformanceOverlay({ nodeCount, edgeCount }: Props) {
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [nodeCount, edgeCount, isCollapsed]);
+  }, [nodeCount, edgeCount, isCollapsed, isDev]);
 
   const getFPSColor = (fps: number): string => {
     if (fps >= 55) return colors.semantic.success;
     if (fps >= 30) return colors.semantic.warning;
     return colors.semantic.error;
   };
+
+  if (!isDev) {
+    return null;
+  }
 
   if (isCollapsed) {
     return (

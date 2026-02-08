@@ -8,8 +8,6 @@
  * @version 1.0.0
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
 interface Logger {
   debug: (...args: unknown[]) => void;
   info: (...args: unknown[]) => void;

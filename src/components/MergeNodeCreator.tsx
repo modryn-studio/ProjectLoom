@@ -11,10 +11,9 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, X, Check, AlertTriangle, Plus, Trash2, Loader2 } from 'lucide-react';
+import { GitMerge, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
-import { estimateMessagesTokens, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
 import type { Conversation, Position, InheritanceMode } from '@/types';
 
 // =============================================================================

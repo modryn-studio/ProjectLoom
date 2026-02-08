@@ -74,9 +74,16 @@ export function useContextMenu() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dynamicItems, setDynamicItems] = useState<ContextMenuItem[]>([]);
 
-  const openMenu = useCallback((e: React.MouseEvent, items?: ContextMenuItem[]) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const openMenu = useCallback((
+    e: React.MouseEvent | MouseEvent | { clientX: number; clientY: number; preventDefault?: () => void; stopPropagation?: () => void },
+    items?: ContextMenuItem[]
+  ) => {
+    if (typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    if (typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
     
     // Position menu at cursor, with small offset for better UX
     // Add slight offset so menu doesn't cover cursor
@@ -196,12 +203,7 @@ export function getConversationMenuItems(
 
 export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  // Ensure we're on client-side for portal
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [mounted] = useState(() => typeof window !== 'undefined');
 
   // Handle escape key and click outside
   useEffect(() => {

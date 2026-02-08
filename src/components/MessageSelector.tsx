@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
-import { Check, Code, MessageSquare, User, Bot } from 'lucide-react';
+import { Check, Code, User, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';

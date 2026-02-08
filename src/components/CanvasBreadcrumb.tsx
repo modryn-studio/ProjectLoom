@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { ChevronRight, Zap, PanelLeft } from 'lucide-react';
+import { ChevronRight, Zap, PanelLeft, FileText } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
@@ -80,6 +80,21 @@ const sidebarToggleButtonStyles: React.CSSProperties = {
   minHeight: '36px',
 };
 
+const contextButtonStyles: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: spacing[1],
+  padding: `${spacing[1]} ${spacing[2]}`,
+  backgroundColor: colors.bg.inset,
+  border: `1px solid var(--border-primary)`,
+  borderRadius: effects.border.radius.default,
+  color: colors.fg.secondary,
+  cursor: 'pointer',
+  fontSize: typography.sizes.xs,
+  fontFamily: typography.fonts.body,
+  transition: 'all 0.15s ease',
+};
+
 // =============================================================================
 // CANVAS BREADCRUMB COMPONENT
 // =============================================================================
@@ -87,6 +102,7 @@ const sidebarToggleButtonStyles: React.CSSProperties = {
 interface CanvasBreadcrumbProps {
   showSidebarToggle?: boolean;
   onToggleSidebar?: () => void;
+  onOpenCanvasContext?: () => void;
 }
 
 /**
@@ -95,7 +111,7 @@ interface CanvasBreadcrumbProps {
  * Shows the conversation lineage from root to selected card.
  * For merge nodes, displays primary path + badge for additional parents.
  */
-export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }: CanvasBreadcrumbProps) {
+export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar, onOpenCanvasContext }: CanvasBreadcrumbProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const setSelected = useCanvasStore((s) => s.setSelected);
@@ -237,6 +253,30 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar }:
         }}>
           {selectedNodeIds.size} selected
         </span>
+      )}
+
+      {onOpenCanvasContext && (
+        <button
+          onClick={onOpenCanvasContext}
+          title="Canvas Context (active canvas only)"
+          style={{
+            ...contextButtonStyles,
+            marginLeft: 'auto',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.accent.muted;
+            e.currentTarget.style.borderColor = colors.accent.primary;
+            e.currentTarget.style.color = colors.accent.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = colors.bg.inset;
+            e.currentTarget.style.borderColor = 'var(--border-primary)';
+            e.currentTarget.style.color = colors.fg.secondary;
+          }}
+        >
+          <FileText size={12} />
+          Canvas Context
+        </button>
       )}
       
       {/* Show breadcrumb path (only when exactly 1 card selected) */}

@@ -6,7 +6,6 @@ import {
   Plus, 
   Trash2, 
   PanelLeftClose, 
-  PanelLeft,
   Folder,
   Edit2,
   ChevronRight,
@@ -15,11 +14,11 @@ import {
   GitBranch,
   Zap,
   Settings,
+  MoreHorizontal,
   Bot,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
-import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { colors, spacing, effects, typography, animation, layout } from '@/lib/design-tokens';
 import type { Workspace, Conversation } from '@/types';
 
@@ -84,7 +83,8 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
   const treeKey = useCanvasStore(useMemo(() => createWorkspaceTreeSelector(workspaceId), [workspaceId]));
   
   // Build tree structure from conversations
-  const { rootNodes, processedMergeNodes } = useMemo(() => {
+  const { rootNodes } = useMemo(() => {
+    void treeKey;
     const workspaceConversations = Array.from(conversations.values())
       .filter(c => c.canvasId === workspaceId);
     
@@ -133,9 +133,8 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
     }
     
     const roots = rootConvs.map(c => buildNode(c, 0));
-    return { rootNodes: roots, processedMergeNodes: processedMerge };
+    return { rootNodes: roots };
   // PERFORMANCE: Only rebuild tree when structure changes (tracked via treeKey)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treeKey, conversations, workspaceId]);
   
   // PERFORMANCE: Memoize handler to prevent re-renders of child nodes
@@ -163,6 +162,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
   
   // Auto-expand path to selected node
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     const selectedId = Array.from(selectedNodeIds)[0];
     if (!selectedId) return;
     
@@ -199,6 +199,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
         return newSet;
       });
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [selectedNodeIds, conversations, workspaceId]);
   
   // Early return AFTER all hooks are defined (React hooks rules)
@@ -353,22 +354,6 @@ const contentStyles: React.CSSProperties = {
   minHeight: 0, // Critical for flex scrolling
 };
 
-const toggleButtonStyles: React.CSSProperties = {
-  position: 'absolute',
-  top: spacing[3],
-  left: spacing[3],
-  padding: spacing[2],
-  backgroundColor: colors.bg.secondary,
-  border: '1px solid var(--border-primary)',
-  borderRadius: effects.border.radius.default,
-  color: colors.fg.quaternary,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 99,
-};
-
 // =============================================================================
 // WORKSPACE ITEM COMPONENT
 // =============================================================================
@@ -409,19 +394,23 @@ function WorkspaceItem({
   
   // Auto-expand tree when workspace is active
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (isActive) {
       setIsTreeExpanded(true);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [isActive]);
   
   // Auto-expand workspace when a card in it is selected
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!selectedNodeId) return;
     
     const selectedConv = conversations.get(selectedNodeId);
     if (selectedConv && selectedConv.canvasId === workspace.id) {
       setIsTreeExpanded(true);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [selectedNodeId, conversations, workspace.id]);
 
   // Focus input when entering rename mode
@@ -432,19 +421,21 @@ function WorkspaceItem({
     }
   }, [isRenaming]);
 
+  const handleStartRename = useCallback(() => {
+    setRenamingValue(workspace.metadata.title);
+    setIsRenaming(true);
+    setShowContextMenu(false);
+  }, [workspace.metadata.title]);
+
   // Trigger rename from F2 key
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (triggerRename && isActive) {
       handleStartRename();
       onRenameStart?.();
     }
-  }, [triggerRename, isActive]);
-
-  const handleStartRename = () => {
-    setRenamingValue(workspace.metadata.title);
-    setIsRenaming(true);
-    setShowContextMenu(false);
-  };
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [triggerRename, isActive, handleStartRename, onRenameStart]);
 
   const handleFinishRename = () => {
     const trimmed = renamingValue.trim();
@@ -468,6 +459,13 @@ function WorkspaceItem({
     e.preventDefault();
     e.stopPropagation();
     setContextMenuPos({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
+  };
+
+  const handleMenuClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setContextMenuPos({ x: rect.left, y: rect.bottom + 6 });
     setShowContextMenu(true);
   };
 
@@ -572,27 +570,22 @@ function WorkspaceItem({
         {/* Actions (shown on hover or for active item) */}
         {(isActive || isHovered) && (
           <div style={{ display: 'flex', gap: spacing[1] }}>
-            {canDelete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(workspace.id);
-                }}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border-primary)',
-                  padding: spacing[1],
-                  cursor: 'pointer',
-                  borderRadius: effects.border.radius.default,
-                  color: colors.fg.quaternary,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                title="Delete workspace"
-              >
-                <Trash2 size={12} />
-              </button>
-            )}
+            <button
+              onClick={handleMenuClick}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border-primary)',
+                padding: spacing[1],
+                cursor: 'pointer',
+                borderRadius: effects.border.radius.default,
+                color: colors.fg.quaternary,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              title="Canvas menu"
+            >
+              <MoreHorizontal size={12} />
+            </button>
           </div>
         )}
       </motion.div>
@@ -673,7 +666,7 @@ function WorkspaceItem({
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <Trash2 size={14} />
-                Delete
+                Delete canvas
               </button>
             )}
           </div>
@@ -709,12 +702,13 @@ function WorkspaceItem({
 interface CanvasTreeSidebarProps {
   onOpenSettings: () => void;
   onOpenAgents?: () => void;
+  onRequestDeleteWorkspace: (workspaceId: string) => void;
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onFocusNode?: (nodeId: string) => void;
 }
 
-export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: externalIsOpen, onToggle, onFocusNode }: CanvasTreeSidebarProps) {
+export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDeleteWorkspace, isOpen: externalIsOpen, onToggle, onFocusNode }: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
@@ -730,12 +724,8 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
-  const deleteWorkspace = useCanvasStore((s) => s.deleteWorkspace);
   const createWorkspace = useCanvasStore((s) => s.createWorkspace);
   const updateWorkspace = useCanvasStore((s) => s.updateWorkspace);
-  
-  // UI preferences
-  const uiPrefs = usePreferencesStore(selectUIPreferences);
 
   // Resize handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -770,15 +760,9 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
   }, [navigateToWorkspace]);
 
   const handleDelete = useCallback((id: string) => {
-    // Check if confirmation is required
-    if (uiPrefs.confirmOnDelete) {
-      if (confirm('Delete this workspace?')) {
-        deleteWorkspace(id);
-      }
-    } else {
-      deleteWorkspace(id);
-    }
-  }, [deleteWorkspace, uiPrefs.confirmOnDelete]);
+    onRequestDeleteWorkspace(id);
+  }, [onRequestDeleteWorkspace]);
+
 
   const handleRename = useCallback((workspaceId: string, newName: string) => {
     const workspace = workspaces.find((w) => w.id === workspaceId);
@@ -884,7 +868,10 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
         </span>
         <div style={{ display: 'flex', gap: spacing[1] }}>
           <button
-            onClick={() => createWorkspace(`New Workspace ${workspaces.length + 1}`)}
+            onClick={() => {
+              const workspace = createWorkspace(`New Workspace ${workspaces.length + 1}`);
+              navigateToWorkspace(workspace.id);
+            }}
             style={{
               background: 'none',
               border: 'none',
@@ -932,7 +919,10 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
             <Folder size={32} style={{ marginBottom: spacing[2], opacity: 0.5 }} />
             <p>No workspaces yet</p>
             <button
-              onClick={() => createWorkspace('My First Workspace')}
+              onClick={() => {
+                const workspace = createWorkspace('My First Workspace');
+                navigateToWorkspace(workspace.id);
+              }}
               style={{
                 marginTop: spacing[2],
                 padding: `${spacing[2]} ${spacing[3]}`,
@@ -954,7 +944,7 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
               key={workspace.id}
               workspace={workspace}
               isActive={workspace.id === activeWorkspaceId}
-              canDelete={workspaces.length > 1 && workspace.id !== activeWorkspaceId}
+              canDelete={workspaces.length > 0}
               onSelect={handleSelect}
               onDelete={handleDelete}
               onRename={handleRename}
@@ -1037,6 +1027,7 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, isOpen: extern
         </button>
         </div>
       </div>
+
     </motion.aside>
   );
 }

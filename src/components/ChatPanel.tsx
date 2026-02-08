@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useChat } from 'ai/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, PanelRightClose } from 'lucide-react';
+import { PanelRightClose } from 'lucide-react';
 
-import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
+import { colors, typography, spacing, animation } from '@/lib/design-tokens';
 import { useCanvasStore, selectChatPanelOpen, selectActiveConversationId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
-import { getAvailableModels, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
+import { getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
+import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
+import { attachEmbeddings, buildKnowledgeBaseContext, buildRagIndex, type RagIndex } from '@/lib/rag-utils';
 import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
@@ -21,16 +23,14 @@ import type { MessageAttachment } from '@/types';
 
 const MIN_PANEL_WIDTH = 400;
 const MAX_PANEL_WIDTH = 800;
+const KB_CONTEXT_MAX_CHARS = 5000;
+const EMBEDDING_MODEL = 'text-embedding-3-small';
 
 // =============================================================================
 // CHAT PANEL COMPONENT
 // =============================================================================
 
-interface ChatPanelProps {
-  onFocusNode?: (nodeId: string) => void;
-}
-
-export function ChatPanel({ onFocusNode }: ChatPanelProps) {
+export function ChatPanel() {
   const panelRef = useRef<HTMLElement>(null);
   const panelWidthRef = useRef<number>(480); // Track current width for mouseup handler
   
@@ -45,6 +45,8 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
   const getConversationMessages = useCanvasStore((s) => s.getConversationMessages);
   const getConversationModel = useCanvasStore((s) => s.getConversationModel);
   const setConversationModel = useCanvasStore((s) => s.setConversationModel);
+  const workspaces = useCanvasStore((s) => s.workspaces);
+  const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
   
   // UI preferences for persisted width
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -107,7 +109,103 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
   // Attachment state for vision
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
 
+  const [ragIndex, setRagIndex] = useState<RagIndex | null>(null);
+
+  const activeWorkspace = useMemo(
+    () => workspaces.find((w) => w.id === activeWorkspaceId) || null,
+    [workspaces, activeWorkspaceId]
+  );
+
+  const knowledgeBaseKey = useMemo(() => {
+    const files = activeWorkspace?.context?.knowledgeBaseFiles || [];
+    return files.map((file) => `${file.id}:${file.lastModified}`).join('|');
+  }, [activeWorkspace]);
+
+  const contextLoadKey = useMemo(() => {
+    if (!chatPanelOpen) return 'closed';
+    return `${activeWorkspaceId || 'none'}:${knowledgeBaseKey}`;
+  }, [activeWorkspaceId, knowledgeBaseKey, chatPanelOpen]);
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (contextLoadKey === 'closed') {
+      setRagIndex(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function loadCanvasContext() {
+      if (!activeWorkspaceId) {
+        setRagIndex(null);
+        return;
+      }
+
+      const kbFiles = await getKnowledgeBaseContents(activeWorkspaceId);
+
+      if (isCancelled) return;
+
+      if (kbFiles.length === 0) {
+        setRagIndex(null);
+        return;
+      }
+
+      const baseIndex = buildRagIndex(kbFiles);
+      const openaiKey = apiKeyManager.getKey('openai');
+      if (!openaiKey) {
+        setRagIndex(baseIndex);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/embeddings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: openaiKey,
+            texts: baseIndex.chunks.map((chunk) => chunk.content),
+            model: EMBEDDING_MODEL,
+          }),
+        });
+
+        if (!response.ok) {
+          setRagIndex(baseIndex);
+          return;
+        }
+
+        const data = await response.json() as { embeddings: number[][]; model: string };
+        setRagIndex(attachEmbeddings(baseIndex, data.embeddings, data.model));
+      } catch (err) {
+        console.error('[ChatPanel] Failed to build embedding index', err);
+        setRagIndex(baseIndex);
+      }
+    }
+
+    loadCanvasContext().catch((err) => {
+      console.error('[ChatPanel] Failed to load canvas context', err);
+      if (!isCancelled) setRagIndex(null);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [contextLoadKey, activeWorkspaceId]);
+
   // useChat hook for streaming AI responses
+  const chatBody = useMemo(() => ({
+    model: currentModel,
+    apiKey: currentApiKey,
+    // Pass image attachments for vision
+    ...(pendingAttachments.length > 0 ? {
+      attachments: pendingAttachments.map(a => ({
+        contentType: a.contentType,
+        name: a.name,
+        url: a.url,
+      })),
+    } : {}),
+  }), [currentModel, currentApiKey, pendingAttachments]);
+
   const {
     messages: chatMessages,
     input,
@@ -120,18 +218,7 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
   } = useChat({
     api: '/api/chat',
     id: activeConversationId || undefined,
-    body: {
-      model: currentModel,
-      apiKey: currentApiKey,
-      // Pass image attachments for vision
-      ...(pendingAttachments.length > 0 ? {
-        attachments: pendingAttachments.map(a => ({
-          contentType: a.contentType,
-          name: a.name,
-          url: a.url,
-        })),
-      } : {}),
-    },
+    body: chatBody,
     onFinish: (message: { content: string }) => {
       // Persist AI message to store when streaming finishes
       if (activeConversationId && currentModel) {
@@ -145,11 +232,77 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
     },
   });
 
+  const getRagQuery = useCallback(() => {
+    if (input.trim()) return input.trim();
+    const lastUserMessage = activeConversation?.content
+      ?.slice()
+      .reverse()
+      .find((msg) => msg.role === 'user');
+    return lastUserMessage?.content?.trim() || '';
+  }, [input, activeConversation]);
+
+  const buildCanvasContextPayload = useCallback(async () => {
+    const instructions = activeWorkspace?.context?.instructions?.trim() || '';
+    if (!ragIndex) {
+      return instructions ? { instructions } : null;
+    }
+
+    const query = getRagQuery();
+    if (!query) {
+      return instructions ? { instructions } : null;
+    }
+
+    let queryEmbedding: number[] | undefined;
+    if (ragIndex.embeddings?.length) {
+      const openaiKey = apiKeyManager.getKey('openai');
+      if (openaiKey) {
+        try {
+          const response = await fetch('/api/embeddings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey: openaiKey,
+              texts: [query],
+              model: ragIndex.embeddingModel || EMBEDDING_MODEL,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json() as { embeddings: number[][] };
+            queryEmbedding = data.embeddings?.[0];
+          }
+        } catch (err) {
+          console.error('[ChatPanel] Failed to embed query', err);
+        }
+      }
+    }
+
+    const ragContext = buildKnowledgeBaseContext(
+      ragIndex,
+      query,
+      { maxChars: KB_CONTEXT_MAX_CHARS },
+      queryEmbedding
+    );
+    const knowledgeBase = ragContext?.text?.trim() || '';
+
+    if (!instructions && !knowledgeBase) return null;
+
+    return {
+      instructions: instructions || undefined,
+      knowledgeBase: knowledgeBase || undefined,
+    };
+  }, [activeWorkspace, ragIndex, getRagQuery]);
+
   // Wrap handleSubmit to also store attachments on user message
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    // If there are pending attachments, they've already been passed via body
-    rawHandleSubmit(e);
-  }, [rawHandleSubmit]);
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    const canvasContextPayload = await buildCanvasContextPayload();
+    const body = {
+      ...chatBody,
+      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
+    };
+
+    rawHandleSubmit(e, { body });
+  }, [chatBody, rawHandleSubmit, buildCanvasContextPayload]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
@@ -169,9 +322,11 @@ export function ChatPanel({ onFocusNode }: ChatPanelProps) {
 
   // Sync with preferences when they change
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (uiPrefs.chatPanelWidth && !isResizing) {
       setPanelWidth(uiPrefs.chatPanelWidth);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [uiPrefs.chatPanelWidth, isResizing]);
 
   // Resize handlers (IDENTICAL to CanvasTreeSidebar)

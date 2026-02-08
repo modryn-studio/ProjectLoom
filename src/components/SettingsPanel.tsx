@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, AlertCircle, Monitor, Sun, Moon } from 'lucide-react';
+import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
 
-import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences, selectTheme, type ThemeMode } from '@/stores/preferences-store';
+import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
 import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
 import type { InheritanceMode } from '@/types';
@@ -172,9 +172,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       const savedOpenAIKey = apiKeyManager.getKey('openai');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
+       
       if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
+       
       setStoragePreference(currentStoragePreference);
+       
       setKeysLoaded(true);
     }
   }, [isOpen, keysLoaded]);
@@ -182,7 +186,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement | null;
+        const tagName = target?.tagName?.toLowerCase();
+        if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') return;
         onClose();
       }
     };

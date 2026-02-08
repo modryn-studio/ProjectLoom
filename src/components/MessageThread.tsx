@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2 } from 'lucide-react';
 import type { Message as ChatMessage } from 'ai';
 
-import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
@@ -31,12 +31,10 @@ export function MessageThread({
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  // Detect touch device
-  useEffect(() => {
-    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  }, []);
+  const [isTouchDevice] = useState(() => (
+    typeof window !== 'undefined'
+    && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  ));
   
   // Use streaming messages when actively streaming, otherwise use store messages
   // Store messages (conversation.content) preserve attachments and metadata;
@@ -175,14 +173,10 @@ const MessageBubble = memo(function MessageBubble({
   onBranchClick,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
-  const isAssistant = message.role === 'assistant';
   const isSystem = message.role === 'system';
 
   // Toast for feedback
   const toast = useToast();
-
-  // Get model from metadata if available
-  const modelName = (message.metadata as { model?: string } | undefined)?.model;
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
@@ -276,6 +270,7 @@ const MessageBubble = memo(function MessageBubble({
           <div style={bubbleStyles.attachmentRow}>
             {message.attachments.map((att: MessageAttachment) => (
               <div key={att.id} style={bubbleStyles.attachmentContainer}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={att.url}
                   alt={att.name}
@@ -397,19 +392,6 @@ const MessageActionButtons = memo(function MessageActionButtons({
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-/** Format model ID to human-readable name */
-function formatModelName(modelId: string): string {
-  // Claude models
-  if (modelId.includes('opus')) return 'Opus';
-  if (modelId.includes('sonnet')) return 'Sonnet';
-  if (modelId.includes('haiku')) return 'Haiku';
-  // OpenAI models
-  if (modelId.includes('gpt-4o-mini')) return 'GPT-4o Mini';
-  if (modelId.includes('gpt-4o')) return 'GPT-4o';
-  // Fallback
-  return modelId.split('-').slice(0, 2).join(' ');
-}
 
 // =============================================================================
 // STYLES

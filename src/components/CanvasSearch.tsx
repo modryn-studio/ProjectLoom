@@ -12,7 +12,7 @@
  * @version 4.0.0
  */
 
-import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useReactFlow } from '@xyflow/react';
 import designTokens from '@/lib/design-tokens';
@@ -339,7 +339,7 @@ export function CanvasSearch() {
                   ))
                 ) : (
                   <div style={styles.noResults}>
-                    No cards found matching "{query}"
+                    {`No cards found matching "${query}"`}
                   </div>
                 )}
               </div>

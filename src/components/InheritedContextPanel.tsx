@@ -317,7 +317,7 @@ export function InheritedContextPanel() {
                           color: colors.fg.primary,
                           fontFamily: typography.fonts.body,
                         }}>
-                          Inherited from "{entry.parentTitle}"
+                          {`Inherited from "${entry.parentTitle}"`}
                         </span>
 
                         <span style={{

@@ -220,7 +220,7 @@ export function detectConversationLanguage(messages: { content: string }[]): Lan
 // EXPORTS
 // =============================================================================
 
-export default {
+const languageUtils = {
   detectLanguage,
   getScriptType,
   getTextDirection,
@@ -230,3 +230,5 @@ export default {
   getTextStyles,
   detectConversationLanguage,
 };
+
+export default languageUtils;

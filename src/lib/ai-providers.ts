@@ -60,7 +60,8 @@ export class MockProvider implements AIProvider {
     return this.mockResponses[idx];
   }
 
-  async sendMessage(content: string, context: AIContext): Promise<AIResponse> {
+  async sendMessage(content: string, _context: AIContext): Promise<AIResponse> {
+    void _context;
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
 

@@ -8,7 +8,6 @@ import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import { 
   AVAILABLE_MODELS, 
-  getAvailableModels, 
   getModelById,
   getCostTierInfo,
   type ModelDefinition,
@@ -39,12 +38,11 @@ export function ModelSelector({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Determine which models are available based on API keys
-  const { availableModels, hasAnthropicKey, hasOpenAIKey } = useMemo(() => {
+  const { hasAnthropicKey, hasOpenAIKey } = useMemo(() => {
     const anthropicKey = !!apiKeyManager.getKey('anthropic');
     const openaiKey = !!apiKeyManager.getKey('openai');
     
     return {
-      availableModels: getAvailableModels(anthropicKey, openaiKey),
       hasAnthropicKey: anthropicKey,
       hasOpenAIKey: openaiKey,
     };

@@ -23,7 +23,7 @@ export default function CanvasPage() {
   // Expose store globally for debugging
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).useCanvasStore = useCanvasStore;
+      (window as Window & { useCanvasStore?: typeof useCanvasStore }).useCanvasStore = useCanvasStore;
     }
   }, []);
 

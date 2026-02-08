@@ -20,7 +20,6 @@ import type {
   AgentRunnerConfig,
   WorkspaceSnapshot,
   AgentStep,
-  CardSnapshot,
 } from './types';
 
 // =============================================================================

@@ -10,14 +10,13 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, XCircle, AlertTriangle, Trash2, Edit3, GitBranch, FileText, Check, X } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Trash2, Edit3, GitBranch, FileText, Check, X } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useToastStore } from '@/stores/toast-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
-import { estimateCost, formatCost } from '@/lib/vercel-ai-integration';
 import type { AgentRunResult, AgentAction } from '@/lib/agents/types';
 
 // =============================================================================
@@ -274,6 +273,22 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
 
   const approvedCount = Object.values(approvals).filter(Boolean).length;
   const destructiveCount = result.actions.filter((a) => a.type === 'delete' && approvals[a.id]).length;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === 'textarea' || tagName === 'select' || tagName === 'button') return;
+      if (approvedCount === 0 || isExecuting || executionLog.length > 0) return;
+
+      handleExecute();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [approvedCount, handleExecute, isExecuting, executionLog.length]);
 
   return (
     <motion.div

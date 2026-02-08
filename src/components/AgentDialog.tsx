@@ -10,7 +10,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Trash2, GitBranch, FileText, X, Play, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
@@ -23,11 +23,9 @@ import { AgentConfirmationDialog } from './AgentConfirmationDialog';
 import type {
   AgentId,
   AgentRunResult,
-  AgentAction,
   AgentStep,
   WorkspaceSnapshot,
   CardSnapshot,
-  AGENT_REGISTRY,
 } from '@/lib/agents/types';
 
 // =============================================================================
@@ -279,6 +277,34 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     setShowConfirmation(false);
     handleClose();
   }, [handleClose]);
+
+  useEffect(() => {
+    if (!isOpen || showConfirmation) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement | null;
+        const tagName = target?.tagName?.toLowerCase();
+        if (tagName === 'textarea' || tagName === 'select' || tagName === 'button') return;
+        if (isRunning) return;
+        if (result && result.actions.length === 0) {
+          handleClose();
+          return;
+        }
+        if (!result && selectedAgent) {
+          handleRunAgent();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, showConfirmation, handleClose, handleRunAgent, isRunning, result, selectedAgent]);
 
   if (!isOpen) return null;
 

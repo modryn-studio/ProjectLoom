@@ -94,6 +94,16 @@ export interface MessageMetadata {
 }
 
 /**
+ * Snapshot of canvas-level context at send time (optional)
+ */
+export interface MessageContextSnapshot {
+  /** Instructions applied when the message was sent */
+  instructions?: string;
+  /** Knowledge base file IDs applied when the message was sent */
+  knowledgeBaseFileIds?: string[];
+}
+
+/**
  * A single message in a conversation
  */
 /**
@@ -121,6 +131,8 @@ export interface Message {
   timestamp: Date;
   /** Optional metadata */
   metadata?: MessageMetadata;
+  /** Optional canvas-level context snapshot */
+  contextSnapshot?: MessageContextSnapshot;
   /** Optional file/image attachments */
   attachments?: MessageAttachment[];
 }
@@ -255,6 +267,38 @@ export interface WorkspaceMetadata {
   schemaVersion: number;
 }
 
+// =============================================================================
+// WORKSPACE CONTEXT (Phase 2)
+// =============================================================================
+
+/**
+ * Knowledge base file metadata stored with a workspace
+ */
+export interface KnowledgeBaseFileMeta {
+  /** Unique identifier */
+  id: string;
+  /** Original file name */
+  name: string;
+  /** MIME type */
+  type: string;
+  /** File size in bytes */
+  size: number;
+  /** Last modified timestamp */
+  lastModified: number;
+}
+
+/**
+ * Canvas-level instructions and knowledge base
+ */
+export interface WorkspaceContext {
+  /** Global instructions for the workspace */
+  instructions: string;
+  /** Knowledge base file metadata (contents stored in IndexedDB) */
+  knowledgeBaseFiles: KnowledgeBaseFileMeta[];
+  /** When the context was last updated */
+  updatedAt: Date;
+}
+
 /**
  * A workspace containing conversation cards (v4)
  * Workspaces are flat - no parent/child hierarchy
@@ -271,6 +315,8 @@ export interface Workspace {
   edges: EdgeConnection[];
   /** Tags for categorization */
   tags: string[];
+  /** Canvas-level instructions and knowledge base */
+  context: WorkspaceContext;
   /** Workspace metadata */
   metadata: WorkspaceMetadata;
 }

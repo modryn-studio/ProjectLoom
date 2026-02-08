@@ -16,7 +16,6 @@ import type {
   Conversation,
   Message,
   EdgeConnection,
-  ConversationMetadata,
   Position,
   BranchPoint,
   InheritedContextEntry,

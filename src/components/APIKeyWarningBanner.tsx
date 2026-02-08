@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, ExternalLink, Shield } from 'lucide-react';
 
@@ -26,7 +26,10 @@ export function APIKeyWarningBanner({
   dismissible = true,
   position = 'top',
 }: APIKeyWarningBannerProps) {
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('api-key-warning-dismissed') === 'true';
+  });
   const [showDetails, setShowDetails] = useState(false);
   const { status: keyStatus, hasDevModeKeys: hookHasDevModeKeys } = useAPIKeyStatus();
 
@@ -43,14 +46,6 @@ export function APIKeyWarningBanner({
     // Optionally persist dismissal in sessionStorage (not localStorage to remind again)
     sessionStorage.setItem('api-key-warning-dismissed', 'true');
   };
-
-  // Check if previously dismissed this session
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem('api-key-warning-dismissed');
-    if (dismissed === 'true') {
-      setIsDismissed(true);
-    }
-  }, []);
 
   return (
     <AnimatePresence>

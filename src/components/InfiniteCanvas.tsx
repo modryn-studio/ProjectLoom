@@ -20,7 +20,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useShallow } from 'zustand/react/shallow';
 
-import { colors, canvas as canvasConfig, animation } from '@/lib/design-tokens';
+import { colors, canvas as canvasConfig, animation, spacing, typography, effects } from '@/lib/design-tokens';
 import { logger } from '@/lib/logger';
 import type { ConversationNodeData, Conversation, Message } from '@/types';
 import { ConversationCard } from './ConversationCard';
@@ -28,7 +28,7 @@ import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
 import { CanvasSearch } from './CanvasSearch';
 import { useSearchStore } from '@/stores/search-store';
-import { getOverlapCount, spreadLayout, treeLayout } from '@/lib/layout-utils';
+import { treeLayout } from '@/lib/layout-utils';
 import { useToastStore } from '@/stores/toast-store';
 import { UndoToast } from './UndoToast';
 import { BranchDialog } from './BranchDialog';
@@ -37,6 +37,7 @@ import { CanvasBreadcrumb } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { APIKeyWarningBanner } from './APIKeyWarningBanner';
 import { SettingsPanel } from './SettingsPanel';
+import { CanvasContextModal } from './CanvasContextModal';
 import { AgentDialog } from './AgentDialog';
 import { ChatPanel } from './ChatPanel';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
@@ -44,6 +45,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
 import { nanoid } from 'nanoid';
+import { Plus } from 'lucide-react';
 
 // =============================================================================
 // NODE TYPES
@@ -127,6 +129,27 @@ const pointerEventsAutoStyle: React.CSSProperties = {
   pointerEvents: 'auto',
 };
 
+const emptyStateStyles: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: canvasConfig.background.color,
+  padding: spacing[6],
+};
+
+const emptyCardStyles: React.CSSProperties = {
+  maxWidth: 480,
+  width: '100%',
+  backgroundColor: colors.bg.secondary,
+  border: `1px solid ${colors.border.default}`,
+  borderRadius: effects.border.radius.lg,
+  boxShadow: effects.shadow.lg,
+  padding: spacing[5],
+  textAlign: 'center',
+};
+
 // =============================================================================
 // INFINITE CANVAS COMPONENT
 // =============================================================================
@@ -136,6 +159,15 @@ export function InfiniteCanvas() {
 
   // Settings panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Canvas context modal state
+  const [canvasContextOpen, setCanvasContextOpen] = useState(false);
+
+  // Workspace delete modal state
+  const [deleteWorkspaceModal, setDeleteWorkspaceModal] = useState<
+    | { id: string; label: string; step: 'warn' | 'confirm'; confirmText: string }
+    | null
+  >(null);
 
   // Agent dialog state
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
@@ -152,14 +184,12 @@ export function InfiniteCanvas() {
     nodes,
     edges,
     selectedNodeIds,
-    expandedNodeIds,
     activeWorkspaceId,
     workspaces,
   } = useCanvasStore(useShallow((s) => ({
     nodes: s.nodes,
     edges: s.edges,
     selectedNodeIds: s.selectedNodeIds,
-    expandedNodeIds: s.expandedNodeIds,
     activeWorkspaceId: s.activeWorkspaceId,
     workspaces: s.workspaces,
   })));
@@ -173,14 +203,19 @@ export function InfiniteCanvas() {
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
-  const createMergeNode = useCanvasStore((s) => s.createMergeNode);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
+  const deleteWorkspace = useCanvasStore((s) => s.deleteWorkspace);
+  const createWorkspace = useCanvasStore((s) => s.createWorkspace);
   const addConversation = useCanvasStore((s) => s.addConversation);
   const undo = useCanvasStore((s) => s.undo);
   const redo = useCanvasStore((s) => s.redo);
   const canUndo = useCanvasStore((s) => s.canUndo);
   const canRedo = useCanvasStore((s) => s.canRedo);
   const applyLayout = useCanvasStore((s) => s.applyLayout);
+  const pendingDeleteConversationIds = useCanvasStore((s) => s.pendingDeleteConversationIds);
+  const requestDeleteConversation = useCanvasStore((s) => s.requestDeleteConversation);
+  const clearDeleteConversationRequest = useCanvasStore((s) => s.clearDeleteConversationRequest);
+  const conversations = useCanvasStore((s) => s.conversations);
 
   // Chat panel state
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
@@ -189,9 +224,80 @@ export function InfiniteCanvas() {
 
   // Branch dialog state
   const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
+  const hierarchicalMergeDialogOpen = useCanvasStore((s) => s.hierarchicalMergeDialogOpen);
 
   // Current workspace context (v4 - flat)
   const currentWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+
+  const requestDeleteWorkspace = useCallback((workspaceId: string) => {
+    const workspace = workspaces.find((w) => w.id === workspaceId);
+    const label = workspace?.metadata.title || 'Canvas';
+    setDeleteWorkspaceModal({ id: workspaceId, label, step: 'warn', confirmText: '' });
+  }, [workspaces]);
+
+  const confirmDeleteWorkspace = useCallback(() => {
+    if (!deleteWorkspaceModal) return;
+    if (deleteWorkspaceModal.step === 'warn') {
+      setDeleteWorkspaceModal((prev) => prev ? { ...prev, step: 'confirm', confirmText: '' } : prev);
+      return;
+    }
+
+    if (deleteWorkspaceModal.confirmText !== 'DELETE') return;
+
+    deleteWorkspace(deleteWorkspaceModal.id);
+    setDeleteWorkspaceModal(null);
+  }, [deleteWorkspaceModal, deleteWorkspace]);
+  const deleteConversationLabel = useMemo(() => {
+    if (pendingDeleteConversationIds.length === 1) {
+      const conversation = conversations.get(pendingDeleteConversationIds[0]);
+      return conversation?.metadata.title || 'Conversation';
+    }
+    return `${pendingDeleteConversationIds.length} conversations`;
+  }, [conversations, pendingDeleteConversationIds]);
+
+  const confirmDeleteConversation = useCallback(() => {
+    if (pendingDeleteConversationIds.length === 0) return;
+    pendingDeleteConversationIds.forEach((id) => deleteConversation(id));
+    clearDeleteConversationRequest();
+  }, [pendingDeleteConversationIds, deleteConversation, clearDeleteConversationRequest]);
+
+  const cancelDeleteConversation = useCallback(() => {
+    clearDeleteConversationRequest();
+  }, [clearDeleteConversationRequest]);
+
+  const cancelDeleteWorkspace = useCallback(() => {
+    setDeleteWorkspaceModal(null);
+  }, []);
+
+  useEffect(() => {
+    if (!deleteWorkspaceModal && pendingDeleteConversationIds.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (tagName === 'button') return;
+
+      if (deleteWorkspaceModal) {
+        if (deleteWorkspaceModal.step === 'confirm' && deleteWorkspaceModal.confirmText !== 'DELETE') return;
+        confirmDeleteWorkspace();
+        return;
+      }
+
+      if (pendingDeleteConversationIds.length > 0) {
+        confirmDeleteConversation();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteWorkspaceModal, pendingDeleteConversationIds.length, confirmDeleteWorkspace, confirmDeleteConversation]);
+
+  const handleCreateWorkspace = useCallback(() => {
+    const workspace = createWorkspace(`New Workspace ${workspaces.length + 1}`);
+    navigateToWorkspace(workspace.id);
+  }, [createWorkspace, navigateToWorkspace, workspaces.length]);
 
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -402,7 +508,12 @@ export function InfiniteCanvas() {
       ];
 
       // Create a synthetic React.MouseEvent-like object for the openMenu call
-      canvasContextMenu.openMenu({ clientX, clientY, preventDefault: () => {} } as React.MouseEvent, menuItems);
+      canvasContextMenu.openMenu({
+        clientX,
+        clientY,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      }, menuItems);
     },
     [canvasContextMenu, handleAddConversation]
   );
@@ -436,34 +547,42 @@ export function InfiniteCanvas() {
     return ids.length > 0 ? ids[0] : null;
   }, [selectedNodeIds]);
 
-  const firstExpandedId = useMemo(() => {
-    const ids = Array.from(expandedNodeIds);
-    return ids.length > 0 ? ids[0] : null;
-  }, [expandedNodeIds]);
+  const isModalOpen = useMemo(() => (
+    settingsOpen
+    || canvasContextOpen
+    || agentDialogOpen
+    || branchDialogOpen
+    || hierarchicalMergeDialogOpen
+    || Boolean(deleteWorkspaceModal)
+    || pendingDeleteConversationIds.length > 0
+  ), [
+    settingsOpen,
+    canvasContextOpen,
+    agentDialogOpen,
+    branchDialogOpen,
+    hierarchicalMergeDialogOpen,
+    deleteWorkspaceModal,
+    pendingDeleteConversationIds.length,
+  ]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    enabled: true,
+    enabled: !isModalOpen,
     handlers: {
       onDelete: () => {
         const selectedIds = Array.from(selectedNodeIds);
-        if (selectedIds.length === 0) return;
-        
-        if (selectedIds.length === 1) {
-          // Single deletion
-          if (uiPrefs.confirmOnDelete) {
-            if (window.confirm('Delete this conversation?')) {
-              deleteConversation(selectedIds[0]);
-            }
-          } else {
-            deleteConversation(selectedIds[0]);
-          }
-        } else {
-          // Multi-select deletion - always confirm
-          if (window.confirm(`Delete ${selectedIds.length} conversations?`)) {
-            selectedIds.forEach(id => deleteConversation(id));
-          }
+        if (selectedIds.length === 0) {
+          if (!activeWorkspaceId) return;
+          requestDeleteWorkspace(activeWorkspaceId);
+          return;
         }
+        
+        if (uiPrefs.confirmOnDelete) {
+          requestDeleteConversation(selectedIds);
+          return;
+        }
+
+        selectedIds.forEach(id => deleteConversation(id));
       },
       onEscape: () => {
         // Priority: Close chat panel first, then deselect
@@ -573,6 +692,10 @@ export function InfiniteCanvas() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
+  // Canvas context modal handlers
+  const openCanvasContext = useCallback(() => setCanvasContextOpen(true), []);
+  const closeCanvasContext = useCallback(() => setCanvasContextOpen(false), []);
+
   // Agent dialog handlers
   const openAgents = useCallback(() => setAgentDialogOpen(true), []);
   const closeAgents = useCallback(() => setAgentDialogOpen(false), []);
@@ -595,6 +718,7 @@ export function InfiniteCanvas() {
         <CanvasTreeSidebar 
           onOpenSettings={openSettings}
           onOpenAgents={openAgents}
+          onRequestDeleteWorkspace={requestDeleteWorkspace}
           isOpen={isSidebarOpen}
           onToggle={setIsSidebarOpen}
           onFocusNode={focusOnNode}
@@ -603,125 +727,406 @@ export function InfiniteCanvas() {
 
       {/* Main content area */}
       <div style={mainContentStyles}>
-        {/* Top overlay for breadcrumb and inherited context */}
-        <div style={topOverlayStyles}>
-          {/* Breadcrumb navigation */}
-          <div style={pointerEventsAutoStyle}>
-            <CanvasBreadcrumb 
-              showSidebarToggle={!isSidebarOpen}
-              onToggleSidebar={() => setIsSidebarOpen(true)}
-            />
-          </div>
-
-          {/* Inherited context panel (shown when enabled - cards handle their own parent check) */}
-          {isPrefsLoaded && uiPrefs.showInheritedContext && (
-            <div style={pointerEventsAutoStyle}>
-              <InheritedContextPanel />
+        {!currentWorkspace ? (
+          <div style={emptyStateStyles}>
+            <div style={emptyCardStyles}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: typography.sizes.lg,
+                  fontFamily: typography.fonts.heading,
+                  color: colors.fg.primary,
+                }}
+              >
+                Create your first canvas
+              </h2>
+              <p
+                style={{
+                  marginTop: spacing[2],
+                  marginBottom: spacing[4],
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  color: colors.fg.secondary,
+                }}
+              >
+                Start a new workspace to organize conversations and context.
+              </p>
+              <button
+                onClick={handleCreateWorkspace}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `${spacing[2]} ${spacing[4]}`,
+                  backgroundColor: colors.accent.primary,
+                  border: 'none',
+                  borderRadius: effects.border.radius.default,
+                  color: colors.bg.inset,
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  cursor: 'pointer',
+                }}
+              >
+                <Plus size={16} />
+                Create Workspace
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <>
+            {/* Top overlay for breadcrumb and inherited context */}
+            <div style={topOverlayStyles}>
+              {/* Breadcrumb navigation */}
+              <div style={pointerEventsAutoStyle}>
+                <CanvasBreadcrumb 
+                  showSidebarToggle={!isSidebarOpen}
+                  onToggleSidebar={() => setIsSidebarOpen(true)}
+                  onOpenCanvasContext={openCanvasContext}
+                />
+              </div>
 
-        <div style={canvasStyles}>
-          <ReactFlow<Node<ConversationNodeData>, Edge>
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onConnect={handleConnect}
-            onConnectEnd={handleConnectEnd}
-            onNodeClick={handleNodeClick}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            onNodeDragStart={handleNodeDragStart}
-            onNodeDragStop={handleNodeDragStop}
-            onPaneClick={handlePaneClick}
-            onPaneContextMenu={handlePaneContextMenu}
-            onInit={handleInit}
-            nodeTypes={nodeTypes}
-            defaultEdgeOptions={defaultEdgeOptions}
-            connectionLineStyle={connectionLineStyle}
-            connectionLineComponent={CustomConnectionLine}
-            minZoom={canvasConfig.viewport.minZoom}
-            maxZoom={canvasConfig.viewport.maxZoom}
-            defaultViewport={defaultViewport}
-            fitView={false}
-            onlyRenderVisibleElements={true}
-            nodesDraggable={true}
-            nodesConnectable={true}
-            panOnDrag={true}
-            panOnScroll={false}
-            zoomOnScroll={true}
-            zoomOnPinch={true}
-            zoomOnDoubleClick={false}
-            selectionOnDrag={true}
-            selectNodesOnDrag={false}
-            snapToGrid={false}
-            deleteKeyCode={null}
-            multiSelectionKeyCode="Shift"
-          >
-            {/* Dot grid background */}
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={canvasConfig.background.dotGap}
-              size={canvasConfig.background.dotSize}
-              color={canvasConfig.background.dotColor}
-            />
+              {/* Inherited context panel (shown when enabled - cards handle their own parent check) */}
+              {isPrefsLoaded && uiPrefs.showInheritedContext && (
+                <div style={pointerEventsAutoStyle}>
+                  <InheritedContextPanel />
+                </div>
+              )}
+            </div>
 
-            {/* Minimap */}
-            <MiniMap
-              style={minimapStyle}
-              nodeColor={canvasConfig.minimap.nodeColor}
-              maskColor={canvasConfig.minimap.maskColor}
-              zoomable
-              pannable
-            />
+            <div style={canvasStyles}>
+              <ReactFlow<Node<ConversationNodeData>, Edge>
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={handleNodesChange}
+                onEdgesChange={handleEdgesChange}
+                onConnect={handleConnect}
+                onConnectEnd={handleConnectEnd}
+                onNodeClick={handleNodeClick}
+                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodeDragStart={handleNodeDragStart}
+                onNodeDragStop={handleNodeDragStop}
+                onPaneClick={handlePaneClick}
+                onPaneContextMenu={handlePaneContextMenu}
+                onInit={handleInit}
+                nodeTypes={nodeTypes}
+                defaultEdgeOptions={defaultEdgeOptions}
+                connectionLineStyle={connectionLineStyle}
+                connectionLineComponent={CustomConnectionLine}
+                minZoom={canvasConfig.viewport.minZoom}
+                maxZoom={canvasConfig.viewport.maxZoom}
+                defaultViewport={defaultViewport}
+                fitView={false}
+                onlyRenderVisibleElements={true}
+                nodesDraggable={true}
+                nodesConnectable={true}
+                panOnDrag={true}
+                panOnScroll={false}
+                zoomOnScroll={true}
+                zoomOnPinch={true}
+                zoomOnDoubleClick={false}
+                selectionOnDrag={true}
+                selectNodesOnDrag={false}
+                snapToGrid={false}
+                deleteKeyCode={null}
+                multiSelectionKeyCode="Shift"
+              >
+                {/* Dot grid background */}
+                <Background
+                  variant={BackgroundVariant.Dots}
+                  gap={canvasConfig.background.dotGap}
+                  size={canvasConfig.background.dotSize}
+                  color={canvasConfig.background.dotColor}
+                />
 
-            {/* Viewport controls */}
-            <Controls
-              showZoom={true}
-              showFitView={true}
-              showInteractive={false}
-              style={controlsStyle}
-            />
+                {/* Minimap */}
+                <MiniMap
+                  style={minimapStyle}
+                  nodeColor={canvasConfig.minimap.nodeColor}
+                  maskColor={canvasConfig.minimap.maskColor}
+                  zoomable
+                  pannable
+                />
 
-            {/* Canvas Search */}
-            <CanvasSearch />
-          </ReactFlow>
+                {/* Viewport controls */}
+                <Controls
+                  showZoom={true}
+                  showFitView={true}
+                  showInteractive={false}
+                  style={controlsStyle}
+                />
 
-          {/* Dev performance overlay */}
-          {showDevOverlay && (
-            <DevPerformanceOverlay
-              nodeCount={nodes.length}
-              edgeCount={edges.length}
-            />
-          )}
+                {/* Canvas Search */}
+                <CanvasSearch />
+              </ReactFlow>
 
-          {/* Branch Dialog */}
-          <BranchDialog />
+              {/* Dev performance overlay */}
+              {showDevOverlay && (
+                <DevPerformanceOverlay
+                  nodeCount={nodes.length}
+                  edgeCount={edges.length}
+                />
+              )}
 
-          {/* API Key Warning Banner */}
-          <APIKeyWarningBanner position="bottom" />
+              {/* Branch Dialog */}
+              <BranchDialog />
 
-          {/* Settings Panel */}
-          <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+              {/* API Key Warning Banner */}
+              <APIKeyWarningBanner position="bottom" />
 
-          {/* Agent Dialog */}
-          <AgentDialog isOpen={agentDialogOpen} onClose={closeAgents} />
+              {/* Canvas Context Menu */}
+              <ContextMenu
+                isOpen={canvasContextMenu.isOpen}
+                position={canvasContextMenu.position}
+                items={canvasContextMenu.dynamicItems}
+                onClose={canvasContextMenu.closeMenu}
+              />
 
-          {/* Canvas Context Menu */}
-          <ContextMenu
-            isOpen={canvasContextMenu.isOpen}
-            position={canvasContextMenu.position}
-            items={canvasContextMenu.dynamicItems}
-            onClose={canvasContextMenu.closeMenu}
-          />
-
-          {/* Undo Toast for branch/merge actions */}
-          <UndoToast />
-        </div>
+              {/* Undo Toast for branch/merge actions */}
+              <UndoToast />
+            </div>
+          </>
+        )}
       </div>
 
+      {/* Settings Panel */}
+      <SettingsPanel isOpen={settingsOpen} onClose={closeSettings} />
+
+      {/* Canvas Context Modal */}
+      <CanvasContextModal isOpen={canvasContextOpen} onClose={closeCanvasContext} />
+
+      {/* Agent Dialog */}
+      <AgentDialog isOpen={agentDialogOpen} onClose={closeAgents} />
+
+      {deleteWorkspaceModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={cancelDeleteWorkspace}
+        >
+          <div
+            style={{
+              backgroundColor: colors.bg.secondary,
+              borderRadius: effects.border.radius.md,
+              border: `1px solid ${colors.border.default}`,
+              boxShadow: effects.shadow.lg,
+              width: '90%',
+              maxWidth: 420,
+              padding: spacing[4],
+              display: 'flex',
+              flexDirection: 'column',
+              gap: spacing[3],
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: typography.sizes.md,
+                  fontFamily: typography.fonts.heading,
+                  color: colors.fg.primary,
+                }}
+              >
+                {deleteWorkspaceModal.step === 'warn'
+                  ? `Delete "${deleteWorkspaceModal.label}"?`
+                  : 'Final confirmation'}
+              </h3>
+              {deleteWorkspaceModal.step === 'warn' ? (
+                <>
+                  <p
+                    style={{
+                      marginTop: spacing[2],
+                      fontSize: typography.sizes.sm,
+                      fontFamily: typography.fonts.body,
+                      color: colors.fg.secondary,
+                    }}
+                  >
+                    This will permanently delete:
+                  </p>
+                  <ul
+                    style={{
+                      margin: `${spacing[2]} 0 0 0`,
+                      paddingLeft: spacing[4],
+                      fontSize: typography.sizes.sm,
+                      fontFamily: typography.fonts.body,
+                      color: colors.fg.secondary,
+                    }}
+                  >
+                    <li>All conversations</li>
+                    <li>Uploaded files</li>
+                    <li>Canvas settings</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p
+                    style={{
+                      marginTop: spacing[2],
+                      fontSize: typography.sizes.sm,
+                      fontFamily: typography.fonts.body,
+                      color: colors.fg.secondary,
+                    }}
+                  >
+                    Type DELETE to confirm this action. This cannot be undone.
+                  </p>
+                  <input
+                    value={deleteWorkspaceModal.confirmText}
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase();
+                      setDeleteWorkspaceModal((prev) => prev ? { ...prev, confirmText: value } : prev);
+                    }}
+                    placeholder="DELETE"
+                    style={{
+                      marginTop: spacing[2],
+                      width: '100%',
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      backgroundColor: colors.bg.inset,
+                      border: `1px solid ${colors.border.default}`,
+                      borderRadius: effects.border.radius.default,
+                      color: colors.fg.primary,
+                      fontSize: typography.sizes.sm,
+                      fontFamily: typography.fonts.body,
+                      outline: 'none',
+                    }}
+                  />
+                </>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[2] }}>
+              <button
+                onClick={cancelDeleteWorkspace}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${colors.border.default}`,
+                  borderRadius: effects.border.radius.default,
+                  color: colors.fg.primary,
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  cursor: 'pointer',
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteWorkspace}
+                style={{
+                  backgroundColor: colors.semantic.error,
+                  border: 'none',
+                  borderRadius: effects.border.radius.default,
+                  color: colors.bg.secondary,
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  cursor: 'pointer',
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  opacity: deleteWorkspaceModal.step === 'confirm' && deleteWorkspaceModal.confirmText !== 'DELETE' ? 0.6 : 1,
+                }}
+                disabled={deleteWorkspaceModal.step === 'confirm' && deleteWorkspaceModal.confirmText !== 'DELETE'}
+              >
+                {deleteWorkspaceModal.step === 'warn' ? 'Continue' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDeleteConversationIds.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={cancelDeleteConversation}
+        >
+          <div
+            style={{
+              backgroundColor: colors.bg.secondary,
+              borderRadius: effects.border.radius.md,
+              border: `1px solid ${colors.border.default}`,
+              boxShadow: effects.shadow.lg,
+              width: '90%',
+              maxWidth: 420,
+              padding: spacing[4],
+              display: 'flex',
+              flexDirection: 'column',
+              gap: spacing[3],
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: typography.sizes.md,
+                  fontFamily: typography.fonts.heading,
+                  color: colors.fg.primary,
+                }}
+              >
+                {`Delete "${deleteConversationLabel}"?`}
+              </h3>
+              <p
+                style={{
+                  marginTop: spacing[2],
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  color: colors.fg.secondary,
+                }}
+              >
+                This will permanently delete the selected conversation{pendingDeleteConversationIds.length > 1 ? 's' : ''}.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spacing[2] }}>
+              <button
+                onClick={cancelDeleteConversation}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${colors.border.default}`,
+                  borderRadius: effects.border.radius.default,
+                  color: colors.fg.primary,
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  cursor: 'pointer',
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteConversation}
+                style={{
+                  backgroundColor: colors.semantic.error,
+                  border: 'none',
+                  borderRadius: effects.border.radius.default,
+                  color: colors.bg.secondary,
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  cursor: 'pointer',
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat Panel (right side) */}
-      <ChatPanel onFocusNode={focusOnNode} />
+      <ChatPanel />
     </div>
   );
 }

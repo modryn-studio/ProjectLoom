@@ -16,7 +16,6 @@ import type {
   AgentRunnerConfig,
   AgentRunResult,
   WorkspaceSnapshot,
-  DEFAULT_AGENT_CONFIG,
 } from '@/lib/agents/types';
 
 // =============================================================================

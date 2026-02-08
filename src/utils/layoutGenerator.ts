@@ -345,7 +345,7 @@ export function generateTreeLayout(
 // EXPORTS
 // =============================================================================
 
-export default {
+const layoutGenerator = {
   generateGridLayout,
   generateHorizontalLayout,
   generateVerticalLayout,
@@ -354,3 +354,5 @@ export default {
   createSeededRandom,
   getJitter,
 };
+
+export default layoutGenerator;

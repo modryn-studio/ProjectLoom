@@ -395,9 +395,11 @@ export function createStorage<T>(options: StorageOptions<T>): VersionedStorage<T
 // EXPORTS
 // =============================================================================
 
-export default {
+const storageUtils = {
   VersionedStorage,
   createStorage,
   CURRENT_SCHEMA_VERSION,
   STORAGE_KEYS,
 };
+
+export default storageUtils;

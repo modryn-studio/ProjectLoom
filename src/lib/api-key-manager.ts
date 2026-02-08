@@ -338,15 +338,10 @@ export const apiKeyManager = new APIKeyManager();
 // REACT HOOK (for components)
 // =============================================================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 export function useAPIKeyStatus() {
   const [status, setStatus] = useState<APIKeyStatus>(() => apiKeyManager.getStatus());
-
-  useEffect(() => {
-    // Refresh status on mount (in case env vars changed)
-    setStatus(apiKeyManager.getStatus());
-  }, []);
 
   const refreshStatus = useCallback(() => {
     setStatus(apiKeyManager.getStatus());

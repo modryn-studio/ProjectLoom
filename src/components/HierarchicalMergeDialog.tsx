@@ -101,6 +101,11 @@ export function HierarchicalMergeDialog() {
       if (e.key === 'Escape') {
         e.preventDefault();
         closeDialog();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        closeDialog();
       }
     };
 
@@ -240,7 +245,7 @@ export function HierarchicalMergeDialog() {
                     borderRadius: effects.border.radius.sm,
                     border: '1px solid var(--error-muted)',
                   }}>
-                    [A] [B] [C] [D] [E] [F] → [Final]  <span style={{ color: colors.semantic.error }}>// 6 sources - too many!</span>
+                    [A] [B] [C] [D] [E] [F] → [Final]  <span style={{ color: colors.semantic.error }}>{'// 6 sources - too many!'}</span>
                   </code>
                 </div>
 

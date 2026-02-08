@@ -21,6 +21,11 @@ interface ChatRequestBody {
     role: 'user' | 'assistant' | 'system';
     content: string;
   }>;
+  /** Canvas-level context for Phase 2 */
+  canvasContext?: {
+    instructions?: string;
+    knowledgeBase?: string;
+  };
   /** Model identifier (e.g., 'claude-sonnet-4-20250514', 'gpt-4o') */
   model: string;
   /** User's API key for the provider */
@@ -139,7 +144,7 @@ function handleProviderError(error: unknown): Response {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, apiKey, attachments } = body;
+    const { messages, model, apiKey, attachments, canvasContext } = body;
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -187,7 +192,21 @@ export async function POST(req: Request): Promise<Response> {
     const lastUserMessageIdx = messages.reduce((lastIdx, msg, idx) => 
       msg.role === 'user' ? idx : lastIdx, -1
     );
-    const aiMessages = messages.map((msg, idx) => {
+    const contextMessages: Array<{ role: 'system'; content: string }> = [];
+    if (canvasContext?.instructions?.trim()) {
+      contextMessages.push({
+        role: 'system',
+        content: canvasContext.instructions.trim(),
+      });
+    }
+    if (canvasContext?.knowledgeBase?.trim()) {
+      contextMessages.push({
+        role: 'system',
+        content: `Knowledge Base:\n\n${canvasContext.knowledgeBase.trim()}`,
+      });
+    }
+
+    const conversationMessages = messages.map((msg, idx) => {
       const isLastUserMessage = msg.role === 'user' && idx === lastUserMessageIdx;
       
       if (isLastUserMessage && attachments && attachments.length > 0) {
@@ -221,6 +240,8 @@ export async function POST(req: Request): Promise<Response> {
         content: msg.content,
       };
     });
+
+    const aiMessages = [...contextMessages, ...conversationMessages];
 
     // Stream the response
     const result = streamText({

@@ -6,7 +6,6 @@ import { X, Key, AlertCircle, CheckCircle, Loader, ExternalLink } from 'lucide-r
 
 import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
-import { detectProvider } from '@/lib/vercel-ai-integration';
 
 // =============================================================================
 // API KEY SETUP MODAL
@@ -161,14 +160,25 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
         onClose();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement | null;
+        const tagName = target?.tagName?.toLowerCase();
+        if (tagName === 'textarea' || tagName === 'select' || tagName === 'button') return;
+        if (isSaving) return;
+        handleSave();
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, handleSave, isSaving]);
 
   if (!isOpen) return null;
 
@@ -350,11 +360,11 @@ function KeyInput({
           placeholder={placeholder}
           style={{
             ...styles.input,
-            borderColor: error
-              ? 'var(--error-border)'
+            border: error
+              ? '1px solid var(--error-border)'
               : isValid
-              ? 'var(--success-border)'
-              : 'var(--border-default)',
+              ? '1px solid var(--success-border)'
+              : '1px solid var(--border-default)',
           }}
         />
         <div style={styles.inputIcons}>
@@ -606,7 +616,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   storageOptionActive: {
     backgroundColor: 'var(--accent-muted)',
-    borderColor: colors.accent.primary,
+    border: `1px solid ${colors.accent.primary}`,
   },
 
   storageOptionTitle: {
