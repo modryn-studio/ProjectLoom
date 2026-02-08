@@ -81,6 +81,7 @@ const mainContentStyles: React.CSSProperties = {
   flex: 1,
   position: 'relative',
   overflow: 'hidden',
+  minWidth: 0,
 };
 
 const canvasStyles: React.CSSProperties = {
@@ -292,23 +293,7 @@ export function InfiniteCanvas() {
 
   // Handle canvas click (deselect and close chat panel)
   const handlePaneClick = useCallback(() => {
-    // Use React Flow instance to ensure proper deselection
-    if (reactFlowInstance.current) {
-      const currentNodes = reactFlowInstance.current.getNodes();
-      const hasSelectedNodes = currentNodes.some((node) => node.selected);
-      
-      if (hasSelectedNodes) {
-        // Explicitly clear selection through React Flow's state management
-        reactFlowInstance.current.setNodes(
-          currentNodes.map((node) => ({
-            ...node,
-            selected: false,
-          })) as Node<ConversationNodeData>[]
-        );
-      }
-    }
-    
-    // Close chat panel (which also clears our internal selection state)
+    // Close chat panel (also clears selection and active conversation)
     closeChatPanel();
   }, [closeChatPanel]);
 

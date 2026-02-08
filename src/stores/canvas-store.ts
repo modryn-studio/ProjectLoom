@@ -1525,11 +1525,19 @@ export const useCanvasStore = create<WorkspaceState>()(
       // Auto-save current draft before switching (if we have one)
       // Draft is managed in MessageInput component state, but we store it here when switching
       
-      set({
+      set((state) => ({
         chatPanelOpen: true,
         activeConversationId: conversationId,
         selectedNodeIds: new Set([conversationId]),
-      });
+        nodes: state.nodes.map((node) => ({
+          ...node,
+          selected: node.id === conversationId,
+          data: {
+            ...node.data,
+            isSelected: node.id === conversationId,
+          },
+        })),
+      }));
       
       logger.debug(`Opened chat panel for conversation ${conversationId}`);
     },
@@ -1537,6 +1545,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     closeChatPanel: () => {
       set((state) => ({
         chatPanelOpen: false,
+        activeConversationId: null,
         selectedNodeIds: new Set(),
         nodes: state.nodes.map((node) => ({
           ...node,

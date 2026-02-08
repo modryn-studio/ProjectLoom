@@ -481,12 +481,14 @@ Tangential Topic (Summary)──┘
 - Click card → opens chat panel with full conversation
 - Right-click → context menu
 - Drag card → reposition on canvas
+- Click empty canvas → closes chat panel and clears selection
 
 **Chat panel behavior:**
 - Drag left edge → resize panel (400-800px)
 - Click X or press Escape → close panel
 - Type and press Ctrl+Enter → send message
 - Amber border on canvas card → indicates active conversation
+- Chat panel lives in a right column; top bars remain visible
 
 ---
 

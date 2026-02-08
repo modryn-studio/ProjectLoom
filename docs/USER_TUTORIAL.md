@@ -98,8 +98,9 @@ Open your browser to `http://localhost:3000`
 
 **View full conversation:**
 - **Click any card** to open the **right chat panel**
-- The panel slides in from the right side
+- The panel slides in from the right side (separate column)
 - Shows full message history with scrollable thread
+- Breadcrumb + Inherited Context bars stay visible at the top
 - **Resizable:** Drag the left edge to resize (400-800px)
 - **Close:** Press `Escape` or click the X button
 
@@ -556,10 +557,11 @@ ProjectLoom enforces these limits:
 - Shows at top of canvas (pointer-events-auto overlay)
 
 **What it shows:**
-- Parent card titles (clickable to select parent)
+- Parent card titles grouped per parent
 - Inherited message count per parent
-- Inheritance mode badge (Full/Summary/Custom/None)
+- Inheritance mode badge per parent (Full/Summary/Custom/None)
 - Expand/collapse to see full message details
+- Merge nodes show combined context from all parents
 
 **Test it:**
 1. Select a branched card

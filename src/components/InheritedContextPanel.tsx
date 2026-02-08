@@ -33,6 +33,19 @@ const contentStyles: React.CSSProperties = {
   padding: `0 ${spacing[3]} ${spacing[3]}`,
 };
 
+const parentSectionStyles: React.CSSProperties = {
+  padding: `${spacing[2]} 0`,
+  borderTop: '1px solid var(--border-primary)',
+};
+
+const parentHeaderStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: spacing[2],
+  marginBottom: spacing[2],
+};
+
 const badgeStyles: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -63,6 +76,19 @@ function getModeColor(mode: InheritanceMode): string {
   }
 }
 
+interface ParentContextEntry {
+  parentId: string;
+  parentTitle: string;
+  context: {
+    mode: InheritanceMode;
+    messages?: Message[];
+    timestamp: string | Date;
+  };
+  parentConversation: Conversation | null;
+  isSummaryMode: boolean;
+  regenerateCostEstimate: string | null;
+}
+
 // =============================================================================
 // INHERITED CONTEXT PANEL COMPONENT (v4 - Card-Level Branching)
 // =============================================================================
@@ -75,8 +101,8 @@ function getModeColor(mode: InheritanceMode): string {
  */
 export function InheritedContextPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [regenerateError, setRegenerateError] = useState<string | null>(null);
+  const [regeneratingParentId, setRegeneratingParentId] = useState<string | null>(null);
+  const [regenerateErrors, setRegenerateErrors] = useState<Record<string, string>>({});
 
   // Get current workspace and selected node to find inherited context
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
@@ -97,53 +123,59 @@ export function InheritedContextPanel() {
     return conv;
   }, [selectedNodeIds, conversations]);
 
-  // Get parent conversation title
-  const parentTitle = useMemo(() => {
-    if (!selectedConversation || selectedConversation.parentCardIds.length === 0) {
-      return 'Parent Card';
-    }
-    const parentId = selectedConversation.parentCardIds[0];
-    const parent = conversations.get(parentId);
-    return parent?.metadata.title || 'Parent Card';
+  const parentEntries = useMemo<ParentContextEntry[]>(() => {
+    if (!selectedConversation) return [];
+
+    return selectedConversation.parentCardIds
+      .map((parentId) => {
+        const context = selectedConversation.inheritedContext[parentId];
+        if (!context) return null;
+
+        const parentConversation = conversations.get(parentId) || null;
+        const parentTitle = parentConversation?.metadata.title || 'Parent Card';
+        const isSummaryMode = context.mode === 'summary';
+        const regenerateCostEstimate = isSummaryMode && parentConversation
+          ? formatCost(
+              estimateCost(
+                estimateMessagesTokens(parentConversation.content),
+                500,
+                'claude-sonnet-4-20250514'
+              )
+            )
+          : null;
+
+        return {
+          parentId,
+          parentTitle,
+          context,
+          parentConversation,
+          isSummaryMode,
+          regenerateCostEstimate,
+        };
+      })
+      .filter((entry): entry is ParentContextEntry => Boolean(entry));
   }, [selectedConversation, conversations]);
 
-  // Get inherited messages from the first parent
-  const inheritedContext = useMemo(() => {
-    if (!selectedConversation) return null;
-    
-    const firstParentId = selectedConversation.parentCardIds[0];
-    if (!firstParentId) return null;
-    
-    return selectedConversation.inheritedContext[firstParentId];
-  }, [selectedConversation]);
-
-  // Detect if inherited context is a summary
-  const isSummaryMode = inheritedContext?.mode === 'summary';
-
-  // Get parent conversation for regeneration (need its full messages)
-  const parentConversation = useMemo(() => {
-    if (!selectedConversation || !isSummaryMode) return null;
-    const parentId = selectedConversation.parentCardIds[0];
-    return parentId ? conversations.get(parentId) : null;
-  }, [selectedConversation, isSummaryMode, conversations]);
-
-  // Cost estimate for regeneration
-  const regenerateCostEstimate = useMemo(() => {
-    if (!parentConversation || !isSummaryMode) return null;
-    const tokens = estimateMessagesTokens(parentConversation.content);
-    const cost = estimateCost(tokens, 500, 'claude-sonnet-4-20250514');
-    return formatCost(cost);
-  }, [parentConversation, isSummaryMode]);
-
   // Handle regenerate summary
-  const handleRegenerateSummary = useCallback(async () => {
-    if (!selectedConversation || !parentConversation) return;
+  const handleRegenerateSummary = useCallback(async (parentId: string) => {
+    if (!selectedConversation) return;
 
-    const parentId = selectedConversation.parentCardIds[0];
-    if (!parentId) return;
+    const parentConversation = conversations.get(parentId);
+    const inheritedEntry = selectedConversation.inheritedContext[parentId];
 
-    setIsRegenerating(true);
-    setRegenerateError(null);
+    if (!parentConversation || !inheritedEntry || inheritedEntry.mode !== 'summary') {
+      setRegenerateErrors((prev) => ({
+        ...prev,
+        [parentId]: 'Parent card not found or summary mode unavailable.',
+      }));
+      return;
+    }
+
+    setRegeneratingParentId(parentId);
+    setRegenerateErrors((prev) => ({
+      ...prev,
+      [parentId]: '',
+    }));
 
     try {
       const anthropicKey = apiKeyManager.getKey('anthropic');
@@ -152,8 +184,11 @@ export function InheritedContextPanel() {
       const model = anthropicKey ? 'claude-sonnet-4-20250514' : 'gpt-4o';
 
       if (!apiKey) {
-        setRegenerateError('No API key configured. Add one in Settings.');
-        setIsRegenerating(false);
+        setRegenerateErrors((prev) => ({
+          ...prev,
+          [parentId]: 'No API key configured. Add one in Settings.',
+        }));
+        setRegeneratingParentId(null);
         return;
       }
 
@@ -176,8 +211,11 @@ export function InheritedContextPanel() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        setRegenerateError(errorData.error || 'Failed to regenerate summary.');
-        setIsRegenerating(false);
+        setRegenerateErrors((prev) => ({
+          ...prev,
+          [parentId]: errorData.error || 'Failed to regenerate summary.',
+        }));
+        setRegeneratingParentId(null);
         return;
       }
 
@@ -185,21 +223,21 @@ export function InheritedContextPanel() {
 
       // Update the inherited context with new summary
       updateInheritedSummary(selectedConversation.id, parentId, summary);
-      setIsRegenerating(false);
+      setRegeneratingParentId(null);
     } catch (error) {
       console.error('[InheritedContextPanel] Summary regeneration failed:', error);
-      setRegenerateError('Failed to regenerate summary. Check your connection.');
-      setIsRegenerating(false);
+      setRegenerateErrors((prev) => ({
+        ...prev,
+        [parentId]: 'Failed to regenerate summary. Check your connection.',
+      }));
+      setRegeneratingParentId(null);
     }
-  }, [selectedConversation, parentConversation, updateInheritedSummary]);
+  }, [selectedConversation, conversations, updateInheritedSummary]);
 
   // Don't render if no inherited context
-  if (!selectedConversation || !inheritedContext) {
+  if (!selectedConversation || parentEntries.length === 0) {
     return null;
   }
-
-  const inheritedMessages: Message[] = inheritedContext.messages || [];
-  const inheritanceMode: InheritanceMode = inheritedContext.mode;
 
   return (
     <motion.div
@@ -220,26 +258,15 @@ export function InheritedContextPanel() {
             color: colors.fg.primary,
             fontFamily: typography.fonts.body,
           }}>
-            Inherited from "{parentTitle}"
+            Inherited context
           </span>
 
-          {/* Mode badge */}
-          <span style={{
-            ...badgeStyles,
-            backgroundColor: `${getModeColor(inheritanceMode)}20`,
-            color: getModeColor(inheritanceMode),
-          }}>
-            {getModeLabel(inheritanceMode)}
-          </span>
-
-          {/* Message count badge */}
           <span style={{
             ...badgeStyles,
             backgroundColor: colors.bg.inset,
             color: colors.fg.quaternary,
           }}>
-            <MessageSquare size={12} />
-            {inheritedMessages.length}
+            {parentEntries.length} {parentEntries.length === 1 ? 'parent' : 'parents'}
           </span>
         </div>
 
@@ -274,151 +301,189 @@ export function InheritedContextPanel() {
             style={{ overflow: 'hidden' }}
           >
             <div style={contentStyles}>
-              {/* Inherited messages preview */}
-              <div>
-                <div style={{ 
-                  fontSize: typography.sizes.xs, 
-                  color: colors.fg.quaternary,
-                  marginBottom: spacing[1],
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontFamily: typography.fonts.body,
-                }}>
-                  <FileText size={12} />
-                  Inherited messages ({inheritedMessages.length})
-                </div>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: spacing[1],
-                  maxHeight: 200,
-                  overflowY: 'auto',
-                  padding: spacing[2],
-                  backgroundColor: colors.bg.inset,
-                  borderRadius: effects.border.radius.default,
-                }}>
-                  {inheritedMessages.slice(0, 5).map((msg: Message) => (
-                    <div
-                      key={msg.id}
-                      style={{
-                        display: 'flex',
-                        gap: spacing[2],
-                        padding: spacing[1],
-                        backgroundColor: msg.role === 'user' 
-                          ? 'var(--accent-muted)' 
-                          : msg.role === 'system'
-                          ? 'var(--warning-muted)'
-                          : 'transparent',
-                        borderRadius: effects.border.radius.default,
-                      }}
-                    >
-                      <span style={{ 
-                        flexShrink: 0,
-                        width: 60,
-                        fontSize: typography.sizes.xs,
-                        color: msg.role === 'user' 
-                          ? colors.accent.primary 
-                          : msg.role === 'system'
-                          ? colors.accent.primary
-                          : colors.accent.primary,
-                        fontWeight: 500,
-                        fontFamily: typography.fonts.body,
-                      }}>
-                        {msg.role === 'user' ? 'You' : msg.role === 'system' ? 'Summary' : 'Assistant'}
-                      </span>
-                      <span style={{
-                        fontSize: typography.sizes.xs,
-                        color: colors.fg.secondary,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: msg.role === 'system' && isSummaryMode ? 'pre-wrap' : 'nowrap',
-                        fontFamily: typography.fonts.body,
-                        ...(msg.role === 'system' && isSummaryMode ? { maxHeight: 150, overflowY: 'auto' as const } : {}),
-                      }}>
-                        {msg.role === 'system' && isSummaryMode
-                          ? msg.content
-                          : msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : '')
-                        }
-                      </span>
+              {parentEntries.map((entry) => {
+                const inheritedMessages: Message[] = entry.context.messages || [];
+                const inheritanceMode: InheritanceMode = entry.context.mode;
+                const isRegenerating = regeneratingParentId === entry.parentId;
+                const regenerateError = regenerateErrors[entry.parentId];
+
+                return (
+                  <div key={entry.parentId} style={parentSectionStyles}>
+                    <div style={parentHeaderStyles}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                        <span style={{
+                          fontSize: typography.sizes.sm,
+                          fontWeight: 500,
+                          color: colors.fg.primary,
+                          fontFamily: typography.fonts.body,
+                        }}>
+                          Inherited from "{entry.parentTitle}"
+                        </span>
+
+                        <span style={{
+                          ...badgeStyles,
+                          backgroundColor: `${getModeColor(inheritanceMode)}20`,
+                          color: getModeColor(inheritanceMode),
+                        }}>
+                          {getModeLabel(inheritanceMode)}
+                        </span>
+
+                        <span style={{
+                          ...badgeStyles,
+                          backgroundColor: colors.bg.inset,
+                          color: colors.fg.quaternary,
+                        }}>
+                          <MessageSquare size={12} />
+                          {inheritedMessages.length}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                  {inheritedMessages.length > 5 && (
+
+                    <div>
+                      <div style={{ 
+                        fontSize: typography.sizes.xs, 
+                        color: colors.fg.quaternary,
+                        marginBottom: spacing[1],
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontFamily: typography.fonts.body,
+                      }}>
+                        <FileText size={12} />
+                        Inherited messages ({inheritedMessages.length})
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: spacing[1],
+                        maxHeight: 200,
+                        overflowY: 'auto',
+                        padding: spacing[2],
+                        backgroundColor: colors.bg.inset,
+                        borderRadius: effects.border.radius.default,
+                      }}>
+                        {inheritedMessages.slice(0, 5).map((msg: Message) => (
+                          <div
+                            key={msg.id}
+                            style={{
+                              display: 'flex',
+                              gap: spacing[2],
+                              padding: spacing[1],
+                              backgroundColor: msg.role === 'user' 
+                                ? 'var(--accent-muted)' 
+                                : msg.role === 'system'
+                                ? 'var(--warning-muted)'
+                                : 'transparent',
+                              borderRadius: effects.border.radius.default,
+                            }}
+                          >
+                            <span style={{ 
+                              flexShrink: 0,
+                              width: 60,
+                              fontSize: typography.sizes.xs,
+                              color: msg.role === 'user' 
+                                ? colors.accent.primary 
+                                : msg.role === 'system'
+                                ? colors.accent.primary
+                                : colors.accent.primary,
+                              fontWeight: 500,
+                              fontFamily: typography.fonts.body,
+                            }}>
+                              {msg.role === 'user' ? 'You' : msg.role === 'system' ? 'Summary' : 'Assistant'}
+                            </span>
+                            <span style={{
+                              fontSize: typography.sizes.xs,
+                              color: colors.fg.secondary,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: msg.role === 'system' && entry.isSummaryMode ? 'pre-wrap' : 'nowrap',
+                              fontFamily: typography.fonts.body,
+                              ...(msg.role === 'system' && entry.isSummaryMode ? { maxHeight: 150, overflowY: 'auto' as const } : {}),
+                            }}>
+                              {msg.role === 'system' && entry.isSummaryMode
+                                ? msg.content
+                                : msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : '')
+                              }
+                            </span>
+                          </div>
+                        ))}
+                        {inheritedMessages.length > 5 && (
+                          <div style={{
+                            fontSize: typography.sizes.xs,
+                            color: colors.fg.quaternary,
+                            textAlign: 'center',
+                            padding: spacing[1],
+                            fontFamily: typography.fonts.body,
+                          }}>
+                            +{inheritedMessages.length - 5} more messages
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div style={{
+                      marginTop: spacing[2],
                       fontSize: typography.sizes.xs,
                       color: colors.fg.quaternary,
-                      textAlign: 'center',
-                      padding: spacing[1],
                       fontFamily: typography.fonts.body,
                     }}>
-                      +{inheritedMessages.length - 5} more messages
+                      Inherited: {new Date(entry.context.timestamp).toLocaleString()}
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Timestamp */}
-              <div style={{
-                marginTop: spacing[2],
-                fontSize: typography.sizes.xs,
-                color: colors.fg.quaternary,
-                fontFamily: typography.fonts.body,
-              }}>
-                Inherited: {new Date(inheritedContext.timestamp).toLocaleString()}
-              </div>
+                    {entry.isSummaryMode && (
+                      <div style={{ marginTop: spacing[2] }}>
+                        <button
+                          onClick={() => handleRegenerateSummary(entry.parentId)}
+                          disabled={isRegenerating || !entry.parentConversation}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: spacing[1],
+                            padding: `${spacing[1]} ${spacing[2]}`,
+                            backgroundColor: isRegenerating ? colors.bg.inset : `${colors.accent.primary}15`,
+                            border: `1px solid ${colors.accent.primary}`,
+                            borderRadius: effects.border.radius.default,
+                            color: isRegenerating ? colors.fg.quaternary : colors.accent.primary,
+                            fontSize: typography.sizes.xs,
+                            fontFamily: typography.fonts.body,
+                            cursor: isRegenerating ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <RefreshCw 
+                            size={12} 
+                            style={isRegenerating ? { animation: 'spin 1s linear infinite' } : undefined} 
+                          />
+                          {isRegenerating ? 'Regenerating...' : 'Regenerate Summary'}
+                          {entry.regenerateCostEstimate && !isRegenerating && (
+                            <span style={{ 
+                              color: colors.fg.quaternary,
+                              marginLeft: 4,
+                            }}>
+                              ({entry.regenerateCostEstimate})
+                            </span>
+                          )}
+                        </button>
 
-              {/* Regenerate Summary Button (only for summary mode) */}
-              {isSummaryMode && (
-                <div style={{ marginTop: spacing[2] }}>
-                  <button
-                    onClick={handleRegenerateSummary}
-                    disabled={isRegenerating}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: spacing[1],
-                      padding: `${spacing[1]} ${spacing[2]}`,
-                      backgroundColor: isRegenerating ? colors.bg.inset : `${colors.accent.primary}15`,
-                      border: `1px solid ${colors.accent.primary}`,
-                      borderRadius: effects.border.radius.default,
-                      color: isRegenerating ? colors.fg.quaternary : colors.accent.primary,
-                      fontSize: typography.sizes.xs,
-                      fontFamily: typography.fonts.body,
-                      cursor: isRegenerating ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <RefreshCw 
-                      size={12} 
-                      style={isRegenerating ? { animation: 'spin 1s linear infinite' } : undefined} 
-                    />
-                    {isRegenerating ? 'Regenerating...' : 'Regenerate Summary'}
-                    {regenerateCostEstimate && !isRegenerating && (
-                      <span style={{ 
-                        color: colors.fg.quaternary,
-                        marginLeft: 4,
-                      }}>
-                        ({regenerateCostEstimate})
-                      </span>
+                        {regenerateError && (
+                          <div style={{
+                            marginTop: spacing[1],
+                            padding: spacing[1],
+                            backgroundColor: `${colors.semantic.error}15`,
+                            border: `1px solid ${colors.semantic.error}`,
+                            borderRadius: effects.border.radius.default,
+                            fontSize: typography.sizes.xs,
+                            color: colors.semantic.error,
+                            fontFamily: typography.fonts.body,
+                          }}>
+                            {regenerateError}
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </button>
-
-                  {regenerateError && (
-                    <div style={{
-                      marginTop: spacing[1],
-                      padding: spacing[1],
-                      backgroundColor: `${colors.semantic.error}15`,
-                      border: `1px solid ${colors.semantic.error}`,
-                      borderRadius: effects.border.radius.default,
-                      fontSize: typography.sizes.xs,
-                      color: colors.semantic.error,
-                      fontFamily: typography.fonts.body,
-                    }}>
-                      {regenerateError}
-                    </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}
