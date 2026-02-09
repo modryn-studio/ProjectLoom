@@ -44,7 +44,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'high',
-    description: 'Most intelligent for agents and coding (200K context; 1M beta)',
+    description: 'Most capable model for complex reasoning, multi-step workflows, and advanced coding. Excels at research, analysis, and agentic tasks. 200K context (1M beta available).',
   },
   {
     id: 'claude-sonnet-4-5',
@@ -54,7 +54,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Best balance of speed and intelligence (200K context; 1M beta)',
+    description: 'Ideal balance of performance and cost. Fast responses with strong reasoning for everyday coding, writing, and conversation. 200K context (1M beta available).',
   },
   {
     id: 'claude-haiku-4-5',
@@ -64,7 +64,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Fastest model with near-frontier intelligence',
+    description: 'Fastest and most affordable option with impressive intelligence. Great for quick tasks, simple coding, and high-volume use cases. 200K context.',
   },
 
   // OpenAI Models
@@ -76,7 +76,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Flagship for coding and agentic tasks across industries',
+    description: 'OpenAI flagship model for production use. Excellent at coding, creative tasks, and structured output. Massive 400K context window for large codebases.',
   },
   {
     id: 'gpt-5.2-pro',
@@ -86,7 +86,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'high',
-    description: 'Harder-thinking variant for the most demanding problems',
+    description: 'Extended reasoning mode for complex problems requiring deeper thought. Best for research, mathematics, system design, and challenging technical questions.',
   },
   {
     id: 'gpt-5-mini',
@@ -96,7 +96,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Cost-optimized reasoning and chat for well-defined tasks',
+    description: 'Affordable model for straightforward tasks like editing, summarization, and well-scoped coding. Fast and cost-effective with 400K context.',
   },
   {
     id: 'gpt-5-nano',
@@ -106,7 +106,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'High-throughput model for simple tasks and classification',
+    description: 'Ultra-fast and economical for simple tasks like classification, data extraction, and basic Q&A. Ideal for high-volume API usage.',
   },
   {
     id: 'gpt-4.1',
@@ -116,7 +116,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Smartest non-reasoning model with 1M token context',
+    description: 'Advanced model with enormous 1M token context window. Perfect for analyzing entire codebases, long documents, or maintaining extensive conversation history.',
   },
 ];
 
