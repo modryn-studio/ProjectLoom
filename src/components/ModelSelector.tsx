@@ -191,6 +191,7 @@ function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
   return (
     <button
       onClick={() => onSelect(model.id)}
+      title={model.description}
       style={{
         ...styles.option,
         backgroundColor: isSelected ? 'var(--accent-muted)' : 'transparent',
@@ -205,7 +206,6 @@ function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
             {costInfo.label}
           </span>
         </div>
-        <span style={styles.optionDescription}>{model.description}</span>
       </div>
       {isSelected && (
         <Check size={14} style={{ color: colors.accent.primary, flexShrink: 0 }} />
@@ -313,12 +313,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: typography.fonts.body,
     color: colors.fg.primary,
     fontWeight: 500,
-  },
-
-  optionDescription: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.fonts.body,
-    color: colors.fg.quaternary,
   },
 
   noKeys: {
