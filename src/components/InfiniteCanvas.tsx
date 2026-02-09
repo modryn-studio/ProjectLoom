@@ -36,7 +36,6 @@ import { BranchDialog } from './BranchDialog';
 import { InheritedContextPanel } from './InheritedContextPanel';
 import { CanvasBreadcrumb } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
-import { APIKeyWarningBanner } from './APIKeyWarningBanner';
 import { SettingsPanel } from './SettingsPanel';
 import { CanvasContextModal } from './CanvasContextModal';
 import { AgentDialog } from './AgentDialog';
@@ -930,9 +929,6 @@ export function InfiniteCanvas() {
 
               {/* Branch Dialog */}
               <BranchDialog />
-
-              {/* API Key Warning Banner */}
-              <APIKeyWarningBanner position="bottom" />
 
               {/* Canvas Context Menu */}
               <ContextMenu

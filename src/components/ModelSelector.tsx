@@ -116,9 +116,9 @@ export function ModelSelector({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
             style={styles.dropdown}
             role="listbox"
@@ -260,11 +260,11 @@ const styles: Record<string, React.CSSProperties> = {
 
   dropdown: {
     position: 'absolute',
-    top: '100%',
+    bottom: '100%',
     left: 0,
     right: 0,
     minWidth: 280,
-    marginTop: spacing[1],
+    marginBottom: spacing[1],
     backgroundColor: colors.bg.inset,
     border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
