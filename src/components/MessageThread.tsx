@@ -3,6 +3,8 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message as ChatMessage } from 'ai';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
@@ -30,6 +32,7 @@ export function MessageThread({
   isStreaming = false,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isPinnedToBottomRef = useRef(true);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
   const [isTouchDevice] = useState(() => (
     typeof window !== 'undefined'
@@ -42,19 +45,22 @@ export function MessageThread({
   const displayMessages = useMemo(() => {
     if (isStreaming && streamingMessages.length > 0) {
       // During active streaming, convert useChat messages to our format
-      // Pre-index store messages by content+role for O(1) lookups instead of O(n) find per message
+      // Pre-index store messages by ID for O(1) lookups instead of O(n) find per message
       const storeMessages = conversation.content;
       const storeIndex = new Map<string, Message>();
       for (const sm of storeMessages) {
-        storeIndex.set(`${sm.role}:${sm.content}`, sm);
+        storeIndex.set(sm.id, sm);
       }
       
       // Stable fallback timestamp to avoid creating new Date objects per render
-      const fallbackTimestamp = storeMessages[0]?.timestamp || new Date();
+      const firstTimestamp = storeMessages[0]?.timestamp;
+      const fallbackTimestamp = (firstTimestamp && !isNaN(new Date(firstTimestamp).getTime()))
+        ? firstTimestamp
+        : new Date();
       
       return streamingMessages.map((msg, idx) => {
-        // O(1) lookup instead of O(n) find
-        const storeMsg = storeIndex.get(`${msg.role}:${msg.content}`);
+        // O(1) lookup by ID
+        const storeMsg = storeIndex.get(msg.id);
         return {
           id: msg.id || `streaming-${idx}`,
           role: msg.role as 'user' | 'assistant' | 'system',
@@ -81,16 +87,25 @@ export function MessageThread({
   // Auto-scroll to bottom when new messages arrive or streaming content updates
   // Use displayMessages.length for new messages and streamingMessages.length for
   // "new streaming message added" (not content changes within existing messages).
-  // The last streaming message content length triggers scroll during active streaming.
+  // The last streaming message content triggers scroll during active streaming.
   const lastStreamingContent = isStreaming && streamingMessages.length > 0
-    ? streamingMessages[streamingMessages.length - 1]?.content.length ?? 0
-    : 0;
+    ? streamingMessages[streamingMessages.length - 1]?.content ?? ''
+    : '';
 
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    if (scrollContainerRef.current && isPinnedToBottomRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [displayMessages.length, streamingMessages.length, lastStreamingContent]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const bottomThreshold = 24;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    isPinnedToBottomRef.current = distanceFromBottom <= bottomThreshold;
+  }, []);
 
   // Handle branch from specific message
   const handleBranchClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
@@ -118,7 +133,7 @@ export function MessageThread({
   }, []);
 
   return (
-    <div ref={scrollContainerRef} style={threadStyles.container}>
+    <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
       <AnimatePresence mode="sync">
         {displayMessages
           .filter((m): m is Message => m != null && typeof m.id === 'string')
@@ -222,6 +237,45 @@ const MessageBubble = memo(function MessageBubble({
     toast.info('Edit feature coming soon');
   }, [toast]);
 
+  const markdownComponents = useMemo(() => ({
+    p: ({ children }: { children?: React.ReactNode }) => (
+      <p style={bubbleStyles.markdownParagraph}>{children}</p>
+    ),
+    strong: ({ children }: { children?: React.ReactNode }) => (
+      <strong style={bubbleStyles.markdownStrong}>{children}</strong>
+    ),
+    em: ({ children }: { children?: React.ReactNode }) => (
+      <em style={bubbleStyles.markdownEm}>{children}</em>
+    ),
+    code: ({ inline = false, children }: { inline?: boolean; children?: React.ReactNode }) => (
+      <code style={inline ? bubbleStyles.markdownInlineCode : bubbleStyles.markdownCodeBlock}>
+        {children}
+      </code>
+    ),
+    pre: ({ children }: { children?: React.ReactNode }) => (
+      <pre style={bubbleStyles.markdownPre}>{children}</pre>
+    ),
+    ul: ({ children }: { children?: React.ReactNode }) => (
+      <ul style={bubbleStyles.markdownList}>{children}</ul>
+    ),
+    ol: ({ children }: { children?: React.ReactNode }) => (
+      <ol style={bubbleStyles.markdownList}>{children}</ol>
+    ),
+    li: ({ children }: { children?: React.ReactNode }) => (
+      <li style={bubbleStyles.markdownListItem}>{children}</li>
+    ),
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+      <a
+        href={href}
+        target={href ? '_blank' : undefined}
+        rel={href ? 'noopener noreferrer' : undefined}
+        style={bubbleStyles.markdownLink}
+      >
+        {children}
+      </a>
+    ),
+  }), []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -253,7 +307,9 @@ const MessageBubble = memo(function MessageBubble({
             textAlign: textStyles.textAlign,
           }}
         >
-          {message.content}
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {message.content}
+          </ReactMarkdown>
           {/* Streaming indicator */}
           {isStreamingMessage && (
             <motion.span
@@ -474,6 +530,46 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
+  },
+  markdownParagraph: {
+    margin: 0,
+    marginBottom: spacing[2],
+  },
+  markdownStrong: {
+    fontWeight: 700,
+  },
+  markdownEm: {
+    fontStyle: 'italic',
+  },
+  markdownInlineCode: {
+    fontFamily: typography.fonts.code || 'monospace',
+    backgroundColor: colors.bg.inset,
+    border: `1px solid ${colors.border.muted}`,
+    borderRadius: effects.border.radius.sm || '4px',
+    padding: '0 4px',
+  },
+  markdownPre: {
+    margin: `${spacing[2]} 0`,
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: colors.bg.inset,
+    border: `1px solid ${colors.border.muted}`,
+    borderRadius: effects.border.radius.default,
+    overflowX: 'auto',
+  },
+  markdownCodeBlock: {
+    fontFamily: typography.fonts.code || 'monospace',
+    fontSize: typography.sizes.xs,
+  },
+  markdownList: {
+    margin: `${spacing[2]} 0`,
+    paddingLeft: spacing[4],
+  },
+  markdownListItem: {
+    marginBottom: spacing[1],
+  },
+  markdownLink: {
+    color: colors.accent.primary,
+    textDecoration: 'underline',
   },
 
   streamingIndicator: {

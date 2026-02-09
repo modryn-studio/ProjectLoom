@@ -9,7 +9,7 @@
  * @version 4.0.0
  */
 
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, animation } from '@/lib/design-tokens';

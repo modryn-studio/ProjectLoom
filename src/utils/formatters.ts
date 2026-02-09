@@ -126,6 +126,50 @@ export function getPreviewText(content: string, maxChars = 100): string {
   return truncate(stripped, maxChars);
 }
 
+/**
+ * Enforce maximum word limit on a title
+ */
+export function enforceTitleWordLimit(title: string, maxWords: number = 2): string {
+  return title.trim().split(/\s+/).slice(0, maxWords).join(' ');
+}
+
+/**
+ * Generate a short, readable conversation title from user/assistant text
+ */
+export function generateConversationTitle(options: {
+  userText: string;
+  assistantText?: string;
+  maxWords?: number;
+  maxChars?: number;
+}): string {
+  const {
+    userText,
+    assistantText,
+    maxWords = 2,
+    maxChars = 60,
+  } = options;
+
+  const combined = assistantText ? `${userText} ${assistantText}` : userText;
+  const cleaned = stripMarkdown(combined)
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return 'Untitled';
+
+  const words = cleaned.split(' ');
+  const clipped = words.slice(0, maxWords).join(' ');
+  let title = clipped.replace(/[.,:;!?]+$/g, '').trim();
+
+  if (title.length > maxChars) {
+    title = title.slice(0, maxChars).trim();
+  }
+
+  if (!title) return 'Untitled';
+
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
 // =============================================================================
 // NUMBER FORMATTERS
 // =============================================================================

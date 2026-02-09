@@ -151,6 +151,7 @@ function ConversationCardComponent({
   // Preview content
   const previewContent = useMemo(() => getPreviewContent(messages), [messages]);
 
+
   // Context menu items (excluding branch - it opens dialog directly, no expand since cards are fixed)
   const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
     onDelete: () => {
@@ -367,6 +368,7 @@ function ConversationCardComponent({
         onClose={closeMenu}
         items={dynamicItems.length > 0 ? dynamicItems : menuItems}
       />
+
 
       {/* Inline Branch Panel (mouse workflow) */}
       {pendingBranchMessageIndex !== null && (
