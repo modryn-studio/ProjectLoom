@@ -6,7 +6,8 @@ import { ChevronDown, ChevronUp, GitBranch, MessageSquare, FileText, RefreshCw }
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
-import { estimateMessagesTokens, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { detectProvider, estimateMessagesTokens, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { useUsageStore } from '@/stores/usage-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import type { InheritanceMode, Message, Conversation } from '@/types';
 
@@ -108,6 +109,7 @@ export function InheritedContextPanel() {
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const conversations = useCanvasStore((s) => s.conversations);
   const updateInheritedSummary = useCanvasStore((s) => s.updateInheritedSummary);
+  const addUsage = useUsageStore((s) => s.addUsage);
   
   // Get the first selected conversation that has inherited context
   const selectedConversation = useMemo<Conversation | null>(() => {
@@ -123,37 +125,39 @@ export function InheritedContextPanel() {
     return conv;
   }, [selectedNodeIds, conversations]);
 
-  const parentEntries = useMemo<ParentContextEntry[]>(() => {
+  const parentEntries = useMemo(() => {
     if (!selectedConversation) return [];
 
-    return selectedConversation.parentCardIds
-      .map((parentId) => {
-        const context = selectedConversation.inheritedContext[parentId];
-        if (!context) return null;
+    const entries: ParentContextEntry[] = [];
+    
+    for (const parentId of selectedConversation.parentCardIds) {
+      const context = selectedConversation.inheritedContext[parentId];
+      if (!context) continue;
 
-        const parentConversation = conversations.get(parentId) || null;
-        const parentTitle = parentConversation?.metadata.title || 'Parent Card';
-        const isSummaryMode = context.mode === 'summary';
-        const regenerateCostEstimate = isSummaryMode && parentConversation
-          ? formatCost(
-              estimateCost(
-                estimateMessagesTokens(parentConversation.content),
-                500,
-                'claude-sonnet-4-20250514'
-              )
+      const parentConversation = conversations.get(parentId) || null;
+      const parentTitle = parentConversation?.metadata.title || 'Parent Card';
+      const isSummaryMode = context.mode === 'summary';
+      const regenerateCostEstimate = isSummaryMode && parentConversation
+        ? formatCost(
+            estimateCost(
+              estimateMessagesTokens(parentConversation.content),
+              500,
+              'claude-sonnet-4-20250514'
             )
-          : null;
+          )
+        : null;
 
-        return {
-          parentId,
-          parentTitle,
-          context,
-          parentConversation,
-          isSummaryMode,
-          regenerateCostEstimate,
-        };
-      })
-      .filter((entry): entry is ParentContextEntry => Boolean(entry));
+      entries.push({
+        parentId,
+        parentTitle,
+        context,
+        parentConversation,
+        isSummaryMode,
+        regenerateCostEstimate,
+      });
+    }
+    
+    return entries;
   }, [selectedConversation, conversations]);
 
   // Handle regenerate summary
@@ -219,10 +223,21 @@ export function InheritedContextPanel() {
         return;
       }
 
-      const { summary } = await response.json();
+      const data = await response.json() as { summary: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } };
+
+      if (data.usage?.totalTokens) {
+        addUsage({
+          provider: detectProvider(model),
+          model,
+          inputTokens: data.usage.promptTokens,
+          outputTokens: data.usage.completionTokens,
+          conversationId: parentId,
+          source: 'summarize',
+        });
+      }
 
       // Update the inherited context with new summary
-      updateInheritedSummary(selectedConversation.id, parentId, summary);
+      updateInheritedSummary(selectedConversation.id, parentId, data.summary);
       setRegeneratingParentId(null);
     } catch (error) {
       console.error('[InheritedContextPanel] Summary regeneration failed:', error);
@@ -232,7 +247,7 @@ export function InheritedContextPanel() {
       }));
       setRegeneratingParentId(null);
     }
-  }, [selectedConversation, conversations, updateInheritedSummary]);
+  }, [selectedConversation, conversations, updateInheritedSummary, addUsage]);
 
   // Don't render if no inherited context
   if (!selectedConversation || parentEntries.length === 0) {

@@ -40,9 +40,10 @@ import { SettingsPanel } from './SettingsPanel';
 import { CanvasContextModal } from './CanvasContextModal';
 import { AgentDialog } from './AgentDialog';
 import { ChatPanel } from './ChatPanel';
+import { UsageSidebar } from './UsageSidebar';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen } from '@/stores/canvas-store';
+import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
 import { nanoid } from 'nanoid';
 import { Plus } from 'lucide-react';
@@ -221,6 +222,11 @@ export function InfiniteCanvas() {
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
+
+  // Usage panel state
+  const usagePanelOpen = useCanvasStore(selectUsagePanelOpen);
+  const toggleUsagePanel = useCanvasStore((s) => s.toggleUsagePanel);
+  const closeUsagePanel = useCanvasStore((s) => s.closeUsagePanel);
 
   // Branch dialog state
   const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
@@ -586,7 +592,9 @@ export function InfiniteCanvas() {
       },
       onEscape: () => {
         // Priority: Close chat panel first, then deselect
-        if (chatPanelOpen) {
+        if (usagePanelOpen) {
+          closeUsagePanel();
+        } else if (chatPanelOpen) {
           closeChatPanel();
         } else {
           clearSelection();
@@ -718,6 +726,8 @@ export function InfiniteCanvas() {
         <CanvasTreeSidebar 
           onOpenSettings={openSettings}
           onOpenAgents={openAgents}
+          onToggleUsagePanel={toggleUsagePanel}
+          isUsagePanelOpen={usagePanelOpen}
           onRequestDeleteWorkspace={requestDeleteWorkspace}
           isOpen={isSidebarOpen}
           onToggle={setIsSidebarOpen}
@@ -782,6 +792,8 @@ export function InfiniteCanvas() {
                   showSidebarToggle={!isSidebarOpen}
                   onToggleSidebar={() => setIsSidebarOpen(true)}
                   onOpenCanvasContext={openCanvasContext}
+                  onToggleUsagePanel={toggleUsagePanel}
+                  isUsagePanelOpen={usagePanelOpen}
                 />
               </div>
 
@@ -930,7 +942,7 @@ export function InfiniteCanvas() {
               <h3
                 style={{
                   margin: 0,
-                  fontSize: typography.sizes.md,
+                  fontSize: typography.sizes.lg,
                   fontFamily: typography.fonts.heading,
                   color: colors.fg.primary,
                 }}
@@ -1071,7 +1083,7 @@ export function InfiniteCanvas() {
               <h3
                 style={{
                   margin: 0,
-                  fontSize: typography.sizes.md,
+                  fontSize: typography.sizes.lg,
                   fontFamily: typography.fonts.heading,
                   color: colors.fg.primary,
                 }}
@@ -1127,6 +1139,9 @@ export function InfiniteCanvas() {
 
       {/* Chat Panel (right side) */}
       <ChatPanel />
+
+      {/* Usage Sidebar (right side) */}
+      <UsageSidebar />
     </div>
   );
 }

@@ -50,7 +50,7 @@ export function MessageThread({
       }
       
       // Stable fallback timestamp to avoid creating new Date objects per render
-      const fallbackTimestamp = storeMessages[0]?.timestamp || new Date(0);
+      const fallbackTimestamp = storeMessages[0]?.timestamp || new Date();
       
       return streamingMessages.map((msg, idx) => {
         // O(1) lookup instead of O(n) find

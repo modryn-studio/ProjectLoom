@@ -1,92 +1,252 @@
-# ProjectLoom User Tutorial
+# ProjectLoom Tutorial
 
-> **Version:** v4.2.0 (Phase 2 Complete)  
-> **Last Updated:** February 6, 2026  
-> **Time to Complete:** 15-20 minutes  
-> **Prerequisites:** None - starts with mock data
+> **Quick start guide for testing.** Under 200 lines.  
+> **Last Updated:** February 2026
 
----
-
-## Welcome to ProjectLoom! 🎨
-
-This tutorial will walk you through all features of ProjectLoom, including the brand-new **v4 card-level branching system** with merge nodes and DAG support. By the end, you'll understand how to organize AI conversations spatially, branch from any message, and merge multiple conversation threads.
-
----
-
-## Part 1: Getting Started (5 min)
-
-### 1.1 Launch the Application
+## Launchlaunch
 
 ```bash
 npm run dev
 ```
 
-Open your browser to `http://localhost:3000`
+Open `http://localhost:3000`
 
-**What you'll see:**
-- Three-panel layout: left sidebar, center canvas, right area (for chat panel)
-- Infinite dark navy canvas with dot grid background
-- 10 mock conversation cards arranged in a tree
-- Minimap in bottom-right corner
-- Controls (zoom/fit) in bottom-left corner
-- Performance overlay (dev mode only) on right side
+## Setup API Keys
 
-### 1.2 Configure API Keys (Required for AI Responses)
-
-**ProjectLoom uses BYOK (Bring Your Own Key) for AI providers:**
-
-1. **Open Settings** - Click the gear icon (⚙️) in the bottom-right corner
-2. **Navigate to API Keys tab**
-3. **Add your API key(s):**
-   - **Anthropic (Claude):** Get from [console.anthropic.com](https://console.anthropic.com)
-   - **OpenAI (GPT):** Get from [platform.openai.com](https://platform.openai.com)
-   - You need at least one provider key to use AI chat
-4. **Save:** Keys are stored locally in your browser (localStorage)
+1. **Click gear icon** (⚙️) bottom-right
+2. **API Keys tab**
+3. **Add your key(s):**
+   - Anthropic: Get from [console.anthropic.com](https://console.anthropic.com)
+   - OpenAI: Get from [platform.openai.com](https://platform.openai.com)
+4. **Save** - Keys stored in localStorage
 5. **Close Settings**
 
-**Security Notes:**
-- Your API keys are stored locally in your browser only
-- Keys are never sent to ProjectLoom servers
-- Keys are obfuscated (but not encrypted) in localStorage
-- For production, use environment variables (see docs)
+## Navigation Basics
 
-**First-Time Setup Flow:**
-- If you try to send a message without API keys, you'll see a warning banner
-- Click "Configure API Keys" to open the setup modal
-- Add at least one provider key to continue
+| Action | Method |
+|--------|--------|
+| **Pan canvas** | Click + drag empty space |
+| **Zoom** | Scroll wheel |
+| **Fit view** | Click "fit view" button (bottom-left) |
+| **Select card** | Click any card |
+| **Open chat** | Click card or press `Enter` |
+| **Close chat** | Press `Escape` |
 
-### 1.3 Basic Navigation
+## Send Your First Message
 
-**Try these interactions:**
+1. **Click any card** to open chat panel (slides in from right)
+2. **Type in message input** at bottom
+3. **Press Ctrl+Enter** to send (or click send button)
+4. **Watch AI respond** with streaming text
+5. **Model badge** shows which AI generated response
 
-| Action | How to Do It | What Happens |
-|--------|-------------|--------------|
-| **Pan canvas** | Click + drag on empty space | Canvas moves smoothly |
-| **Zoom in/out** | Scroll wheel | Canvas zooms, cards scale |
-| **Fit view** | Click "fit view" button (bottom-left) | All cards visible with padding |
-| **Reset zoom** | Click "1:1" button | Returns to 100% zoom |
+## Change Models
 
-**Performance check:** Open the dev overlay (right side). It should show **60 FPS** during all interactions.
+1. **Click model dropdown** in chat panel header
+2. **Select model:**
+   - **Claude Sonnet 4** - Best default (balanced)
+   - **Claude Haiku 4** - Fast & cheap
+   - **Claude Opus 4** - Highest quality
+   - **GPT-4o** - OpenAI flagship
+   - **GPT-4o Mini** - OpenAI efficient
+3. **Model persists** per conversation
 
-### 1.3 Canvas Tree Sidebar
+## Create New Cards
 
-**Open the sidebar:**
-- Look for the **folder icon** in the top-left corner
-- Click it to reveal the Canvas Tree Sidebar
+**Press `N`** anywhere on canvas → new card appears
 
-**What you'll see:**
-- "Main Workspace" with expand/collapse chevron
-- Tree structure showing parent-child relationships
-- Icons indicating card types:
-  - 💬 Normal cards
-  - 🌿 Branched cards (amber border in tree)
-  - ⚡ Merge nodes (green/amber/red based on parent count)
+## Branch from Cards
 
-**Try this:**
-- Click on any card in the tree → it gets selected on canvas
-- Expand/collapse the workspace tree
+**Method 1: Keyboard**
+1. Select card
+2. Press `Ctrl+B`
+3. Configure inheritance mode (Full/Summary/Custom/None)
+4. Click "Create Branch"
+
+**Method 2: Branch icon**
+1. Open chat panel
+2. Hover over any message → branch icon (🌿) appears
+3. Click icon → inline branch panel
+4. Configure and create
+
+## Inheritance Modes
+
+- **Full** - All parent messages (default)
+- **Summary** - AI-generated summary (50-90% token reduction)
+- **Custom** - Select specific messages
+- **None** - Fresh start
+
+## Merge Cards
+
+**Combine multiple conversations:**
+
+1. **Drag from card A's right handle**
+2. **Drop on card B**
+3. **Merge node created** (⚡ icon)
+4. **Max 5 parents** (warns at 3, errors at 5)
+
+**Per-parent modes:** Each parent can use Full or Summary independently
+
+## Vision Support
+
+**Upload images in chat:**
+
+1. **Click paperclip icon** (📎) when using vision models
+2. **Select images** (max 3, 5MB each, PNG/JPEG/WebP/GIF)
+3. **Thumbnails appear** above input
+4. **Send message** - AI analyzes images
+
+**Works with:** All Claude models, GPT-4o, GPT-4o Mini
+
+## Keyboard Shortcuts
+
+**Essential:**
+- `N` - New card
+- `Enter` / `Space` - Open chat
+- `Ctrl+B` - Branch
+- `Ctrl+Enter` - Send message
+- `Delete` - Delete selected
+- `Escape` - Close panel / deselect
+- `Ctrl+Z` / `Ctrl+Shift+Z` - Undo / Redo
+
+**View:**
+- `+` / `-` - Zoom
+- `Ctrl+0` - Fit view
+- `Ctrl+F` - Search canvas
+- `Ctrl+L` - Auto-layout
+- `?` - Show shortcuts panel
+
+**Selection:**
+- `Ctrl+A` - Select all
+- `Shift+Click` - Multi-select
+
+## Multi-Select
+
+**Select multiple cards:**
+- `Shift+Click` to add cards
+- Drag selection box on canvas
+- `Ctrl+A` for all
+
+**Delete multiple:**
+- Select cards → press `Delete` → confirm count
+
+## Search Canvas
+
+1. **Press `Ctrl+F`**
+2. **Type query** (searches titles, messages, branch reasons)
+3. **Arrow keys** (↑/↓) navigate results
+4. **Press `Enter`** to jump to result
+5. **Press `Escape`** to close
+
+## Auto-Layout
+
+**Organize overlapping cards:**
+
+1. **Press `Ctrl+L`**
+2. **System reorganizes** using tree layout
+3. **Toast shows** "Organized X cards"
+
+## Visual Indicators
+
+| Indicator | Meaning |
+|-----------|---------|
+| 🌿 icon | Branched card |
+| ⚡ icon | Merge node |
+| Amber border | Selected / active in chat |
+| Green ⚡ | Merge with 2 parents (ideal) |
+| Amber ⚠️ | Merge with 3-4 parents (complex) |
+| Red ⚠️ | Merge with 5 parents (max) |
+| Amber edges | Branch relationships |
+| Green edges | Merge relationships |
+
+## Settings Panel
+
+**Click gear icon (⚙️):**
+
+**Display Tab:**
+- Toggle sidebars
+- Toggle minimap
+- Toggle dev overlay
+
+**Branching Tab:**
+- "Always ask when branching" (ON by default)
+- Default inheritance mode
+- Confirm before deleting
+
+**API Keys Tab:**
+- Add/remove provider keys
+- Show/hide keys
+- Visual indicators for saved keys
+
+## Tree Sidebar
+
+**Left sidebar shows:**
+- Workspace tree structure
+- Card hierarchy
+- Branch/merge indicators
+
+**Click folder icon** (top-left) to toggle
+
+## Inherited Context Panel
+
+**Shows when card has parents:**
+- Appears at top of canvas
+- Shows parent titles
+- Displays inheritance mode per parent
+- Expand/collapse details
+
+## Undo System
+
+**Last 50 actions tracked:**
+- `Ctrl+Z` to undo
+- `Ctrl+Shift+Z` to redo
+- Toast appears with undo button
+- Persists across page refresh
+
+## Troubleshooting
+
+**No AI response:**
+- Check Settings → API Keys
+- Verify key is valid
+- Check browser console for errors
+
+**Can't connect cards:**
+- Would create cycle (not allowed)
+- Target merge node at 5-parent limit
+
+**Performance slow:**
+- Close other tabs
+- Disable browser extensions
+- Check dev overlay (should show 60 FPS)
+
+## Quick Tips
+
+1. **Start simple** - Create a few cards, send messages, branch once
+2. **Use Sonnet 4** as default model (best balance)
+3. **Branch liberally** - Explore multiple approaches
+4. **Merge strategically** - Keep to 2 parents when possible
+5. **Search often** - `Ctrl+F` finds anything quickly
+6. **Auto-layout** - `Ctrl+L` keeps canvas organized
+
+## What Persists
+
+**Saved automatically:**
+- All cards and positions
+- All messages
+- Branch/merge relationships
+- API keys
+- Model per conversation
+- Panel widths
+
+**Not saved:**
+- Draft messages (session-only)
+- Chatpanel open/closed
+- Current selection
+- Undo/redo beyond 50
 
 ---
+
+**For detailed best practices, see [BEST_PRACTICES.md](BEST_PRACTICES.md)**
 
 ## Part 2: Working with Cards (5 min)
 

@@ -370,6 +370,16 @@ html {
   overflow: visible !important;
 }
 
+/* Breadcrumb: horizontal scroll without visible scrollbar */
+.breadcrumb-scroll {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge Legacy */
+}
+
+.breadcrumb-scroll::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* Fade in handles on node hover */
 .react-flow__node:hover .react-flow__handle {
   opacity: 1;

@@ -16,28 +16,24 @@ import {
   Settings,
   MoreHorizontal,
   Bot,
+  BarChart3,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, spacing, effects, typography, animation, layout } from '@/lib/design-tokens';
-import type { Workspace, Conversation } from '@/types';
+import { useCanvasTreeStore, buildWorkspaceTree, type ConversationTreeNode } from '@/stores/canvas-tree-store';
+import { colors, spacing, effects, typography, layout } from '@/lib/design-tokens';
+import type { Workspace } from '@/types';
+import { SidePanel } from './SidePanel';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-
 const MIN_SIDEBAR_WIDTH = layout.sidebar.width;
 const MAX_SIDEBAR_WIDTH = 600;
 
 // =============================================================================
 // CONVERSATION TREE COMPONENT (v4 DAG display)
 // =============================================================================
-
-interface ConversationTreeNode {
-  conversation: Conversation;
-  children: ConversationTreeNode[];
-  depth: number;
-}
 
 interface ConversationTreeProps {
   workspaceId: string;
@@ -66,9 +62,10 @@ const createWorkspaceTreeSelector = (workspaceId: string) =>
   };
 
 function ConversationTree({ workspaceId, isExpanded, onFocusNode }: ConversationTreeProps) {
-  const conversations = useCanvasStore(state => state.conversations);
   const selectedNodeIds = useCanvasStore(state => state.selectedNodeIds);
   const setSelected = useCanvasStore(state => state.setSelected);
+  const setTree = useCanvasTreeStore((state) => state.setTree);
+  const rootNodes = useCanvasTreeStore((state) => state.treeCache[workspaceId]?.rootNodes ?? []);
   
   // Track which conversation nodes are collapsed in this workspace
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => {
@@ -82,60 +79,11 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
   // useMemo dependency is now just the serialized tree structure
   const treeKey = useCanvasStore(useMemo(() => createWorkspaceTreeSelector(workspaceId), [workspaceId]));
   
-  // Build tree structure from conversations
-  const { rootNodes } = useMemo(() => {
-    void treeKey;
-    const workspaceConversations = Array.from(conversations.values())
-      .filter(c => c.canvasId === workspaceId);
-    
-    // Track which merge nodes we've already rendered (to avoid duplication)
-    const processedMerge = new Set<string>();
-    
-    // Find root conversations (no parent or parent not in this workspace)
-    const rootConvs = workspaceConversations.filter(c => 
-      c.parentCardIds.length === 0 || 
-      !c.parentCardIds.some(pid => conversations.has(pid))
-    );
-    
-    // Build child map
-    const childMap = new Map<string, Conversation[]>();
-    workspaceConversations.forEach(conv => {
-      conv.parentCardIds.forEach(parentId => {
-        if (!childMap.has(parentId)) {
-          childMap.set(parentId, []);
-        }
-        childMap.get(parentId)!.push(conv);
-      });
-    });
-    
-    // Recursive tree builder
-    function buildNode(conv: Conversation, depth: number): ConversationTreeNode {
-      const children: ConversationTreeNode[] = [];
-      const childConvs = childMap.get(conv.id) || [];
-      
-      childConvs.forEach(child => {
-        // For merge nodes with multiple parents, only show under the FIRST parent
-        // in the parentCardIds array to avoid duplication and maintain the order
-        // defined when the merge was created
-        if (child.isMergeNode && child.parentCardIds.length > 1) {
-          const primaryParent = child.parentCardIds[0];
-          // Only add if we're the primary parent and haven't processed this merge yet
-          if (conv.id === primaryParent && !processedMerge.has(child.id)) {
-            processedMerge.add(child.id);
-            children.push(buildNode(child, depth + 1));
-          }
-        } else {
-          children.push(buildNode(child, depth + 1));
-        }
-      });
-      
-      return { conversation: conv, children, depth };
-    }
-    
-    const roots = rootConvs.map(c => buildNode(c, 0));
-    return { rootNodes: roots };
-  // PERFORMANCE: Only rebuild tree when structure changes (tracked via treeKey)
-  }, [treeKey, conversations, workspaceId]);
+  useEffect(() => {
+    const conversations = useCanvasStore.getState().conversations;
+    const nextRootNodes = buildWorkspaceTree(workspaceId, conversations);
+    setTree(workspaceId, treeKey, nextRootNodes);
+  }, [treeKey, workspaceId, setTree]);
   
   // PERFORMANCE: Memoize handler to prevent re-renders of child nodes
   // IMPORTANT: Define ALL hooks before any conditional returns
@@ -166,6 +114,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
     const selectedId = Array.from(selectedNodeIds)[0];
     if (!selectedId) return;
     
+    const conversations = useCanvasStore.getState().conversations;
     const selectedConv = conversations.get(selectedId);
     if (!selectedConv || selectedConv.canvasId !== workspaceId) return;
     
@@ -185,22 +134,18 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
       const parent = conversations.get(firstParentId);
       if (!parent) break;
       
-      // Add parent to path (but not the selected node itself)
       pathIds.add(parent.id);
       current = parent;
     }
-    
-    // Expand all nodes in the path
-    if (pathIds.size > 0) {
-      setCollapsedNodes(prev => {
-        const newSet = new Set(prev);
-        pathIds.forEach(id => newSet.delete(id));
-        collapsedNodesState.set(workspaceId, newSet);
-        return newSet;
-      });
-    }
+
+    setCollapsedNodes(prev => {
+      const newSet = new Set(prev);
+      pathIds.forEach(id => newSet.delete(id));
+      collapsedNodesState.set(workspaceId, newSet);
+      return newSet;
+    });
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [selectedNodeIds, conversations, workspaceId]);
+  }, [selectedNodeIds, treeKey, workspaceId]);
   
   // Early return AFTER all hooks are defined (React hooks rules)
   if (!isExpanded || rootNodes.length === 0) {
@@ -702,13 +647,24 @@ function WorkspaceItem({
 interface CanvasTreeSidebarProps {
   onOpenSettings: () => void;
   onOpenAgents?: () => void;
+  onToggleUsagePanel?: () => void;
+  isUsagePanelOpen?: boolean;
   onRequestDeleteWorkspace: (workspaceId: string) => void;
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onFocusNode?: (nodeId: string) => void;
 }
 
-export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDeleteWorkspace, isOpen: externalIsOpen, onToggle, onFocusNode }: CanvasTreeSidebarProps) {
+export function CanvasTreeSidebar({
+  onOpenSettings,
+  onOpenAgents,
+  onToggleUsagePanel,
+  isUsagePanelOpen = false,
+  onRequestDeleteWorkspace,
+  isOpen: externalIsOpen,
+  onToggle,
+  onFocusNode,
+}: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
@@ -796,12 +752,12 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDelet
 
   // Dynamic sidebar styles
   const sidebarStyles: React.CSSProperties = {
-    width: sidebarWidth,
-    minWidth: MIN_SIDEBAR_WIDTH,
-    maxWidth: MAX_SIDEBAR_WIDTH,
+    width: isOpen ? sidebarWidth : 0,
+    minWidth: isOpen ? MIN_SIDEBAR_WIDTH : 0,
+    maxWidth: isOpen ? MAX_SIDEBAR_WIDTH : 0,
     flexShrink: 0,
     backgroundColor: colors.bg.secondary,
-    borderRight: '1px solid var(--border-secondary)',
+    borderRight: isOpen ? '1px solid var(--border-secondary)' : 'none',
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
@@ -809,6 +765,7 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDelet
     overflow: 'hidden',
     position: 'relative',
     userSelect: isResizing ? 'none' : 'auto',
+    pointerEvents: isOpen ? 'auto' : 'none',
   };
 
   // Resize handle styles
@@ -833,18 +790,11 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDelet
     pointerEvents: 'none',
   };
 
-  // Don't render anything when closed - toggle button is in breadcrumb
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <motion.aside
+    <SidePanel
       ref={sidebarRef}
-      initial={{ x: -MIN_SIDEBAR_WIDTH }}
-      animate={{ x: 0 }}
-      exit={{ x: -sidebarWidth }}
-      transition={animation.spring.gentle}
+      isOpen={isOpen}
+      width={sidebarWidth}
       style={sidebarStyles}
     >
       {/* Resize handle */}
@@ -999,6 +949,34 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDelet
               <Bot size={14} />
             </button>
           )}
+          {onToggleUsagePanel && (
+            <button
+              onClick={onToggleUsagePanel}
+              title="Usage"
+              style={{
+                padding: spacing[2],
+                backgroundColor: isUsagePanelOpen ? colors.accent.muted : 'transparent',
+                border: `1px solid ${isUsagePanelOpen ? colors.accent.primary : 'var(--border-primary)'}`,
+                borderRadius: effects.border.radius.default,
+                color: isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.bg.inset;
+                e.currentTarget.style.color = colors.accent.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = isUsagePanelOpen ? colors.accent.muted : 'transparent';
+                e.currentTarget.style.color = isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary;
+              }}
+            >
+              <BarChart3 size={14} />
+            </button>
+          )}
           <button
           onClick={onOpenSettings}
           title="Settings"
@@ -1028,7 +1006,7 @@ export function CanvasTreeSidebar({ onOpenSettings, onOpenAgents, onRequestDelet
         </div>
       </div>
 
-    </motion.aside>
+    </SidePanel>
   );
 }
 

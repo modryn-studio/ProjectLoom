@@ -17,7 +17,8 @@ import { Bot, Trash2, GitBranch, FileText, X, Play, Loader2, AlertCircle, CheckC
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
 import { apiKeyManager } from '@/lib/api-key-manager';
-import { estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { detectProvider, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { useUsageStore } from '@/stores/usage-store';
 import { AgentConfirmationDialog } from './AgentConfirmationDialog';
 
 import type {
@@ -119,6 +120,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const edges = useCanvasStore((s) => s.edges);
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
+  const addUsage = useUsageStore((s) => s.addUsage);
 
   // Build workspace snapshot for agent
   const workspaceSnapshot = useMemo<WorkspaceSnapshot>(() => {
@@ -251,6 +253,16 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
       setSteps(agentResult.steps || []);
       setIsRunning(false);
 
+      if (agentResult.usage?.totalTokens > 0) {
+        addUsage({
+          provider: detectProvider(modelId),
+          model: modelId,
+          inputTokens: agentResult.usage.promptTokens,
+          outputTokens: agentResult.usage.completionTokens,
+          source: 'agent',
+        });
+      }
+
       if (agentResult.status === 'error') {
         setError(agentResult.error || 'Agent encountered an error.');
       } else if (agentResult.actions.length > 0) {
@@ -264,7 +276,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
       }
       setIsRunning(false);
     }
-  }, [selectedAgent, userPrompt, workspaceSnapshot, conversations, activeWorkspaceId]);
+  }, [selectedAgent, userPrompt, workspaceSnapshot, conversations, activeWorkspaceId, addUsage]);
 
   // Handle cancel
   const handleCancel = useCallback(() => {

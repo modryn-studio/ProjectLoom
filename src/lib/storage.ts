@@ -77,6 +77,8 @@ export const STORAGE_KEYS = {
   PREFERENCES: 'projectloom:preferences',
   /** API keys */
   API_KEYS: 'projectloom:api-keys',
+  /** Usage tracking */
+  USAGE: 'projectloom-usage',
   /** v4 migration notice dismissed */
   V4_NOTICE_DISMISSED: 'projectloom:v4-notice-dismissed',
 } as const;

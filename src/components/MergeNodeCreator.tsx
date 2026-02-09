@@ -14,6 +14,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
+import { detectProvider } from '@/lib/vercel-ai-integration';
+import { useUsageStore } from '@/stores/usage-store';
 import type { Conversation, Position, InheritanceMode } from '@/types';
 
 // =============================================================================
@@ -53,6 +55,7 @@ export function MergeNodeCreator({
 }: MergeNodeCreatorProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const createMergeNode = useCanvasStore((s) => s.createMergeNode);
+  const addUsage = useUsageStore((s) => s.addUsage);
   
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>(initialCardIds);
   const [synthesisPrompt, setSynthesisPrompt] = useState('');
@@ -142,7 +145,18 @@ export function MergeNodeCreator({
         });
         
         if (!res.ok) throw new Error('Summary generation failed');
-        const data = await res.json();
+        const data = await res.json() as { summary: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } };
+
+        if (data.usage?.totalTokens) {
+          addUsage({
+            provider: detectProvider(modelId),
+            model: modelId,
+            inputTokens: data.usage.promptTokens,
+            outputTokens: data.usage.completionTokens,
+            conversationId: cardId,
+            source: 'summarize',
+          });
+        }
         
         setSummaryTexts(prev => ({ ...prev, [cardId]: data.summary }));
         setInheritanceModes(prev => ({ ...prev, [cardId]: 'summary' }));
@@ -155,7 +169,7 @@ export function MergeNodeCreator({
       // Switch back to full
       setInheritanceModes(prev => ({ ...prev, [cardId]: 'full' }));
     }
-  }, [inheritanceModes, conversations]);
+  }, [inheritanceModes, conversations, addUsage]);
 
   const handleCreateMerge = useCallback(async () => {
     if (!canCreate) return;

@@ -18,7 +18,10 @@ const containerStyles: React.CSSProperties = {
   padding: `${spacing[2]} ${spacing[3]}`,
   backgroundColor: colors.bg.secondary,
   borderRadius: effects.border.radius.default,
-  flexWrap: 'wrap',
+  flexWrap: 'nowrap',
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  whiteSpace: 'nowrap',
   minHeight: '40px',
 };
 
@@ -28,6 +31,7 @@ const breadcrumbItemStyles: React.CSSProperties = {
   gap: spacing[1],
   fontSize: typography.sizes.sm,
   fontFamily: typography.fonts.body,
+  flexShrink: 0,
 };
 
 const clickableCrumbStyles: React.CSSProperties = {
@@ -111,7 +115,11 @@ interface CanvasBreadcrumbProps {
  * Shows the conversation lineage from root to selected card.
  * For merge nodes, displays primary path + badge for additional parents.
  */
-export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar, onOpenCanvasContext }: CanvasBreadcrumbProps) {
+export function CanvasBreadcrumb({
+  showSidebarToggle = false,
+  onToggleSidebar,
+  onOpenCanvasContext,
+}: CanvasBreadcrumbProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const setSelected = useCanvasStore((s) => s.setSelected);
@@ -168,6 +176,14 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar, o
   const handleBadgeLeave = useCallback(() => {
     setTooltipVisible(false);
   }, []);
+
+  const handleWheel = useCallback((event: React.WheelEvent<HTMLElement>) => {
+    if (event.deltaY === 0) return;
+    const target = event.currentTarget;
+    if (target.scrollWidth <= target.clientWidth) return;
+    event.preventDefault();
+    target.scrollLeft += event.deltaY;
+  }, []);
   
   // Calculate canvas stats
   const totalCards = conversations.size;
@@ -180,7 +196,12 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar, o
   }, [conversations]);
   
   return (
-    <nav style={containerStyles} aria-label="Conversation ancestry">
+    <nav
+      style={containerStyles}
+      className="breadcrumb-scroll"
+      aria-label="Conversation ancestry"
+      onWheel={handleWheel}
+    >
       {/* Sidebar toggle button (when sidebar is hidden) */}
       {showSidebarToggle && (
         <button
@@ -189,11 +210,11 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar, o
           title="Open workspace list"
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = colors.accent.muted;
-            e.currentTarget.style.borderColor = colors.accent.primary;
+            e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = colors.bg.inset;
-            e.currentTarget.style.borderColor = 'var(--border-primary)';
+            e.currentTarget.style.border = '1px solid var(--border-primary)';
           }}
         >
           <PanelLeft size={16} />
@@ -256,27 +277,28 @@ export function CanvasBreadcrumb({ showSidebarToggle = false, onToggleSidebar, o
       )}
 
       {onOpenCanvasContext && (
-        <button
-          onClick={onOpenCanvasContext}
-          title="Canvas Context (active canvas only)"
-          style={{
-            ...contextButtonStyles,
-            marginLeft: 'auto',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = colors.accent.muted;
-            e.currentTarget.style.borderColor = colors.accent.primary;
-            e.currentTarget.style.color = colors.accent.primary;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = colors.bg.inset;
-            e.currentTarget.style.borderColor = 'var(--border-primary)';
-            e.currentTarget.style.color = colors.fg.secondary;
-          }}
-        >
-          <FileText size={12} />
-          Canvas Context
-        </button>
+        <div style={{ display: 'flex', gap: spacing[2], marginLeft: 'auto' }}>
+          {onOpenCanvasContext && (
+            <button
+              onClick={onOpenCanvasContext}
+              title="Canvas Context (active canvas only)"
+              style={contextButtonStyles}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.accent.muted;
+                e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
+                e.currentTarget.style.color = colors.accent.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = colors.bg.inset;
+                e.currentTarget.style.border = '1px solid var(--border-primary)';
+                e.currentTarget.style.color = colors.fg.secondary;
+              }}
+            >
+              <FileText size={12} />
+              Canvas Context
+            </button>
+          )}
+        </div>
       )}
       
       {/* Show breadcrumb path (only when exactly 1 card selected) */}

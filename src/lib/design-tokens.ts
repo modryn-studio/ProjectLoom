@@ -229,6 +229,13 @@ export const animation = {
       stiffness: 300,
       damping: 35,
     },
+
+    // Panel spring for sidebars/panels
+    panel: {
+      type: 'spring' as const,
+      stiffness: 520,
+      damping: 38,
+    },
     
     // Snappy spring for quick feedback
     snappy: {

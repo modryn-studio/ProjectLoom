@@ -286,9 +286,17 @@ export function generateTreeLayout(
     }
     
     // Center parent among children
-    const firstChildY = positions[nodeChildren[0]].y;
-    const lastChildY = positions[nodeChildren[nodeChildren.length - 1]].y;
-    const centerY = (firstChildY + lastChildY) / 2;
+    const firstChild = positions[nodeChildren[0]];
+    const lastChild = positions[nodeChildren[nodeChildren.length - 1]];
+    if (!firstChild || !lastChild) {
+      positions[nodeIndex] = {
+        x: Math.round(x + jitterX),
+        y: Math.round(yOffset + jitterY),
+      };
+      return childY;
+    }
+
+    const centerY = (firstChild.y + lastChild.y) / 2;
     
     positions[nodeIndex] = {
       x: Math.round(x + jitterX),

@@ -165,6 +165,8 @@ interface WorkspaceState {
   activeConversationId: string | null;
   draftMessages: Map<string, string>;
 
+  // Usage Panel State (session-only)
+  usagePanelOpen: boolean;
   // Pending conversation delete request (session-only)
   pendingDeleteConversationIds: string[];
 
@@ -231,6 +233,10 @@ interface WorkspaceState {
   setDraftMessage: (conversationId: string, content: string) => void;
   getDraftMessage: (conversationId: string) => string;
   sendMessage: (content: string, attachments?: import('@/types').MessageAttachment[]) => Promise<void>;
+  // Actions - Usage Panel
+  openUsagePanel: () => void;
+  closeUsagePanel: () => void;
+  toggleUsagePanel: () => void;
   requestDeleteConversation: (conversationIds: string[]) => void;
   clearDeleteConversationRequest: () => void;
 
@@ -419,6 +425,9 @@ export const useCanvasStore = create<WorkspaceState>()(
     activeConversationId: null,
     draftMessages: new Map(),
 
+    // Usage Panel State (session-only)
+    usagePanelOpen: false,
+
     // Pending delete request
     pendingDeleteConversationIds: [],
     
@@ -497,7 +506,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     deleteConversation: (id) => {
-      const { nodes, edges, conversations, history, historyIndex } = get();
+      const { nodes, edges, conversations, history, historyIndex, expandedNodeIds, selectedNodeIds } = get();
 
       // Remove node
       const newNodes = nodes.filter((n) => n.id !== id);
@@ -1159,6 +1168,7 @@ export const useCanvasStore = create<WorkspaceState>()(
             chatPanelOpen: false,
             activeConversationId: null,
             draftMessages: new Map(),
+            usagePanelOpen: false,
             history: [],
             historyIndex: -1,
           });
@@ -1632,6 +1642,22 @@ export const useCanvasStore = create<WorkspaceState>()(
       }));
     },
 
+    // =========================================================================
+    // Usage Panel Management
+    // =========================================================================
+
+    openUsagePanel: () => {
+      set({ usagePanelOpen: true });
+    },
+
+    closeUsagePanel: () => {
+      set({ usagePanelOpen: false });
+    },
+
+    toggleUsagePanel: () => {
+      set((state) => ({ usagePanelOpen: !state.usagePanelOpen }));
+    },
+
     setDraftMessage: (conversationId: string, content: string) => {
       const { draftMessages } = get();
       const newDrafts = new Map(draftMessages);
@@ -1928,6 +1954,9 @@ export const selectBranchSourcePosition = (state: WorkspaceState) => state.branc
 export const selectChatPanelOpen = (state: WorkspaceState) => state.chatPanelOpen;
 export const selectActiveConversationId = (state: WorkspaceState) => state.activeConversationId;
 export const selectDraftMessages = (state: WorkspaceState) => state.draftMessages;
+
+// Usage panel selector
+export const selectUsagePanelOpen = (state: WorkspaceState) => state.usagePanelOpen;
 
 // Legacy alias for compatibility
 /** @deprecated Use selectWorkspaces instead */

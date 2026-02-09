@@ -66,6 +66,7 @@ const sectionTitleStyles: React.CSSProperties = {
   fontFamily: typography.fonts.body,
 };
 
+
 const labelStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
   color: colors.fg.secondary,
@@ -133,6 +134,7 @@ const INHERITANCE_MODE_OPTIONS: Array<{
   },
 ];
 
+
 // =============================================================================
 // SETTINGS PANEL COMPONENT
 // =============================================================================
@@ -143,6 +145,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
+
   // Preferences state
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -209,6 +212,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       resetToDefaults();
     }
   };
+
 
   // API Key handlers
   const handleSaveKey = useCallback((provider: ProviderType, key: string) => {
@@ -289,6 +293,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
             {/* Content */}
             <div style={contentStyles}>
+              <>
               {/* Appearance Section */}
               <div style={sectionStyles}>
                 <div style={sectionTitleStyles}>
@@ -638,6 +643,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </div>
                 </div>
               </div>
+              </>
             </div>
 
             {/* Footer */}

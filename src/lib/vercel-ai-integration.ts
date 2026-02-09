@@ -220,24 +220,31 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
 // =============================================================================
 
 /**
- * Approximate cost per 1K tokens (input) by model ID.
- * These are rough estimates for user-facing cost previews.
+ * Approximate cost per 1M tokens (input/output) by model ID.
+ * Used for both previews and usage tracking.
  */
-const COST_PER_1K_INPUT: Record<string, number> = {
-  'claude-opus-4-20250514': 0.015,
-  'claude-sonnet-4-20250514': 0.003,
-  'claude-haiku-4-20250514': 0.0008,
-  'gpt-4o': 0.0025,
-  'gpt-4o-mini': 0.00015,
-};
+export const MODEL_PRICING = {
+  'claude-opus-4-20250514': { input: 15, output: 75 },
+  'claude-sonnet-4-20250514': { input: 3, output: 15 },
+  'claude-haiku-4-20250514': { input: 0.25, output: 1.25 },
+  'gpt-4o': { input: 2.5, output: 10 },
+  'gpt-4o-mini': { input: 0.15, output: 0.6 },
+  'text-embedding-3-small': { input: 0.02, output: 0 },
+} as const;
 
-const COST_PER_1K_OUTPUT: Record<string, number> = {
-  'claude-opus-4-20250514': 0.075,
-  'claude-sonnet-4-20250514': 0.015,
-  'claude-haiku-4-20250514': 0.004,
-  'gpt-4o': 0.01,
-  'gpt-4o-mini': 0.0006,
-};
+const DEFAULT_PRICING = { input: 3, output: 15 };
+
+/**
+ * Calculate cost in USD based on per-1M token pricing.
+ */
+export function calculateCost(
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const pricing = MODEL_PRICING[modelId as keyof typeof MODEL_PRICING] ?? DEFAULT_PRICING;
+  return (inputTokens / 1_000_000) * pricing.input + (outputTokens / 1_000_000) * pricing.output;
+}
 
 /**
  * Estimate cost for a given number of input tokens.
@@ -248,9 +255,7 @@ export function estimateCost(
   outputTokens: number,
   modelId: string
 ): number {
-  const inputRate = COST_PER_1K_INPUT[modelId] ?? 0.003; // default to Sonnet
-  const outputRate = COST_PER_1K_OUTPUT[modelId] ?? 0.015;
-  return (inputTokens / 1000) * inputRate + (outputTokens / 1000) * outputRate;
+  return calculateCost(modelId, inputTokens, outputTokens);
 }
 
 /**

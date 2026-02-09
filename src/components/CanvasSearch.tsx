@@ -12,11 +12,11 @@
  * @version 4.0.0
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useReactFlow } from '@xyflow/react';
 import designTokens from '@/lib/design-tokens';
-import { useSearchStore, searchConversations } from '@/stores/search-store';
+import { useSearchStore, searchConversations, buildSearchIndex, createSearchIndexSelector } from '@/stores/search-store';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { zIndex } from '@/constants/zIndex';
 
@@ -153,13 +153,22 @@ export function CanvasSearch() {
     closeSearch, 
     setQuery, 
     setResults,
+    setSearchIndex,
     nextResult,
     prevResult,
     setActiveIndex,
   } = useSearchStore();
+
+  const searchIndex = useSearchStore((s) => s.searchIndex);
+  const searchKey = useCanvasStore(useMemo(() => createSearchIndexSelector(), []));
   
-  const conversations = useCanvasStore((s) => s.conversations);
   const setSelected = useCanvasStore((s) => s.setSelected);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const conversations = useCanvasStore.getState().conversations;
+    setSearchIndex(buildSearchIndex(conversations));
+  }, [isOpen, searchKey, setSearchIndex]);
   
   // Perform search when query changes
   useEffect(() => {
@@ -168,12 +177,12 @@ export function CanvasSearch() {
     // 150ms debounce - optimal balance between responsiveness and performance
     // Increase to 300ms if performance degrades at 50+ cards with large message histories
     const timeoutId = setTimeout(() => {
-      const searchResults = searchConversations(conversations, query);
+      const searchResults = searchConversations(searchIndex, query);
       setResults(searchResults);
     }, 150);
     
     return () => clearTimeout(timeoutId);
-  }, [query, conversations, isOpen, setResults]);
+  }, [query, searchIndex, isOpen, setResults]);
   
   // Focus input when opened
   useEffect(() => {

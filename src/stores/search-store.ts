@@ -23,18 +23,34 @@ export interface SearchResult {
   matchCount: number;
 }
 
+interface SearchIndexMessage {
+  content: string;
+  lower: string;
+}
+
+export interface SearchIndexEntry {
+  cardId: string;
+  title: string;
+  titleLower: string;
+  messages: SearchIndexMessage[];
+}
+
+export type SearchIndex = Map<string, SearchIndexEntry>;
+
 interface SearchStore {
   // State
   isOpen: boolean;
   query: string;
   results: SearchResult[];
   activeIndex: number;
+  searchIndex: SearchIndex;
   
   // Actions
   openSearch: () => void;
   closeSearch: () => void;
   setQuery: (query: string) => void;
   setResults: (results: SearchResult[]) => void;
+  setSearchIndex: (index: SearchIndex) => void;
   nextResult: () => void;
   prevResult: () => void;
   setActiveIndex: (index: number) => void;
@@ -50,6 +66,7 @@ export const useSearchStore = create<SearchStore>((set, get) => ({
   query: '',
   results: [],
   activeIndex: 0,
+  searchIndex: new Map(),
   
   openSearch: () => set({ isOpen: true }),
   
@@ -63,6 +80,7 @@ export const useSearchStore = create<SearchStore>((set, get) => ({
   setQuery: (query) => set({ query, activeIndex: 0 }),
   
   setResults: (results) => set({ results }),
+  setSearchIndex: (index) => set({ searchIndex: index }),
   
   nextResult: () => {
     const { results, activeIndex } = get();
@@ -88,8 +106,48 @@ export const useSearchStore = create<SearchStore>((set, get) => ({
 /**
  * Search conversations for matching content
  */
+export function buildSearchIndex(conversations: Map<string, Conversation>): SearchIndex {
+  const index: SearchIndex = new Map();
+
+  conversations.forEach((conv) => {
+    const title = conv.metadata.title || '';
+    const messages = Array.isArray(conv.content) ? conv.content : [];
+    const indexedMessages: SearchIndexMessage[] = messages
+      .filter((msg) => typeof msg.content === 'string')
+      .map((msg) => ({
+        content: msg.content,
+        lower: msg.content.toLowerCase(),
+      }));
+
+    index.set(conv.id, {
+      cardId: conv.id,
+      title,
+      titleLower: title.toLowerCase(),
+      messages: indexedMessages,
+    });
+  });
+
+  return index;
+}
+
+export function createSearchIndexSelector() {
+  return (state: { conversations: Map<string, Conversation> }) => {
+    const arr = Array.from(state.conversations.values())
+      .map((conv) => ({
+        id: conv.id,
+        title: conv.metadata.title || '',
+        messageCount: Array.isArray(conv.content) ? conv.content.length : 0,
+        lastMessageId: Array.isArray(conv.content)
+          ? conv.content[conv.content.length - 1]?.id || ''
+          : '',
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return JSON.stringify(arr);
+  };
+}
+
 export function searchConversations(
-  conversations: Map<string, Conversation>,
+  searchIndex: SearchIndex,
   query: string
 ): SearchResult[] {
   if (!query.trim()) return [];
@@ -97,24 +155,21 @@ export function searchConversations(
   const normalizedQuery = query.toLowerCase().trim();
   const results: SearchResult[] = [];
   
-  conversations.forEach((conv) => {
+  searchIndex.forEach((entry) => {
     let matchCount = 0;
     let matchType: SearchResult['matchType'] = 'title';
     let snippet = '';
     
     // Search in title
-    const title = conv.metadata.title || '';
-    if (title.toLowerCase().includes(normalizedQuery)) {
+    if (entry.titleLower.includes(normalizedQuery)) {
       matchCount++;
       matchType = 'title';
-      snippet = highlightMatch(title, normalizedQuery);
+      snippet = highlightMatch(entry.title, normalizedQuery);
     }
     
     // Search in messages
-    const messages = Array.isArray(conv.content) ? conv.content : [];
-    for (const msg of messages) {
-      if (typeof msg.content === 'string' && 
-          msg.content.toLowerCase().includes(normalizedQuery)) {
+    for (const msg of entry.messages) {
+      if (msg.lower.includes(normalizedQuery)) {
         matchCount++;
         if (matchType === 'title' && matchCount === 1) {
           // First match was title, this is also a match
@@ -134,9 +189,9 @@ export function searchConversations(
     
     if (matchCount > 0) {
       results.push({
-        cardId: conv.id,
-        title: conv.metadata.title || 'Untitled',
-        snippet: snippet || conv.metadata.title || '',
+        cardId: entry.cardId,
+        title: entry.title || 'Untitled',
+        snippet: snippet || entry.title || '',
         matchType,
         matchCount,
       });

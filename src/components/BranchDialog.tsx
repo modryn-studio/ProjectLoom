@@ -9,7 +9,8 @@ import { colors, spacing, effects, typography } from '@/lib/design-tokens';
 import { 
   estimateTokens, 
 } from '@/lib/context-utils';
-import { estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { detectProvider, estimateCost, formatCost } from '@/lib/vercel-ai-integration';
+import { useUsageStore } from '@/stores/usage-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import type { InheritanceMode, Message } from '@/types';
 
@@ -137,6 +138,7 @@ export function BranchDialog() {
   const closeBranchDialog = useCanvasStore((s) => s.closeBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const conversations = useCanvasStore((s) => s.conversations);
+  const addUsage = useUsageStore((s) => s.addUsage);
 
   // Preferences
   const defaultInheritanceMode = usePreferencesStore(selectDefaultInheritanceMode);
@@ -300,7 +302,18 @@ export function BranchDialog() {
           return;
         }
 
-        const { summary } = await response.json();
+        const data = await response.json() as { summary: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } };
+
+        if (data.usage?.totalTokens) {
+          addUsage({
+            provider: detectProvider(model),
+            model,
+            inputTokens: data.usage.promptTokens,
+            outputTokens: data.usage.completionTokens,
+            conversationId: branchSourceId || undefined,
+            source: 'summarize',
+          });
+        }
 
         // Create branch with the generated summary
         const newConversation = branchFromMessage({
@@ -308,7 +321,7 @@ export function BranchDialog() {
           messageIndex,
           inheritanceMode: 'summary',
           branchReason: branchReason.trim(),
-          summaryText: summary,
+          summaryText: data.summary,
         });
 
         if (!newConversation) {
@@ -353,6 +366,7 @@ export function BranchDialog() {
     setBranchingPreferences,
     sourceConversation,
     validationError,
+    addUsage,
   ]);
 
   // Handle escape key

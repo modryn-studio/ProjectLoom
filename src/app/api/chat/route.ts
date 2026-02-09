@@ -249,8 +249,8 @@ export async function POST(req: Request): Promise<Response> {
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
     });
 
-    // Return streaming response
-    return result.toTextStreamResponse();
+    // Return streaming response with usage (data protocol)
+    return result.toDataStreamResponse();
   } catch (error) {
     console.error('[Chat API Error]', error);
     return handleProviderError(error);

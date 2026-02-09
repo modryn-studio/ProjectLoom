@@ -2,19 +2,20 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useChat } from 'ai/react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { PanelRightClose } from 'lucide-react';
 
-import { colors, typography, spacing, animation } from '@/lib/design-tokens';
+import { colors, typography, spacing } from '@/lib/design-tokens';
 import { useCanvasStore, selectChatPanelOpen, selectActiveConversationId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
-import { getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
+import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
+import { useUsageStore } from '@/stores/usage-store';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { attachEmbeddings, buildKnowledgeBaseContext, buildRagIndex, type RagIndex } from '@/lib/rag-utils';
 import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
+import { SidePanel } from './SidePanel';
 import type { MessageAttachment } from '@/types';
 
 // =============================================================================
@@ -42,6 +43,7 @@ export function ChatPanel() {
   );
   const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
   const addAIMessage = useCanvasStore((s) => s.addAIMessage);
+  const addUsage = useUsageStore((s) => s.addUsage);
   const getConversationMessages = useCanvasStore((s) => s.getConversationMessages);
   const getConversationModel = useCanvasStore((s) => s.getConversationModel);
   const setConversationModel = useCanvasStore((s) => s.setConversationModel);
@@ -135,9 +137,15 @@ export function ChatPanel() {
 
     let isCancelled = false;
 
+    const safeSetRagIndex = (nextIndex: RagIndex | null) => {
+      if (!isCancelled) {
+        setRagIndex(nextIndex);
+      }
+    };
+
     async function loadCanvasContext() {
       if (!activeWorkspaceId) {
-        setRagIndex(null);
+        safeSetRagIndex(null);
         return;
       }
 
@@ -146,14 +154,14 @@ export function ChatPanel() {
       if (isCancelled) return;
 
       if (kbFiles.length === 0) {
-        setRagIndex(null);
+        safeSetRagIndex(null);
         return;
       }
 
       const baseIndex = buildRagIndex(kbFiles);
       const openaiKey = apiKeyManager.getKey('openai');
       if (!openaiKey) {
-        setRagIndex(baseIndex);
+        safeSetRagIndex(baseIndex);
         return;
       }
 
@@ -169,28 +177,38 @@ export function ChatPanel() {
         });
 
         if (!response.ok) {
-          setRagIndex(baseIndex);
+          safeSetRagIndex(baseIndex);
           return;
         }
 
-        const data = await response.json() as { embeddings: number[][]; model: string };
-        setRagIndex(attachEmbeddings(baseIndex, data.embeddings, data.model));
+        const data = await response.json() as { embeddings: number[][]; model: string; usage?: { totalTokens: number } };
+        safeSetRagIndex(attachEmbeddings(baseIndex, data.embeddings, data.model));
+
+        if (!isCancelled && data.usage?.totalTokens) {
+          addUsage({
+            provider: 'openai',
+            model: data.model,
+            inputTokens: data.usage.totalTokens,
+            outputTokens: 0,
+            source: 'embeddings',
+          });
+        }
       } catch (err) {
         console.error('[ChatPanel] Failed to build embedding index', err);
-        setRagIndex(baseIndex);
+        safeSetRagIndex(baseIndex);
       }
     }
 
     loadCanvasContext().catch((err) => {
       console.error('[ChatPanel] Failed to load canvas context', err);
-      if (!isCancelled) setRagIndex(null);
+      safeSetRagIndex(null);
     });
 
     return () => {
       isCancelled = true;
     };
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [contextLoadKey, activeWorkspaceId]);
+  }, [contextLoadKey, activeWorkspaceId, addUsage]);
 
   // useChat hook for streaming AI responses
   const chatBody = useMemo(() => ({
@@ -219,10 +237,21 @@ export function ChatPanel() {
     api: '/api/chat',
     id: activeConversationId || undefined,
     body: chatBody,
-    onFinish: (message: { content: string }) => {
+    onFinish: (message, options) => {
       // Persist AI message to store when streaming finishes
       if (activeConversationId && currentModel) {
         addAIMessage(activeConversationId, message.content, currentModel);
+      }
+
+      if (activeConversationId && currentModel && options?.usage) {
+        addUsage({
+          provider: detectProvider(currentModel),
+          model: currentModel,
+          inputTokens: options.usage.promptTokens,
+          outputTokens: options.usage.completionTokens,
+          conversationId: activeConversationId,
+          source: 'chat',
+        });
       }
       // Clear attachments after send
       setPendingAttachments([]);
@@ -268,8 +297,18 @@ export function ChatPanel() {
           });
 
           if (response.ok) {
-            const data = await response.json() as { embeddings: number[][] };
+            const data = await response.json() as { embeddings: number[][]; model?: string; usage?: { totalTokens: number } };
             queryEmbedding = data.embeddings?.[0];
+
+            if (data.usage?.totalTokens) {
+              addUsage({
+                provider: 'openai',
+                model: data.model || ragIndex.embeddingModel || EMBEDDING_MODEL,
+                inputTokens: data.usage.totalTokens,
+                outputTokens: 0,
+                source: 'embeddings',
+              });
+            }
           }
         } catch (err) {
           console.error('[ChatPanel] Failed to embed query', err);
@@ -291,7 +330,7 @@ export function ChatPanel() {
       instructions: instructions || undefined,
       knowledgeBase: knowledgeBase || undefined,
     };
-  }, [activeWorkspace, ragIndex, getRagQuery]);
+  }, [activeWorkspace, ragIndex, getRagQuery, addUsage]);
 
   // Wrap handleSubmit to also store attachments on user message
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -377,10 +416,10 @@ export function ChatPanel() {
     left: isMaximized ? 0 : 'auto',
     right: isMaximized ? 0 : 'auto',
     width: isMaximized ? '100vw' : panelWidth,
-    minWidth: isMaximized ? '100vw' : MIN_PANEL_WIDTH,
-    maxWidth: isMaximized ? '100vw' : MAX_PANEL_WIDTH,
+    minWidth: isMaximized ? '100vw' : (chatPanelOpen ? MIN_PANEL_WIDTH : 0),
+    maxWidth: isMaximized ? '100vw' : (chatPanelOpen ? MAX_PANEL_WIDTH : 0),
     backgroundColor: colors.bg.secondary,
-    borderLeft: isMaximized ? 'none' : `1px solid ${colors.border.default}`,
+    borderLeft: isMaximized || !chatPanelOpen ? 'none' : `1px solid ${colors.border.default}`,
     display: 'flex',
     flexDirection: 'column',
     height: isMaximized ? '100vh' : '100%',
@@ -389,7 +428,8 @@ export function ChatPanel() {
     userSelect: isResizing ? 'none' : 'auto',
     zIndex: isMaximized ? 200 : 1,
     flexShrink: 0,
-  }), [panelWidth, isResizing, isMaximized]);
+    pointerEvents: chatPanelOpen ? 'auto' : 'none',
+  }), [panelWidth, isResizing, isMaximized, chatPanelOpen]);
 
   // Memoized resize handle styles
   const resizeHandleStyles = useMemo<React.CSSProperties>(() => ({
@@ -425,81 +465,70 @@ export function ChatPanel() {
     }
   }, [activeConversationId, setConversationModel]);
 
-  // Don't render when closed
-  if (!chatPanelOpen) {
-    return null;
-  }
-
   return (
-    <AnimatePresence>
-      {chatPanelOpen && (
-        <motion.aside
-          ref={panelRef}
-          initial={{ x: isMaximized ? 0 : panelWidth }}
-          animate={{ x: 0 }}
-          exit={{ x: isMaximized ? 0 : panelWidth }}
-          transition={animation.spring.snappy}
-          style={panelStyles}
-        >
-          {/* Resize handle */}
-          <div
-            style={resizeHandleStyles}
-            onMouseDown={handleMouseDown}
-            onMouseEnter={handleResizeEnter}
-            onMouseLeave={handleResizeLeave}
-          >
-            <div style={resizeLineStyles} />
-          </div>
+    <SidePanel
+      ref={panelRef}
+      isOpen={chatPanelOpen}
+      width={isMaximized ? '100vw' : panelWidth}
+      style={panelStyles}
+    >
+      {/* Resize handle */}
+      <div
+        style={resizeHandleStyles}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleResizeEnter}
+        onMouseLeave={handleResizeLeave}
+      >
+        <div style={resizeLineStyles} />
+      </div>
 
-          {/* Content */}
-          {activeConversation ? (
-            <>
-              {/* Header */}
-              <ChatPanelHeader
-                conversation={activeConversation}
-                onClose={handleClose}
-                onMaximize={handleMaximize}
-              />
+      {/* Content */}
+      {activeConversation ? (
+        <>
+          {/* Header */}
+          <ChatPanelHeader
+            conversation={activeConversation}
+            onClose={handleClose}
+            onMaximize={handleMaximize}
+          />
 
-              {/* Message Thread */}
-              <MessageThread
-                conversation={activeConversation}
-                streamingMessages={chatMessages}
-                isStreaming={isStreaming}
-              />
+          {/* Message Thread */}
+          <MessageThread
+            conversation={activeConversation}
+            streamingMessages={chatMessages}
+            isStreaming={isStreaming}
+          />
 
-              {/* Message Input */}
-              <MessageInput
-                conversationId={activeConversation.id}
-                input={input}
-                setInput={setInput}
-                onSubmit={handleSubmit}
-                isStreaming={isStreaming}
-                onStop={stop}
-                hasApiKey={hasAnyApiKey}
-                error={chatError}
-                supportsVision={supportsVision}
-                attachments={pendingAttachments}
-                onAttachmentsChange={setPendingAttachments}
-                currentModel={currentModel}
-                onModelChange={handleModelChange}
-              />
-            </>
-          ) : (
-            /* Empty state */
-            <div style={emptyStateStyles.container}>
-              <PanelRightClose size={48} style={emptyStateStyles.icon} />
-              <p style={emptyStateStyles.title}>
-                Select a card to start chatting
-              </p>
-              <p style={emptyStateStyles.subtitle}>
-                Click on any conversation card in the canvas
-              </p>
-            </div>
-          )}
-        </motion.aside>
+          {/* Message Input */}
+          <MessageInput
+            conversationId={activeConversation.id}
+            input={input}
+            setInput={setInput}
+            onSubmit={handleSubmit}
+            isStreaming={isStreaming}
+            onStop={stop}
+            hasApiKey={hasAnyApiKey}
+            error={chatError}
+            supportsVision={supportsVision}
+            attachments={pendingAttachments}
+            onAttachmentsChange={setPendingAttachments}
+            currentModel={currentModel}
+            onModelChange={handleModelChange}
+          />
+        </>
+      ) : (
+        /* Empty state */
+        <div style={emptyStateStyles.container}>
+          <PanelRightClose size={48} style={emptyStateStyles.icon} />
+          <p style={emptyStateStyles.title}>
+            Select a card to start chatting
+          </p>
+          <p style={emptyStateStyles.subtitle}>
+            Click on any conversation card in the canvas
+          </p>
+        </div>
       )}
-    </AnimatePresence>
+    </SidePanel>
   );
 }
 

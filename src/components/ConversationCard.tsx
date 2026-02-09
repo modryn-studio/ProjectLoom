@@ -136,7 +136,7 @@ function ConversationCardComponent({
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
     () => getTextStyles(messages[0]?.content || ''),
-    [messages]
+    [messages[0]?.content]
   );
 
   // Calculate z-index based on state

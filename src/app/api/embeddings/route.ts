@@ -13,6 +13,9 @@ interface EmbeddingsRequestBody {
 interface EmbeddingsResponseBody {
   embeddings: number[][];
   model: string;
+  usage?: {
+    totalTokens: number;
+  };
 }
 
 function createErrorResponse(message: string, code: string, status: number): Response {
@@ -55,12 +58,16 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    const data = await response.json() as { data: Array<{ embedding: number[] }> };
+    const data = await response.json() as {
+      data: Array<{ embedding: number[] }>;
+      usage?: { total_tokens?: number };
+    };
     const embeddings = data.data.map((item) => item.embedding);
 
     const payload: EmbeddingsResponseBody = {
       embeddings,
       model: embeddingModel,
+      usage: data.usage?.total_tokens ? { totalTokens: data.usage.total_tokens } : undefined,
     };
 
     return Response.json(payload);
