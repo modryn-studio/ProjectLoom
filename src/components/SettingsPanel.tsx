@@ -414,7 +414,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           {option.label}
                         </button>
                       );
-                    })}\n                  </div>
+                    })}
+                  </div>
                 </div>
               </div>
 
