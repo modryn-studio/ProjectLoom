@@ -123,12 +123,9 @@ export function ModelSelector({
             style={styles.dropdown}
             role="listbox"
           >
-            {/* Anthropic Section */}
+            {/* Anthropic Models */}
             {hasAnthropicKey && (
               <>
-                <div style={styles.sectionHeader}>
-                  <span>Claude (Anthropic)</span>
-                </div>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'anthropic')
                   .map(model => (
@@ -142,12 +139,9 @@ export function ModelSelector({
               </>
             )}
 
-            {/* OpenAI Section */}
+            {/* OpenAI Models */}
             {hasOpenAIKey && (
               <>
-                <div style={styles.sectionHeader}>
-                  <span>OpenAI</span>
-                </div>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'openai')
                   .map(model => (
@@ -271,16 +265,6 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
     zIndex: 50,
     overflow: 'hidden',
-  } as React.CSSProperties,
-
-  sectionHeader: {
-    padding: `${spacing[2]} ${spacing[3]}`,
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.fonts.code,
-    color: colors.fg.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: '1px solid var(--border-secondary)',
   } as React.CSSProperties,
 
   option: {
