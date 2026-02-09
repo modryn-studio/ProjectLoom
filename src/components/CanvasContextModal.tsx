@@ -105,16 +105,32 @@ const sectionTitleStyles: React.CSSProperties = {
   fontFamily: typography.fonts.body,
 };
 
-const labelStyles: React.CSSProperties = {
-  fontSize: typography.sizes.sm,
-  color: colors.fg.secondary,
-  marginBottom: spacing[1],
-  fontFamily: typography.fonts.body,
-};
-
 const descriptionStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
   color: colors.fg.tertiary,
+  marginTop: spacing[1],
+  fontFamily: typography.fonts.body,
+};
+
+const usageBarTrackStyles: React.CSSProperties = {
+  width: '100%',
+  height: 6,
+  borderRadius: 999,
+  backgroundColor: colors.bg.secondary,
+  border: `1px solid ${colors.border.muted}`,
+  overflow: 'hidden',
+  marginTop: spacing[2],
+};
+
+const usageBarFillStyles: React.CSSProperties = {
+  height: '100%',
+  backgroundColor: colors.accent.primary,
+  transition: 'width 0.2s ease',
+};
+
+const usagePercentStyles: React.CSSProperties = {
+  fontSize: typography.sizes.xs,
+  color: colors.fg.quaternary,
   marginTop: spacing[1],
   fontFamily: typography.fonts.body,
 };
@@ -210,6 +226,9 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
   const instructionCount = instructions.length;
   const fileCount = files.length;
   const totalFileSize = files.reduce((sum, file) => sum + file.size, 0);
+  const usagePercent = MAX_TOTAL_SIZE > 0
+    ? Math.min(100, Math.round((totalFileSize / MAX_TOTAL_SIZE) * 100))
+    : 0;
 
   const updateContext = useCallback((updates: Partial<WorkspaceContext>) => {
     if (!activeWorkspaceId) return;
@@ -272,7 +291,8 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
   const handleInstructionsBlur = useCallback(() => {
     updateContext({ instructions: instructions.trim() });
-  }, [instructions, updateContext]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instructions]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -412,10 +432,6 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
         content,
         ...meta,
       });
-
-      const updatedFiles = files.map((entry) => (entry.id === targetId ? meta : entry));
-      setFiles(updatedFiles);
-      updateContext({ knowledgeBaseFiles: updatedFiles });
       setError(null);
     } catch (err) {
       console.error('[CanvasContextModal] Failed to replace KB file', err);
@@ -424,7 +440,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
       setReplaceTargetId(null);
       e.target.value = '';
     }
-  }, [replaceTargetId, files, totalFileSize, activeWorkspaceId, updateContext]);
+  }, [replaceTargetId, files, totalFileSize, activeWorkspaceId]);
 
   const handleRenameStart = useCallback((fileId: string, name: string) => {
     setRenamingId(fileId);
@@ -572,7 +588,6 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
               <div style={sectionStyles}>
                 <div style={sectionTitleStyles}>Instructions</div>
-                <label style={labelStyles}>System instructions applied to all cards</label>
                 <textarea
                   value={instructions}
                   onChange={(e) => {
@@ -581,18 +596,16 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                     }
                   }}
                   onBlur={handleInstructionsBlur}
-                  placeholder="Add global guidance for this canvas"
+                  placeholder="Add instructions..."
                   style={textareaStyles}
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <p style={descriptionStyles}>Used as system context for new messages.</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <p style={descriptionStyles}>{instructionCount}/{MAX_INSTRUCTIONS}</p>
                 </div>
               </div>
 
               <div style={sectionStyles}>
                 <div style={sectionTitleStyles}>Knowledge Base</div>
-                <label style={labelStyles}>Files shared with every conversation</label>
 
                 <div
                   style={{
@@ -623,9 +636,12 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                       browse
                     </button>
                   </div>
-                  <p style={descriptionStyles}>
-                    {fileCount}/{MAX_FILES} files, {formatBytes(totalFileSize)} / {formatBytes(MAX_TOTAL_SIZE)} used. 500KB max each. Supported: .txt, .md, code files. PDF/DOCX coming soon.
+                  <p style={usagePercentStyles}>
+                    {usagePercent}% used
                   </p>
+                  <div style={usageBarTrackStyles} aria-hidden="true">
+                    <div style={{ ...usageBarFillStyles, width: `${usagePercent}%` }} />
+                  </div>
                 </div>
 
                 <input
@@ -769,14 +785,6 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                       </div>
                     </div>
                   ))}
-
-                  {files.length === 0 && (
-                    <p style={descriptionStyles}>No files uploaded yet.</p>
-                  )}
-
-                  <p style={descriptionStyles}>
-                    Stored locally in this browser (IndexedDB). Not synced across devices yet.
-                  </p>
                 </div>
               </div>
             </div>

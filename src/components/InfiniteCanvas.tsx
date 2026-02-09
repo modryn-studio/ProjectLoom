@@ -41,6 +41,7 @@ import { CanvasContextModal } from './CanvasContextModal';
 import { AgentDialog } from './AgentDialog';
 import { ChatPanel } from './ChatPanel';
 import { UsageSidebar } from './UsageSidebar';
+import { WorkspaceNameModal } from './WorkspaceNameModal';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
@@ -166,6 +167,12 @@ export function InfiniteCanvas() {
   // Workspace delete modal state
   const [deleteWorkspaceModal, setDeleteWorkspaceModal] = useState<
     | { id: string; label: string; step: 'warn' | 'confirm'; confirmText: string }
+    | null
+  >(null);
+
+  // Workspace name modal state
+  const [workspaceNameModal, setWorkspaceNameModal] = useState<
+    | { suggestedName: string }
     | null
   >(null);
 
@@ -549,14 +556,30 @@ export function InfiniteCanvas() {
     setCanvasClickPosition(null);
   }, [canvasClickPosition, activeWorkspaceId, createConversationCard]);
 
-  const handleCreateWorkspace = useCallback(() => {
-    const workspace = createWorkspace(`New Workspace ${workspaces.length + 1}`);
+  const openWorkspaceNameModal = useCallback((suggestedName: string) => {
+    setWorkspaceNameModal({ suggestedName });
+  }, []);
+
+  const closeWorkspaceNameModal = useCallback(() => {
+    setWorkspaceNameModal(null);
+  }, []);
+
+  const confirmWorkspaceName = useCallback((name: string) => {
+    const workspace = createWorkspace(name);
     navigateToWorkspace(workspace.id);
     handleAddConversation(undefined, {
       workspaceId: workspace.id,
       openChat: true,
     });
-  }, [createWorkspace, navigateToWorkspace, workspaces.length, handleAddConversation]);
+    setWorkspaceNameModal(null);
+  }, [createWorkspace, navigateToWorkspace, handleAddConversation]);
+
+  const handleCreateWorkspace = useCallback(() => {
+    const suggestedName = workspaces.length === 0
+      ? 'My First Workspace'
+      : `New Workspace ${workspaces.length + 1}`;
+    openWorkspaceNameModal(suggestedName);
+  }, [openWorkspaceNameModal, workspaces.length]);
 
   // Handle canvas right-click (context menu)
   const handlePaneContextMenu = useCallback(
@@ -805,6 +828,7 @@ export function InfiniteCanvas() {
           onToggleUsagePanel={toggleUsagePanel}
           isUsagePanelOpen={usagePanelOpen}
           onRequestDeleteWorkspace={requestDeleteWorkspace}
+          onRequestCreateWorkspace={openWorkspaceNameModal}
           isOpen={isSidebarOpen}
           onToggle={setIsSidebarOpen}
           onFocusNode={focusOnNode}
@@ -980,6 +1004,13 @@ export function InfiniteCanvas() {
 
       {/* Agent Dialog */}
       <AgentDialog isOpen={agentDialogOpen} onClose={closeAgents} />
+
+      <WorkspaceNameModal
+        isOpen={Boolean(workspaceNameModal)}
+        suggestedName={workspaceNameModal?.suggestedName ?? ''}
+        onConfirm={confirmWorkspaceName}
+        onClose={closeWorkspaceNameModal}
+      />
 
       {deleteWorkspaceModal && (
         <div

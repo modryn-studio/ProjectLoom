@@ -36,13 +36,6 @@ const labelStyles: React.CSSProperties = {
   fontFamily: typography.fonts.body,
 };
 
-const descriptionStyles: React.CSSProperties = {
-  fontSize: typography.sizes.xs,
-  color: colors.fg.tertiary,
-  marginTop: spacing[1],
-  fontFamily: typography.fonts.body,
-};
-
 const USAGE_RANGE_OPTIONS: Array<{ id: UsageRange; label: string }> = [
   { id: 'this_month', label: 'This Month' },
   { id: 'last_month', label: 'Last Month' },
@@ -60,10 +53,6 @@ export function UsageDisplay() {
 
   return (
     <div>
-      <p style={{ ...descriptionStyles, marginBottom: spacing[3] }}>
-        Tracks ProjectLoom usage in this browser only. Remaining balance is not available because billing is account-level.
-      </p>
-
       <div style={{ marginBottom: spacing[3] }}>
         <label style={labelStyles}>Time range</label>
         <select
@@ -106,12 +95,6 @@ export function UsageDisplay() {
         </div>
       </div>
 
-      {usageTotals.recordCount === 0 && (
-        <p style={descriptionStyles}>
-          No usage recorded yet. Start a chat or run an agent to track costs.
-        </p>
-      )}
-
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogTrigger asChild>
           <button
@@ -136,7 +119,7 @@ export function UsageDisplay() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear all usage history?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes all spending records. This action cannot be undone.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

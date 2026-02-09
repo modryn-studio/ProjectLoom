@@ -656,6 +656,7 @@ interface CanvasTreeSidebarProps {
   onToggleUsagePanel?: () => void;
   isUsagePanelOpen?: boolean;
   onRequestDeleteWorkspace: (workspaceId: string) => void;
+  onRequestCreateWorkspace: (suggestedName: string) => void;
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onFocusNode?: (nodeId: string) => void;
@@ -667,6 +668,7 @@ export function CanvasTreeSidebar({
   onToggleUsagePanel,
   isUsagePanelOpen = false,
   onRequestDeleteWorkspace,
+  onRequestCreateWorkspace,
   isOpen: externalIsOpen,
   onToggle,
   onFocusNode,
@@ -686,8 +688,6 @@ export function CanvasTreeSidebar({
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
-  const createWorkspace = useCanvasStore((s) => s.createWorkspace);
-  const createConversationCard = useCanvasStore((s) => s.createConversationCard);
   const updateWorkspace = useCanvasStore((s) => s.updateWorkspace);
 
   // Resize handlers
@@ -727,12 +727,8 @@ export function CanvasTreeSidebar({
   }, [onRequestDeleteWorkspace]);
 
   const handleCreateWorkspace = useCallback((title: string) => {
-    const workspace = createWorkspace(title);
-    navigateToWorkspace(workspace.id);
-    createConversationCard(workspace.id, undefined, {
-      openChat: true,
-    });
-  }, [createWorkspace, navigateToWorkspace, createConversationCard]);
+    onRequestCreateWorkspace(title);
+  }, [onRequestCreateWorkspace]);
 
 
   const handleRename = useCallback((workspaceId: string, newName: string) => {

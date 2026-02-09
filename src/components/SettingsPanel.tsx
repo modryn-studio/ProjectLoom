@@ -414,13 +414,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           {option.label}
                         </button>
                       );
-                    })}
-                  </div>
-                  <p style={descriptionStyles}>
-                    {currentTheme === 'system' && 'Follows your operating system preference'}
-                    {currentTheme === 'light' && 'Light theme for bright environments'}
-                    {currentTheme === 'dark' && 'Dark theme for reduced eye strain'}
-                  </p>
+                    })}\n                  </div>
                 </div>
               </div>
 
@@ -475,9 +469,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}>
                       Always show branch dialog
                     </span>
-                    <p style={descriptionStyles}>
-                      When disabled, branches will be created immediately with default settings
-                    </p>
                   </div>
                 </label>
               </div>
@@ -510,9 +501,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}>
                       Show canvas tree sidebar
                     </span>
-                    <p style={descriptionStyles}>
-                      Display the canvas hierarchy sidebar
-                    </p>
                   </div>
                 </label>
 
@@ -537,9 +525,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}>
                       Show inherited context panel
                     </span>
-                    <p style={descriptionStyles}>
-                      Display inherited context info on branched canvases
-                    </p>
                   </div>
                 </label>
 
@@ -564,9 +549,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}>
                       Confirm before deleting
                     </span>
-                    <p style={descriptionStyles}>
-                      Show confirmation dialog before deleting items
-                    </p>
                   </div>
                 </label>
               </div>
@@ -578,10 +560,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   API Keys
                 </div>
 
-                <p style={{ ...descriptionStyles, marginBottom: spacing[3] }}>
-                  Your API keys are stored locally in your browser and never sent to our servers.
-                </p>
-
                 {/* Storage Type */}
                 <div style={{ marginBottom: spacing[3] }}>
                   <label style={labelStyles}>Storage Type</label>
@@ -590,15 +568,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     onChange={(e) => handleChangeStoragePreference(e.target.value as StorageType)}
                     style={selectStyles}
                   >
-                    <option value="localStorage">Persistent (localStorage) - Keys remain across sessions</option>
-                    <option value="sessionStorage">Session Only (sessionStorage) - Keys cleared when tab closes (more secure)</option>
+                    <option value="localStorage">Persistent</option>
+                    <option value="sessionStorage">Session Only</option>
                   </select>
-                  <p style={descriptionStyles}>
-                    Current storage: <strong style={{ color: colors.fg.primary }}>
-                      {storagePreference === 'localStorage' ? 'Persistent' : 'Session Only'}
-                    </strong>
-                    {storagePreference === 'sessionStorage' && ' - You will need to re-enter keys when you reopen the tab'}
-                  </p>
                 </div>
 
                 {/* Anthropic Key */}
@@ -724,10 +696,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   <RotateCcw size={16} color={colors.accent.primary} />
                   Backup & Restore
                 </div>
-
-                <p style={{ ...descriptionStyles, marginBottom: spacing[3] }}>
-                  Export your local data as JSON and store it somewhere safe. API keys are not included.
-                </p>
 
                 <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
                   <button

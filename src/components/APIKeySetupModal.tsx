@@ -220,8 +220,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
             {/* Info banner */}
             <div style={styles.infoBanner}>
               <p style={styles.infoText}>
-                Your API keys are stored locally in your browser and never sent to our servers.
-                You can get API keys from:
+                Get API keys from:
               </p>
               <div style={styles.links}>
                 <a
@@ -256,7 +255,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                   }}
                 >
                   <div style={styles.storageOptionTitle}>Persistent</div>
-                  <div style={styles.storageOptionDesc}>Keys remain across sessions</div>
+                  <div style={styles.storageOptionDesc}>Stays across sessions</div>
                 </button>
                 <button
                   type="button"
@@ -267,7 +266,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                   }}
                 >
                   <div style={styles.storageOptionTitle}>Session Only</div>
-                  <div style={styles.storageOptionDesc}>Keys cleared when tab closes (more secure)</div>
+                  <div style={styles.storageOptionDesc}>Cleared when tab closes</div>
                 </button>
               </div>
             </div>
