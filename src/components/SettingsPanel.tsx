@@ -323,7 +323,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={overlayStyles}
-          onClick={onClose}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}

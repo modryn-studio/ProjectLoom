@@ -522,7 +522,9 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={overlayStyles}
-          onClick={handleClose}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}

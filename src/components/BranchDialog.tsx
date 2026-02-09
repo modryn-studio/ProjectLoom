@@ -401,7 +401,9 @@ export function BranchDialog() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        onClick={handleClose}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleClose();
+        }}
       >
         <motion.div
           style={dialogStyles}

@@ -338,7 +338,9 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={handleClose}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleClose();
+        }}
       >
         <motion.div
           style={dialogStyles}
