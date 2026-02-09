@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
-import { ChevronRight, Zap, PanelLeft, FileText, BarChart3 } from 'lucide-react';
+import React, { useMemo, useCallback } from 'react';
+import { ChevronRight, PanelLeft, FileText } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
@@ -53,20 +53,7 @@ const chevronStyles: React.CSSProperties = {
   flexShrink: 0,
 };
 
-const mergeBadgeStyles: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: spacing[1],
-  padding: `2px ${spacing[2]}`,
-  backgroundColor: colors.semantic.success + '20',
-  color: colors.semantic.success,
-  borderRadius: effects.border.radius.default,
-  fontSize: typography.sizes.xs,
-  fontWeight: 600,
-  marginLeft: spacing[1],
-  cursor: 'help',
-  position: 'relative',
-};
+
 
 const sidebarToggleButtonStyles: React.CSSProperties = {
   padding: spacing[2],
@@ -107,8 +94,7 @@ interface CanvasBreadcrumbProps {
   showSidebarToggle?: boolean;
   onToggleSidebar?: () => void;
   onOpenCanvasContext?: () => void;
-  onToggleUsagePanel?: () => void;
-  isUsagePanelOpen?: boolean;
+  onFocusNode?: (nodeId: string) => void;
 }
 
 /**
@@ -121,17 +107,14 @@ export function CanvasBreadcrumb({
   showSidebarToggle = false,
   onToggleSidebar,
   onOpenCanvasContext,
-  onToggleUsagePanel,
-  isUsagePanelOpen = false,
+  onFocusNode,
 }: CanvasBreadcrumbProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const setSelected = useCanvasStore((s) => s.setSelected);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const workspaces = useCanvasStore((s) => s.workspaces);
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
-  
-  const [tooltipVisible, setTooltipVisible] = useState(false);
-  const [tooltipParents, setTooltipParents] = useState<string[]>([]);
 
   // Get current workspace
   const currentWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
@@ -147,39 +130,34 @@ export function CanvasBreadcrumb({
 
     const path: Conversation[] = [];
     const visited = new Set<string>();
-    
+
     let current: Conversation | undefined = selectedConv;
-    
+
     // Build path from selected back to root
     while (current) {
       // Prevent infinite loops
       if (visited.has(current.id)) break;
       visited.add(current.id);
-      
+
       path.unshift(current);
-      
+
       // Follow first parent (consistent with tree sidebar)
       const parentIds: string[] = current.parentCardIds || [];
       const firstParentId: string | undefined = parentIds[0];
       current = firstParentId ? conversations.get(firstParentId) : undefined;
     }
-    
+
     return path;
   }, [selectedConv, conversations]);
 
   // Click handlers
   const handleCrumbClick = useCallback((convId: string) => {
     setSelected([convId]);
-  }, [setSelected]);
-
-  const handleBadgeHover = useCallback((parents: string[]) => {
-    setTooltipParents(parents);
-    setTooltipVisible(true);
-  }, []);
-
-  const handleBadgeLeave = useCallback(() => {
-    setTooltipVisible(false);
-  }, []);
+    openChatPanel(convId);
+    if (onFocusNode) {
+      onFocusNode(convId);
+    }
+  }, [setSelected, openChatPanel, onFocusNode]);
 
   const handleWheel = useCallback((event: React.WheelEvent<HTMLElement>) => {
     if (event.deltaY === 0) return;
@@ -225,8 +203,8 @@ export function CanvasBreadcrumb({
         </button>
       )}
       
-      {/* Show workspace name + stats when no card selected */}
-      {breadcrumbPath.length === 0 && (
+      {/* Workspace name + stats (only when no cards selected) */}
+      {selectedNodeIds.size === 0 && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -280,73 +258,13 @@ export function CanvasBreadcrumb({
         </span>
       )}
 
-      {(onOpenCanvasContext || onToggleUsagePanel) && (
-        <div style={{ display: 'flex', gap: spacing[2], marginLeft: 'auto' }}>
-          {onOpenCanvasContext && (
-            <button
-              onClick={onOpenCanvasContext}
-              title="Canvas Context (active canvas only)"
-              style={contextButtonStyles}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.accent.muted;
-                e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
-                e.currentTarget.style.color = colors.accent.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = colors.bg.inset;
-                e.currentTarget.style.border = '1px solid var(--border-primary)';
-                e.currentTarget.style.color = colors.fg.secondary;
-              }}
-            >
-              <FileText size={12} />
-              Canvas Context
-            </button>
-          )}
-          {onToggleUsagePanel && (
-            <button
-              onClick={onToggleUsagePanel}
-              title="Usage"
-              style={{
-                ...contextButtonStyles,
-                backgroundColor: isUsagePanelOpen ? colors.accent.muted : contextButtonStyles.backgroundColor,
-                border: `1px solid ${isUsagePanelOpen ? colors.accent.primary : 'var(--border-primary)'}`,
-                color: isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.accent.muted;
-                e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
-                e.currentTarget.style.color = colors.accent.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = isUsagePanelOpen ? colors.accent.muted : colors.bg.inset;
-                e.currentTarget.style.border = `1px solid ${isUsagePanelOpen ? colors.accent.primary : 'var(--border-primary)'}`;
-                e.currentTarget.style.color = isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary;
-              }}
-            >
-              <BarChart3 size={12} />
-              Usage
-            </button>
-          )}
-        </div>
-      )}
-      
-      {/* Show breadcrumb path (only when exactly 1 card selected) */}
-      {selectedNodeIds.size === 1 && breadcrumbPath.map((conv, index) => {
-        const isLast = index === breadcrumbPath.length - 1;
-        const isMergeNode = conv.isMergeNode && conv.parentCardIds.length > 1;
-        const additionalParents = isMergeNode ? conv.parentCardIds.length - 1 : 0;
-        
-        // Get other parent names for tooltip
-        const otherParentNames = isMergeNode
-          ? conv.parentCardIds.slice(1).map(pid => {
-              const parent = conversations.get(pid);
-              return parent?.metadata.title || 'Unknown';
-            })
-          : [];
-
-        return (
-          <React.Fragment key={conv.id}>
-            <div style={breadcrumbItemStyles}>
+      {/* Breadcrumb trail */}
+      {selectedNodeIds.size === 1 && breadcrumbPath.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+          {breadcrumbPath.map((conv, index) => {
+            const isLast = index === breadcrumbPath.length - 1;
+            return (
+            <React.Fragment key={conv.id}>
               <span
                 style={isLast ? activeCrumbStyles : clickableCrumbStyles}
                 onClick={() => !isLast && handleCrumbClick(conv.id)}
@@ -361,54 +279,39 @@ export function CanvasBreadcrumb({
                   }
                 }}
               >
-                {isMergeNode && '🔀 '}{conv.metadata.title}
+                {conv.metadata.title}
               </span>
-              
-              {isMergeNode && (
-                <span
-                  style={mergeBadgeStyles}
-                  onMouseEnter={() => handleBadgeHover(otherParentNames)}
-                  onMouseLeave={handleBadgeLeave}
-                  title={`Also merged from: ${otherParentNames.join(', ')}`}
-                >
-                  <Zap size={10} />
-                  +{additionalParents}
-                  
-                  {/* Tooltip */}
-                  {tooltipVisible && tooltipParents.length > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      marginTop: spacing[1],
-                      padding: spacing[2],
-                      backgroundColor: colors.bg.inset,
-                      border: `1px solid ${colors.bg.secondary}`,
-                      borderRadius: effects.border.radius.default,
-                      fontSize: typography.sizes.xs,
-                      whiteSpace: 'nowrap',
-                      zIndex: 1000,
-                      pointerEvents: 'none',
-                    }}>
-                      <div style={{ color: colors.fg.quaternary, marginBottom: spacing[1], fontSize: typography.sizes.xs }}>
-                        Also merged from:
-                      </div>
-                      {otherParentNames.map((name, i) => (
-                        <div key={i} style={{ color: colors.fg.secondary }}>• {name}</div>
-                      ))}
-                    </div>
-                  )}
-                </span>
+              {!isLast && (
+                <ChevronRight size={14} style={chevronStyles} />
               )}
-            </div>
-            
-            {!isLast && (
-              <ChevronRight size={14} style={chevronStyles} />
-            )}
-          </React.Fragment>
-        );
-      })}
+            </React.Fragment>
+          );
+          })}
+        </div>
+      )}
+
+      {onOpenCanvasContext && (
+        <div style={{ display: 'flex', gap: spacing[2], marginLeft: 'auto' }}>
+          <button
+            onClick={onOpenCanvasContext}
+            title="Canvas Context (active canvas only)"
+            style={contextButtonStyles}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colors.accent.muted;
+              e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
+              e.currentTarget.style.color = colors.accent.primary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = colors.bg.inset;
+              e.currentTarget.style.border = '1px solid var(--border-primary)';
+              e.currentTarget.style.color = colors.fg.secondary;
+            }}
+          >
+            <FileText size={12} />
+            Canvas Context
+          </button>
+        </div>
+      )}
     </nav>
   );
 }

@@ -22,7 +22,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { colors, canvas as canvasConfig, animation, spacing, typography, effects } from '@/lib/design-tokens';
 import { logger } from '@/lib/logger';
-import type { ConversationNodeData, Conversation, Message } from '@/types';
+import type { ConversationNodeData } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
@@ -45,7 +45,6 @@ import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
-import { nanoid } from 'nanoid';
 import { Plus } from 'lucide-react';
 
 // =============================================================================
@@ -207,7 +206,7 @@ export function InfiniteCanvas() {
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
   const deleteWorkspace = useCanvasStore((s) => s.deleteWorkspace);
   const createWorkspace = useCanvasStore((s) => s.createWorkspace);
-  const addConversation = useCanvasStore((s) => s.addConversation);
+  const createConversationCard = useCanvasStore((s) => s.createConversationCard);
   const undo = useCanvasStore((s) => s.undo);
   const redo = useCanvasStore((s) => s.redo);
   const canUndo = useCanvasStore((s) => s.canUndo);
@@ -300,11 +299,6 @@ export function InfiniteCanvas() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [deleteWorkspaceModal, pendingDeleteConversationIds.length, confirmDeleteWorkspace, confirmDeleteConversation]);
 
-  const handleCreateWorkspace = useCallback(() => {
-    const workspace = createWorkspace(`New Workspace ${workspaces.length + 1}`);
-    navigateToWorkspace(workspace.id);
-  }, [createWorkspace, navigateToWorkspace, workspaces.length]);
-
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
   const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
@@ -381,6 +375,51 @@ export function InfiniteCanvas() {
       }, 300);
     }
   }, [nodes.length]);
+
+  // Adjust canvas view when chat panel is opened/closed
+  // This ensures the active card stays in view when the viewport changes
+  useEffect(() => {
+    if (!reactFlowInstance.current) return;
+    
+    const currentSelectedIds = useCanvasStore.getState().selectedNodeIds;
+    if (currentSelectedIds.size !== 1) return;
+    
+    // Small delay to allow panel animation to complete
+    const timer = setTimeout(() => {
+      if (reactFlowInstance.current) {
+        const selectedId = Array.from(currentSelectedIds)[0];
+        reactFlowInstance.current.fitView({
+          padding: 0.2,
+          duration: 600,
+          nodes: [{ id: selectedId }],
+        });
+      }
+    }, 350); // Match panel animation duration
+    
+    return () => clearTimeout(timer);
+  }, [chatPanelOpen]);
+
+  // Adjust canvas view when sidebar is toggled
+  useEffect(() => {
+    if (!reactFlowInstance.current) return;
+    
+    const currentSelectedIds = useCanvasStore.getState().selectedNodeIds;
+    if (currentSelectedIds.size !== 1) return;
+    
+    // Small delay to allow sidebar animation to complete
+    const timer = setTimeout(() => {
+      if (reactFlowInstance.current) {
+        const selectedId = Array.from(currentSelectedIds)[0];
+        reactFlowInstance.current.fitView({
+          padding: 0.2,
+          duration: 600,
+          nodes: [{ id: selectedId }],
+        });
+      }
+    }, 350);
+    
+    return () => clearTimeout(timer);
+  }, [isSidebarOpen]);
 
   // Handle node changes (position updates)
   const handleNodesChange: OnNodesChange<Node<ConversationNodeData>> = useCallback(
@@ -485,7 +524,13 @@ export function InfiniteCanvas() {
   );
 
   // Handle creating a new conversation
-  const handleAddConversation = useCallback((explicitPosition?: { x: number; y: number }) => {
+  const handleAddConversation = useCallback((
+    explicitPosition?: { x: number; y: number },
+    options?: { workspaceId?: string; openChat?: boolean }
+  ) => {
+    const workspaceId = options?.workspaceId ?? activeWorkspaceId;
+    if (!workspaceId) return;
+
     let position = explicitPosition || canvasClickPosition;
 
     // If no click position (keyboard shortcut), use center of viewport
@@ -498,37 +543,20 @@ export function InfiniteCanvas() {
 
     const finalPosition = position || { x: 0, y: 0 };
 
-    // Create a new empty conversation (v4 with card-level branching fields)
-    const newConversation: Conversation = {
-      id: nanoid(),
-      canvasId: activeWorkspaceId,
-      position: finalPosition,
-      content: [
-        {
-          id: nanoid(),
-          role: 'user',
-          content: 'New conversation - click to edit',
-          timestamp: new Date(),
-        } as Message,
-      ],
-      connections: [],
-      // v4 card-level branching
-      parentCardIds: [],
-      inheritedContext: {},
-      isMergeNode: false,
-      metadata: {
-        title: 'New Conversation',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messageCount: 1,
-        tags: [],
-        isExpanded: false,
-      },
-    };
-
-    addConversation(newConversation, finalPosition);
+    createConversationCard(workspaceId, finalPosition, {
+      openChat: options?.openChat ?? true,
+    });
     setCanvasClickPosition(null);
-  }, [canvasClickPosition, activeWorkspaceId, addConversation]);
+  }, [canvasClickPosition, activeWorkspaceId, createConversationCard]);
+
+  const handleCreateWorkspace = useCallback(() => {
+    const workspace = createWorkspace(`New Workspace ${workspaces.length + 1}`);
+    navigateToWorkspace(workspace.id);
+    handleAddConversation(undefined, {
+      workspaceId: workspace.id,
+      openChat: true,
+    });
+  }, [createWorkspace, navigateToWorkspace, workspaces.length, handleAddConversation]);
 
   // Handle canvas right-click (context menu)
   const handlePaneContextMenu = useCallback(
@@ -840,8 +868,7 @@ export function InfiniteCanvas() {
                   showSidebarToggle={!isSidebarOpen}
                   onToggleSidebar={() => setIsSidebarOpen(true)}
                   onOpenCanvasContext={openCanvasContext}
-                  onToggleUsagePanel={toggleUsagePanel}
-                  isUsagePanelOpen={usagePanelOpen}
+                  onFocusNode={focusOnNode}
                 />
               </div>
 

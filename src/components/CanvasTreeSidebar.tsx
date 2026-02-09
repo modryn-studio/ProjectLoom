@@ -66,6 +66,7 @@ const EMPTY_ROOT_NODES: ConversationTreeNode[] = [];
 function ConversationTree({ workspaceId, isExpanded, onFocusNode }: ConversationTreeProps) {
   const selectedNodeIds = useCanvasStore(state => state.selectedNodeIds);
   const setSelected = useCanvasStore(state => state.setSelected);
+  const openChatPanel = useCanvasStore(state => state.openChatPanel);
   const setTree = useCanvasTreeStore((state) => state.setTree);
   const rootNodes = useCanvasTreeStore(
     (state) => state.treeCache[workspaceId]?.rootNodes ?? EMPTY_ROOT_NODES
@@ -93,10 +94,11 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
   // IMPORTANT: Define ALL hooks before any conditional returns
   const handleSelectCard = useCallback((cardId: string) => {
     setSelected([cardId]);
+    openChatPanel(cardId);
     if (onFocusNode) {
       onFocusNode(cardId);
     }
-  }, [setSelected, onFocusNode]);
+  }, [setSelected, openChatPanel, onFocusNode]);
   
   // Toggle collapse state for a conversation node
   const toggleNodeCollapse = useCallback((conversationId: string) => {
@@ -685,6 +687,7 @@ export function CanvasTreeSidebar({
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
   const createWorkspace = useCanvasStore((s) => s.createWorkspace);
+  const createConversationCard = useCanvasStore((s) => s.createConversationCard);
   const updateWorkspace = useCanvasStore((s) => s.updateWorkspace);
 
   // Resize handlers
@@ -722,6 +725,14 @@ export function CanvasTreeSidebar({
   const handleDelete = useCallback((id: string) => {
     onRequestDeleteWorkspace(id);
   }, [onRequestDeleteWorkspace]);
+
+  const handleCreateWorkspace = useCallback((title: string) => {
+    const workspace = createWorkspace(title);
+    navigateToWorkspace(workspace.id);
+    createConversationCard(workspace.id, undefined, {
+      openChat: true,
+    });
+  }, [createWorkspace, navigateToWorkspace, createConversationCard]);
 
 
   const handleRename = useCallback((workspaceId: string, newName: string) => {
@@ -823,8 +834,7 @@ export function CanvasTreeSidebar({
         <div style={{ display: 'flex', gap: spacing[1] }}>
           <button
             onClick={() => {
-              const workspace = createWorkspace(`New Workspace ${workspaces.length + 1}`);
-              navigateToWorkspace(workspace.id);
+              handleCreateWorkspace(`New Workspace ${workspaces.length + 1}`);
             }}
             style={{
               background: 'none',
@@ -874,8 +884,7 @@ export function CanvasTreeSidebar({
             <p>No workspaces yet</p>
             <button
               onClick={() => {
-                const workspace = createWorkspace('My First Workspace');
-                navigateToWorkspace(workspace.id);
+                handleCreateWorkspace('My First Workspace');
               }}
               style={{
                 marginTop: spacing[2],

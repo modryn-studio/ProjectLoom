@@ -26,6 +26,7 @@ import type {
 } from '@/types';
 import { logger } from '@/lib/logger';
 import { useToastStore } from '@/stores/toast-store';
+import { usePreferencesStore } from '@/stores/preferences-store';
 
 // Debounce helper for performance
 let saveTimeout: NodeJS.Timeout | null = null;
@@ -128,6 +129,10 @@ function canConnect(
 
 export type ConversationNode = Node<ConversationNodeData>;
 
+interface CreateConversationOptions {
+  openChat?: boolean;
+}
+
 interface HistoryState {
   nodes: ConversationNode[];
   edges: Edge[];
@@ -175,6 +180,7 @@ interface WorkspaceState {
   historyIndex: number;
 
   // Actions - Node Management
+  createConversationCard: (workspaceId: string, position?: Position, options?: CreateConversationOptions) => Conversation;
   addConversation: (conversation: Conversation, position?: Position) => void;
   deleteConversation: (id: string) => void;
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
@@ -482,6 +488,39 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
     // Node Management
     // =========================================================================
+
+    createConversationCard: (workspaceId, position, options) => {
+      const now = new Date();
+      const finalPosition = position ?? { x: Math.random() * 500, y: Math.random() * 500 };
+      const content: Message[] = [];
+
+      const newConversation: Conversation = {
+        id: nanoid(),
+        canvasId: workspaceId,
+        position: finalPosition,
+        content,
+        connections: [],
+        parentCardIds: [],
+        inheritedContext: {},
+        isMergeNode: false,
+        metadata: {
+          title: 'New Conversation',
+          createdAt: now,
+          updatedAt: now,
+          messageCount: 0,
+          tags: [],
+          isExpanded: false,
+        },
+      };
+
+      get().addConversation(newConversation, finalPosition);
+
+      if (options?.openChat) {
+        get().openChatPanel(newConversation.id);
+      }
+
+      return newConversation;
+    },
 
     addConversation: (conversation, position) => {
       const { nodes, conversations } = get();
@@ -1765,6 +1804,14 @@ export const useCanvasStore = create<WorkspaceState>()(
       get().saveToStorage();
       
       logger.debug(`Sent message to conversation ${activeConversationId}`);
+
+      const prefs = usePreferencesStore.getState().preferences;
+      if (!prefs.ui.hasSeenCanvasTip) {
+        useToastStore.getState().info('Tip: Right-click the canvas to add more conversations.', {
+          duration: 6000,
+        });
+        usePreferencesStore.getState().setUIPreferences({ hasSeenCanvasTip: true });
+      }
       
       // AI response is now handled by ChatPanel via useChat hook
     },

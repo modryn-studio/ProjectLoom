@@ -38,15 +38,17 @@ export function ModelSelector({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Determine which models are available based on API keys
+  // Re-check when dropdown opens in case keys were added during the session
   const { hasAnthropicKey, hasOpenAIKey } = useMemo(() => {
     const anthropicKey = !!apiKeyManager.getKey('anthropic');
     const openaiKey = !!apiKeyManager.getKey('openai');
-    
+
     return {
       hasAnthropicKey: anthropicKey,
       hasOpenAIKey: openaiKey,
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Get current model info
   const currentModelInfo = useMemo(() => {
@@ -85,6 +87,7 @@ export function ModelSelector({
     <div ref={dropdownRef} style={styles.container}>
       {/* Trigger Button */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         disabled={!hasApiKey}
         style={{
@@ -189,6 +192,7 @@ function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
 
   return (
     <button
+      type="button"
       onClick={() => onSelect(model.id)}
       title={model.description}
       style={{

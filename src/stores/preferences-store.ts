@@ -38,6 +38,8 @@ export interface UserPreferences {
     chatPanelWidth: number;
     /** Theme mode: light, dark, or system */
     theme: ThemeMode;
+    /** Whether the canvas tip has been shown */
+    hasSeenCanvasTip: boolean;
   };
 }
 
@@ -86,6 +88,7 @@ const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
   confirmOnDelete: true,
   chatPanelWidth: 480, // Default 30% of 1600px viewport
   theme: 'system', // Follow system preference by default
+  hasSeenCanvasTip: false,
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {

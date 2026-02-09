@@ -16,7 +16,7 @@ import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
 import { SidePanel } from './SidePanel';
-import type { MessageAttachment } from '@/types';
+import type { MessageAttachment, Conversation } from '@/types';
 
 // =============================================================================
 // CONSTANTS
@@ -45,7 +45,13 @@ export function ChatPanel() {
   const addAIMessage = useCanvasStore((s) => s.addAIMessage);
   const addUsage = useUsageStore((s) => s.addUsage);
   const getConversationMessages = useCanvasStore((s) => s.getConversationMessages);
-  const getConversationModel = useCanvasStore((s) => s.getConversationModel);
+  const conversationModel = useCanvasStore(
+    useCallback((s) => {
+      if (!s.activeConversationId) return null;
+      const conversation = s.conversations.get(s.activeConversationId) as (Conversation & { model?: string }) | undefined;
+      return conversation?.model ?? null;
+    }, [])
+  );
   const setConversationModel = useCanvasStore((s) => s.setConversationModel);
   const workspaces = useCanvasStore((s) => s.workspaces);
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
@@ -68,23 +74,22 @@ export function ChatPanel() {
   // Determine current model for conversation
   const currentModel = useMemo(() => {
     if (!activeConversationId) return null;
-    
-    // Check if conversation has a model set
-    const savedModel = getConversationModel(activeConversationId);
-    if (savedModel) return savedModel;
-    
+
+    if (conversationModel) return conversationModel;
+
     // Otherwise, determine default based on available API keys
     const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
     const hasOpenAIKey = !!apiKeyManager.getKey('openai');
-    
+
     if (hasAnthropicKey) {
       return getDefaultModel('anthropic').id;
-    } else if (hasOpenAIKey) {
+    }
+    if (hasOpenAIKey) {
       return getDefaultModel('openai').id;
     }
-    
+
     return null;
-  }, [activeConversationId, getConversationModel]);
+  }, [activeConversationId, conversationModel]);
 
   // Get API key for current model
   const currentApiKey = useMemo(() => {

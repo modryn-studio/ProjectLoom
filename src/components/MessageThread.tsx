@@ -140,7 +140,8 @@ export function MessageThread({
       {/* Empty state */}
       {displayMessages.length === 0 && (
         <div style={threadStyles.emptyState}>
-          <p>No messages yet. Start the conversation!</p>
+          <p style={threadStyles.emptyStateTitle}>No messages yet. Start the conversation!</p>
+          <p style={threadStyles.emptyStateDisclaimer}>AI responses may be inaccurate. Please double-check.</p>
         </div>
       )}
     </div>
@@ -413,12 +414,32 @@ const threadStyles: Record<string, React.CSSProperties> = {
 
   emptyState: {
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing[2],
     flex: 1,
+    textAlign: 'center',
+    padding: spacing[4],
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
+    backgroundColor: colors.bg.secondary,
+    border: `1px solid ${colors.border.muted}`,
+    borderRadius: effects.border.radius.default,
+    boxShadow: effects.shadow?.sm ?? 'none',
     color: colors.fg.tertiary,
-    fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
+  },
+  emptyStateTitle: {
+    margin: 0,
+    fontSize: typography.sizes.sm,
+    color: colors.fg.secondary,
+  },
+  emptyStateDisclaimer: {
+    margin: 0,
+    fontSize: typography.sizes.xs,
+    color: colors.fg.quaternary,
   },
 };
 
