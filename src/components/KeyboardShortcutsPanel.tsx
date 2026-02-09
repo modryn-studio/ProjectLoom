@@ -9,7 +9,7 @@
  * @version 4.0.0
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Keyboard } from 'lucide-react';
 import { colors, spacing, effects, animation, typography } from '@/lib/design-tokens';
@@ -124,6 +124,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
     if (typeof navigator === 'undefined') return false;
     return /Mac/.test(navigator.platform);
   }, []);
+  const overlayMouseDownRef = useRef(false);
 
   // Handle Escape key
   useEffect(() => {
@@ -139,13 +140,6 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-
-  // Handle overlay click
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  }, [onClose]);
 
   // Format key display
   const formatKey = useCallback((shortcutKey: keyof typeof SHORTCUTS) => {
@@ -163,7 +157,15 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           style={overlayStyles}
-          onClick={handleOverlayClick}
+          onMouseDown={(e) => {
+            overlayMouseDownRef.current = e.target === e.currentTarget;
+          }}
+          onMouseUp={(e) => {
+            if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+              onClose();
+            }
+            overlayMouseDownRef.current = false;
+          }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}

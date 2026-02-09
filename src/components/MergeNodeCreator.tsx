@@ -9,7 +9,7 @@
  * @version 4.0.0
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -64,6 +64,7 @@ export function MergeNodeCreator({
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const overlayMouseDownRef = useRef(false);
 
   // Get all available cards that can be merged
   const availableCards = useMemo(() => {
@@ -220,8 +221,14 @@ export function MergeNodeCreator({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
+        onMouseDown={(e) => {
+          overlayMouseDownRef.current = e.target === e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+            onClose();
+          }
+          overlayMouseDownRef.current = false;
         }}
       >
         <motion.div

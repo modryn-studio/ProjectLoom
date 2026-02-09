@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Key, AlertCircle, CheckCircle, Loader, ExternalLink } from 'lucide-react';
 
@@ -39,6 +39,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
   const [openaiKey, setOpenaiKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [isSaving, setIsSaving] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
+  const overlayMouseDownRef = useRef(false);
 
   // Load existing keys and storage preference on mount
   useEffect(() => {
@@ -189,8 +190,14 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         style={styles.overlay}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
+        onMouseDown={(e) => {
+          overlayMouseDownRef.current = e.target === e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+            onClose();
+          }
+          overlayMouseDownRef.current = false;
         }}
       >
         <motion.div

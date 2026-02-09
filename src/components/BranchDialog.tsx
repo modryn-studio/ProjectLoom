@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useCanvasStore, selectBranchDialogOpen, selectBranchSourceId } from '@/stores/canvas-store';
@@ -149,6 +149,7 @@ export function BranchDialog() {
   const [inheritanceMode, setInheritanceMode] = useState<InheritanceMode>(
     defaultInheritanceMode
   );
+  const overlayMouseDownRef = useRef(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [rememberChoice, setRememberChoice] = useState(false);
@@ -401,8 +402,14 @@ export function BranchDialog() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) handleClose();
+        onMouseDown={(e) => {
+          overlayMouseDownRef.current = e.target === e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+            handleClose();
+          }
+          overlayMouseDownRef.current = false;
         }}
       >
         <motion.div

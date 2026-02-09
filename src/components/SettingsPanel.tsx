@@ -160,6 +160,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const toast = useToast();
   const backupInputRef = useRef<HTMLInputElement>(null);
+  const overlayMouseDownRef = useRef(false);
 
   // API Keys state
   const [anthropicKey, setAnthropicKey] = useState('');
@@ -323,8 +324,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={overlayStyles}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
+          onMouseDown={(e) => {
+            overlayMouseDownRef.current = e.target === e.currentTarget;
+          }}
+          onMouseUp={(e) => {
+            if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+              onClose();
+            }
+            overlayMouseDownRef.current = false;
           }}
         >
           <motion.div

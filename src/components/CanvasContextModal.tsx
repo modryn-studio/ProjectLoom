@@ -207,6 +207,7 @@ function isSupportedFile(file: File): boolean {
 export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  const overlayMouseDownRef = useRef(false);
 
   const { activeWorkspaceId } = useCanvasStore(
     useShallow((s) => ({
@@ -522,8 +523,14 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={overlayStyles}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
+          onMouseDown={(e) => {
+            overlayMouseDownRef.current = e.target === e.currentTarget;
+          }}
+          onMouseUp={(e) => {
+            if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+              handleClose();
+            }
+            overlayMouseDownRef.current = false;
           }}
         >
           <motion.div

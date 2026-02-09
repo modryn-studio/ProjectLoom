@@ -9,7 +9,7 @@
  * @version 4.0.0
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, animation } from '@/lib/design-tokens';
@@ -92,6 +92,7 @@ const footerStyles: React.CSSProperties = {
 export function HierarchicalMergeDialog() {
   const isOpen = useCanvasStore((s) => s.hierarchicalMergeDialogOpen);
   const closeDialog = useCanvasStore((s) => s.closeHierarchicalMergeDialog);
+  const overlayMouseDownRef = useRef(false);
 
   // Handle Escape key
   useEffect(() => {
@@ -113,13 +114,6 @@ export function HierarchicalMergeDialog() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, closeDialog]);
 
-  // Handle overlay click
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      closeDialog();
-    }
-  }, [closeDialog]);
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -129,7 +123,15 @@ export function HierarchicalMergeDialog() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           style={overlayStyles}
-          onClick={handleOverlayClick}
+          onMouseDown={(e) => {
+            overlayMouseDownRef.current = e.target === e.currentTarget;
+          }}
+          onMouseUp={(e) => {
+            if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+              closeDialog();
+            }
+            overlayMouseDownRef.current = false;
+          }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}

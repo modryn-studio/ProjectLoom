@@ -80,6 +80,7 @@ export function WorkspaceNameModal({
   const [name, setName] = useState(suggestedName);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const overlayMouseDownRef = useRef(false);
 
   // Update name when modal opens with new suggested name
   useEffect(() => {
@@ -114,8 +115,14 @@ export function WorkspaceNameModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={overlayStyles}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
+          onMouseDown={(e) => {
+            overlayMouseDownRef.current = e.target === e.currentTarget;
+          }}
+          onMouseUp={(e) => {
+            if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+              onClose();
+            }
+            overlayMouseDownRef.current = false;
           }}
         >
           <motion.div

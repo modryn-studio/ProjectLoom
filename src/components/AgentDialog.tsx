@@ -115,6 +115,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const overlayMouseDownRef = useRef(false);
 
   // Store
   const conversations = useCanvasStore((s) => s.conversations);
@@ -338,8 +339,14 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) handleClose();
+        onMouseDown={(e) => {
+          overlayMouseDownRef.current = e.target === e.currentTarget;
+        }}
+        onMouseUp={(e) => {
+          if (overlayMouseDownRef.current && e.target === e.currentTarget) {
+            handleClose();
+          }
+          overlayMouseDownRef.current = false;
         }}
       >
         <motion.div
