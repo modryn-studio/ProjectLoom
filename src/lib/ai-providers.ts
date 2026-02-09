@@ -128,7 +128,7 @@ export class ClaudeProvider implements AIProvider {
 
   constructor(config?: Partial<ProviderConfig>) {
     this.config = {
-      defaultModel: config?.defaultModel ?? 'claude-sonnet-4-20250514',
+      defaultModel: config?.defaultModel ?? 'claude-sonnet-4-5',
       maxTokens: config?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: config?.temperature ?? DEFAULT_TEMPERATURE,
       baseUrl: config?.baseUrl ?? ANTHROPIC_API_URL,
@@ -298,21 +298,21 @@ export class ClaudeProvider implements AIProvider {
   async getModels(): Promise<ModelInfo[]> {
     return [
       {
-        id: 'claude-sonnet-4-20250514',
-        name: 'Claude Sonnet 4',
-        maxTokens: 8192,
+        id: 'claude-opus-4-6',
+        name: 'Claude Opus 4.6',
+        maxTokens: 200000,
         supportsStreaming: true,
       },
       {
-        id: 'claude-3-5-sonnet-20241022',
-        name: 'Claude 3.5 Sonnet',
-        maxTokens: 8192,
+        id: 'claude-sonnet-4-5',
+        name: 'Claude Sonnet 4.5',
+        maxTokens: 200000,
         supportsStreaming: true,
       },
       {
-        id: 'claude-3-haiku-20240307',
-        name: 'Claude 3 Haiku',
-        maxTokens: 4096,
+        id: 'claude-haiku-4-5',
+        name: 'Claude Haiku 4.5',
+        maxTokens: 200000,
         supportsStreaming: true,
       },
     ];
@@ -333,7 +333,7 @@ export class OpenAIProvider implements AIProvider {
 
   constructor(config?: Partial<ProviderConfig>) {
     this.config = {
-      defaultModel: config?.defaultModel ?? 'gpt-4o',
+      defaultModel: config?.defaultModel ?? 'gpt-5.2',
       maxTokens: config?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: config?.temperature ?? DEFAULT_TEMPERATURE,
       baseUrl: config?.baseUrl ?? OPENAI_API_URL,
@@ -491,21 +491,27 @@ export class OpenAIProvider implements AIProvider {
   async getModels(): Promise<ModelInfo[]> {
     return [
       {
-        id: 'gpt-4o',
-        name: 'GPT-4o',
-        maxTokens: 4096,
+        id: 'gpt-5.2',
+        name: 'GPT-5.2',
+        maxTokens: 128000,
         supportsStreaming: true,
       },
       {
-        id: 'gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        maxTokens: 4096,
+        id: 'gpt-5-mini',
+        name: 'GPT-5 Mini',
+        maxTokens: 128000,
         supportsStreaming: true,
       },
       {
-        id: 'gpt-4-turbo',
-        name: 'GPT-4 Turbo',
-        maxTokens: 4096,
+        id: 'gpt-5-nano',
+        name: 'GPT-5 Nano',
+        maxTokens: 128000,
+        supportsStreaming: true,
+      },
+      {
+        id: 'gpt-4.1',
+        name: 'GPT-4.1',
+        maxTokens: 32768,
         supportsStreaming: true,
       },
     ];

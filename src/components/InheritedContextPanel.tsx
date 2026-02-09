@@ -142,7 +142,7 @@ export function InheritedContextPanel() {
             estimateCost(
               estimateMessagesTokens(parentConversation.content),
               500,
-              'claude-sonnet-4-20250514'
+              'claude-sonnet-4-5'
             )
           )
         : null;
@@ -185,7 +185,7 @@ export function InheritedContextPanel() {
       const anthropicKey = apiKeyManager.getKey('anthropic');
       const openaiKey = apiKeyManager.getKey('openai');
       const apiKey = anthropicKey || openaiKey;
-      const model = anthropicKey ? 'claude-sonnet-4-20250514' : 'gpt-4o';
+      const model = anthropicKey ? 'claude-sonnet-4-5' : 'gpt-5.2';
 
       if (!apiKey) {
         setRegenerateErrors((prev) => ({

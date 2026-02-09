@@ -132,7 +132,7 @@ export function MergeNodeCreator({
       
       try {
         const provider = apiKeyManager.getKey('anthropic') ? 'anthropic' : 'openai';
-        const modelId = provider === 'anthropic' ? 'claude-sonnet-4-20250514' : 'gpt-4o';
+        const modelId = provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-5.2';
         const messagesForApi = conv.content.map(m => ({
           role: m.role,
           content: m.content,

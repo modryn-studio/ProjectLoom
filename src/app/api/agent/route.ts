@@ -77,7 +77,7 @@ export async function POST(req: Request): Promise<Response> {
       maxSteps: config.maxSteps ?? 10,
       timeoutMs: config.timeoutMs ?? 60_000,
       maxCostUsd: config.maxCostUsd ?? 0.50,
-      modelId: config.modelId || 'claude-sonnet-4-20250514',
+      modelId: config.modelId || 'claude-sonnet-4-5',
       apiKey: config.apiKey,
     };
 

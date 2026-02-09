@@ -186,7 +186,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     const anthropicKey = apiKeyManager.getKey('anthropic');
     const openaiKey = apiKeyManager.getKey('openai');
     const apiKey = anthropicKey || openaiKey;
-    const modelId = anthropicKey ? 'claude-sonnet-4-20250514' : 'gpt-4o';
+    const modelId = anthropicKey ? 'claude-sonnet-4-5' : 'gpt-5.2';
 
     if (!apiKey) {
       setError('No API key configured. Add one in Settings.');
@@ -594,7 +594,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                     fontFamily: typography.fonts.body,
                   }}>
                     Tokens used: {result.usage.totalTokens.toLocaleString()} |
-                    Est. cost: {formatCost(estimateCost(result.usage.promptTokens, result.usage.completionTokens, 'claude-sonnet-4-20250514'))}
+                    Est. cost: {formatCost(estimateCost(result.usage.promptTokens, result.usage.completionTokens, 'claude-sonnet-4-5'))}
                   </div>
                 )}
               </div>

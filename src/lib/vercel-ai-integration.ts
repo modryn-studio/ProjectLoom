@@ -32,61 +32,91 @@ export interface ModelDefinition {
 
 /**
  * Available AI models
- * Updated for 2025/2026 model lineup
+ * Updated for Feb 2026 model lineup
  */
 export const AVAILABLE_MODELS: ModelDefinition[] = [
   // Anthropic Claude Models
   {
-    id: 'claude-opus-4-20250514',
-    name: 'Claude Opus 4',
+    id: 'claude-opus-4-6',
+    name: 'Claude Opus 4.6',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'high',
-    description: 'Most capable, best for complex reasoning',
+    description: 'Most intelligent for agents and coding (200K context; 1M beta)',
   },
   {
-    id: 'claude-sonnet-4-20250514',
-    name: 'Claude Sonnet 4',
+    id: 'claude-sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Balanced performance and cost',
+    description: 'Best balance of speed and intelligence (200K context; 1M beta)',
   },
   {
-    id: 'claude-haiku-4-20250514',
-    name: 'Claude Haiku 4',
+    id: 'claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Fast and economical',
+    description: 'Fastest model with near-frontier intelligence',
   },
-  
+
   // OpenAI Models
   {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
+    id: 'gpt-5.2',
+    name: 'GPT-5.2',
     provider: 'openai',
-    maxTokens: 128000,
+    maxTokens: 400000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'OpenAI\'s flagship multimodal model',
+    description: 'Flagship for coding and agentic tasks across industries',
   },
   {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini',
+    id: 'gpt-5.2-pro',
+    name: 'GPT-5.2 Pro',
     provider: 'openai',
-    maxTokens: 128000,
+    maxTokens: 400000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'high',
+    description: 'Harder-thinking variant for the most demanding problems',
+  },
+  {
+    id: 'gpt-5-mini',
+    name: 'GPT-5 Mini',
+    provider: 'openai',
+    maxTokens: 400000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Fast and affordable',
+    description: 'Cost-optimized reasoning and chat for well-defined tasks',
+  },
+  {
+    id: 'gpt-5-nano',
+    name: 'GPT-5 Nano',
+    provider: 'openai',
+    maxTokens: 400000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'low',
+    description: 'High-throughput model for simple tasks and classification',
+  },
+  {
+    id: 'gpt-4.1',
+    name: 'GPT-4.1',
+    provider: 'openai',
+    maxTokens: 1047576,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: 'Smartest non-reasoning model with 1M token context',
   },
 ];
 
@@ -116,6 +146,12 @@ export function getModelById(id: string): ModelDefinition | undefined {
  */
 export function getDefaultModel(provider: 'anthropic' | 'openai'): ModelDefinition {
   const models = AVAILABLE_MODELS.filter((m) => m.provider === provider);
+  if (models.length === 0) {
+    if (AVAILABLE_MODELS.length === 0) {
+      throw new Error('No models are available. Check AVAILABLE_MODELS configuration.');
+    }
+    return AVAILABLE_MODELS[0];
+  }
   // Prefer the medium cost tier as default (balanced)
   const medium = models.find((m) => m.costTier === 'medium');
   return medium || models[0];
@@ -224,11 +260,14 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
  * Used for both previews and usage tracking.
  */
 export const MODEL_PRICING = {
-  'claude-opus-4-20250514': { input: 15, output: 75 },
-  'claude-sonnet-4-20250514': { input: 3, output: 15 },
-  'claude-haiku-4-20250514': { input: 0.25, output: 1.25 },
-  'gpt-4o': { input: 2.5, output: 10 },
-  'gpt-4o-mini': { input: 0.15, output: 0.6 },
+  'claude-opus-4-6': { input: 5, output: 25 },
+  'claude-sonnet-4-5': { input: 3, output: 15 },
+  'claude-haiku-4-5': { input: 1, output: 5 },
+  'gpt-5.2': { input: 1.75, output: 14 },
+  'gpt-5.2-pro': { input: 21, output: 168 },
+  'gpt-5-mini': { input: 0.25, output: 2 },
+  'gpt-5-nano': { input: 0.05, output: 0.4 },
+  'gpt-4.1': { input: 2, output: 8 },
   'text-embedding-3-small': { input: 0.02, output: 0 },
 } as const;
 

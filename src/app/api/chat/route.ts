@@ -26,7 +26,7 @@ interface ChatRequestBody {
     instructions?: string;
     knowledgeBase?: string;
   };
-  /** Model identifier (e.g., 'claude-sonnet-4-20250514', 'gpt-4o') */
+  /** Model identifier (e.g., 'claude-sonnet-4-5', 'gpt-5.2') */
   model: string;
   /** User's API key for the provider */
   apiKey: string;
@@ -192,6 +192,14 @@ export async function POST(req: Request): Promise<Response> {
     const lastUserMessageIdx = messages.reduce((lastIdx, msg, idx) => 
       msg.role === 'user' ? idx : lastIdx, -1
     );
+    if (attachments && attachments.length > 0 && lastUserMessageIdx === -1) {
+      return createErrorResponse(
+        'Image attachments require at least one user message.',
+        'INVALID_REQUEST',
+        400,
+        { recoverable: false }
+      );
+    }
     const contextMessages: Array<{ role: 'system'; content: string }> = [];
     if (canvasContext?.instructions?.trim()) {
       contextMessages.push({

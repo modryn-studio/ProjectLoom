@@ -214,7 +214,7 @@ export function BranchDialog() {
          
         setValidationError('API key required for AI summary generation. Configure in Settings.');
       } else {
-        const costEstimate = estimateCost(stats?.totalTokens ?? 0, 500, 'claude-sonnet-4-20250514');
+        const costEstimate = estimateCost(stats?.totalTokens ?? 0, 500, 'claude-sonnet-4-5');
          
         setValidationWarning(`AI will summarize ${messages.length} messages. Estimated cost: ${formatCost(costEstimate)}`);
       }
@@ -269,7 +269,7 @@ export function BranchDialog() {
         const anthropicKey = apiKeyManager.getKey('anthropic');
         const openaiKey = apiKeyManager.getKey('openai');
         const apiKey = anthropicKey || openaiKey;
-        const model = anthropicKey ? 'claude-sonnet-4-20250514' : 'gpt-4o';
+        const model = anthropicKey ? 'claude-sonnet-4-5' : 'gpt-5.2';
 
         if (!apiKey) {
           setValidationError('No API key configured. Add one in Settings.');

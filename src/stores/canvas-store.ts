@@ -1227,6 +1227,11 @@ export const useCanvasStore = create<WorkspaceState>()(
         return null;
       }
 
+      if (messageIndex < 0 || messageIndex >= sourceConversation.content.length) {
+        logger.error(`Invalid message index ${messageIndex} for conversation ${sourceCardId}`);
+        return null;
+      }
+
       const sourceNode = nodes.find(n => n.id === sourceCardId);
       if (!sourceNode) {
         logger.error(`Source node not found: ${sourceCardId}`);
