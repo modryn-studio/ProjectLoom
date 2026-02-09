@@ -139,6 +139,11 @@ export function ModelSelector({
               </>
             )}
 
+            {/* Divider between providers */}
+            {hasAnthropicKey && hasOpenAIKey && (
+              <div style={styles.divider} />
+            )}
+
             {/* OpenAI Models */}
             {hasOpenAIKey && (
               <>
@@ -265,6 +270,12 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
     zIndex: 50,
     overflow: 'hidden',
+  } as React.CSSProperties,
+
+  divider: {
+    height: '1px',
+    backgroundColor: 'var(--border-secondary)',
+    margin: `${spacing[1]} 0`,
   } as React.CSSProperties,
 
   option: {
