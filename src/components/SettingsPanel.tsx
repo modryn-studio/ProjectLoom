@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
 
 import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
+import { STORAGE_KEYS, createBackupPayload, applyBackupPayload } from '@/lib/storage';
+import { useToast } from '@/stores/toast-store';
 import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
 import type { InheritanceMode } from '@/types';
 
@@ -156,6 +158,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const resetToDefaults = usePreferencesStore((s) => s.resetToDefaults);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
+  const toast = useToast();
+  const backupInputRef = useRef<HTMLInputElement>(null);
+
   // API Keys state
   const [anthropicKey, setAnthropicKey] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
@@ -175,7 +180,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       const savedOpenAIKey = apiKeyManager.getKey('openai');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
        
       if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
@@ -240,6 +244,76 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     apiKeyManager.setStoragePreference(type);
     setStoragePreference(type);
   }, []);
+
+  const handleExportBackup = useCallback(() => {
+    const payload = createBackupPayload();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStamp = payload.exportedAt.slice(0, 10);
+
+    link.href = url;
+    link.download = `projectloom-backup-${dateStamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_EXPORT, payload.exportedAt);
+    toast.success('Backup exported');
+  }, [toast]);
+
+  const handleImportClick = useCallback(() => {
+    backupInputRef.current?.click();
+  }, []);
+
+  const handleImportBackup = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm('Importing will overwrite your current local data. Continue?')) {
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = typeof reader.result === 'string' ? reader.result : '';
+        const parsed = JSON.parse(raw) as { version?: number; exportedAt?: string; data?: Record<string, string | null> };
+
+        if (!parsed || parsed.version !== 1 || !parsed.data) {
+          throw new Error('Invalid backup file');
+        }
+
+        applyBackupPayload({
+          version: 1,
+          exportedAt: parsed.exportedAt || new Date().toISOString(),
+          data: parsed.data,
+        });
+
+        localStorage.setItem(
+          STORAGE_KEYS.BACKUP_LAST_EXPORT,
+          parsed.exportedAt || new Date().toISOString()
+        );
+        toast.success('Backup imported. Reloading...');
+        setTimeout(() => window.location.reload(), 400);
+      } catch (error) {
+        console.error('[SettingsPanel] Backup import failed', error);
+        toast.error('Failed to import backup');
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      toast.error('Failed to read backup file');
+      event.target.value = '';
+    };
+
+    reader.readAsText(file);
+  }, [toast]);
 
   return (
     <AnimatePresence>
@@ -641,6 +715,60 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       </>
                     )}
                   </div>
+                </div>
+              </div>
+              
+              {/* Backup Section */}
+              <div style={sectionStyles}>
+                <div style={sectionTitleStyles}>
+                  <RotateCcw size={16} color={colors.accent.primary} />
+                  Backup & Restore
+                </div>
+
+                <p style={{ ...descriptionStyles, marginBottom: spacing[3] }}>
+                  Export your local data as JSON and store it somewhere safe. API keys are not included.
+                </p>
+
+                <div style={{ display: 'flex', gap: spacing[2], alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleExportBackup}
+                    style={{
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      backgroundColor: colors.bg.inset,
+                      border: `1px solid ${colors.border.default}`,
+                      borderRadius: effects.border.radius.default,
+                      color: colors.fg.primary,
+                      fontSize: typography.sizes.sm,
+                      fontFamily: typography.fonts.body,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Export JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleImportClick}
+                    style={{
+                      padding: `${spacing[2]} ${spacing[3]}`,
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${colors.border.default}`,
+                      borderRadius: effects.border.radius.default,
+                      color: colors.fg.primary,
+                      fontSize: typography.sizes.sm,
+                      fontFamily: typography.fonts.body,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Import JSON
+                  </button>
+                  <input
+                    ref={backupInputRef}
+                    type="file"
+                    accept="application/json"
+                    onChange={handleImportBackup}
+                    style={{ display: 'none' }}
+                  />
                 </div>
               </div>
               </>

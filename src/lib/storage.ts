@@ -81,7 +81,57 @@ export const STORAGE_KEYS = {
   USAGE: 'projectloom-usage',
   /** v4 migration notice dismissed */
   V4_NOTICE_DISMISSED: 'projectloom:v4-notice-dismissed',
+  /** Last export timestamp (ISO) */
+  BACKUP_LAST_EXPORT: 'projectloom:backup:last-export',
+  /** Last reminder timestamp (ISO) */
+  BACKUP_REMINDER_LAST_SHOWN: 'projectloom:backup:last-reminder',
+  /** Last auto backup timestamp (ISO) */
+  BACKUP_LAST_AUTO_EXPORT: 'projectloom:backup:last-auto',
 } as const;
+
+export interface BackupPayload {
+  version: 1;
+  exportedAt: string;
+  data: Record<string, string | null>;
+}
+
+const BACKUP_EXPORT_KEYS = [
+  STORAGE_KEYS.WORKSPACES,
+  STORAGE_KEYS.CANVAS_DATA,
+  STORAGE_KEYS.PREFERENCES,
+  STORAGE_KEYS.USAGE,
+  STORAGE_KEYS.V4_NOTICE_DISMISSED,
+] as const;
+
+export function createBackupPayload(): BackupPayload {
+  const exportedAt = new Date().toISOString();
+  const data: Record<string, string | null> = {};
+
+  if (typeof window !== 'undefined') {
+    BACKUP_EXPORT_KEYS.forEach((key) => {
+      data[key] = window.localStorage.getItem(key);
+    });
+  }
+
+  return {
+    version: 1,
+    exportedAt,
+    data,
+  };
+}
+
+export function applyBackupPayload(payload: BackupPayload): void {
+  if (typeof window === 'undefined') return;
+
+  BACKUP_EXPORT_KEYS.forEach((key) => {
+    const value = payload.data[key] ?? null;
+    if (value === null) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, value);
+    }
+  });
+}
 
 /**
  * Clear all legacy storage keys for v4 fresh start

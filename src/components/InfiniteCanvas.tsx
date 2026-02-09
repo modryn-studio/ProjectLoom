@@ -30,6 +30,7 @@ import { CanvasSearch } from './CanvasSearch';
 import { useSearchStore } from '@/stores/search-store';
 import { treeLayout } from '@/lib/layout-utils';
 import { useToastStore } from '@/stores/toast-store';
+import { STORAGE_KEYS, createBackupPayload } from '@/lib/storage';
 import { UndoToast } from './UndoToast';
 import { BranchDialog } from './BranchDialog';
 import { InheritedContextPanel } from './InheritedContextPanel';
@@ -316,7 +317,59 @@ export function InfiniteCanvas() {
     loadPreferences();
   }, [loadPreferences]);
 
-  const showDevOverlay = process.env.NODE_ENV === 'development';
+  // Settings panel handlers (memoized to prevent re-renders)
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+
+  const showDevOverlay = process.env.NODE_ENV === 'development'
+    || process.env.NEXT_PUBLIC_ENABLE_DEV_OVERLAY === 'true';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const lastExportRaw = window.localStorage.getItem(STORAGE_KEYS.BACKUP_LAST_EXPORT);
+    const lastReminderRaw = window.localStorage.getItem(STORAGE_KEYS.BACKUP_REMINDER_LAST_SHOWN);
+    const lastAutoRaw = window.localStorage.getItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT);
+    const lastExport = lastExportRaw ? Date.parse(lastExportRaw) : 0;
+    const lastReminder = lastReminderRaw ? Date.parse(lastReminderRaw) : 0;
+    const lastAuto = lastAutoRaw ? Date.parse(lastAutoRaw) : 0;
+
+    const needsBackup = !lastExportRaw || now - lastExport > weekMs;
+    const canRemind = !lastReminderRaw || now - lastReminder > dayMs;
+    const needsAutoBackup = !lastAutoRaw || now - lastAuto > dayMs;
+
+    if (needsAutoBackup) {
+      const payload = createBackupPayload();
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStamp = payload.exportedAt.slice(0, 10);
+
+      link.href = url;
+      link.download = `projectloom-backup-${dateStamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT, payload.exportedAt);
+      window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_EXPORT, payload.exportedAt);
+      useToastStore.getState().info('Daily backup saved.', { duration: 4000 });
+    }
+
+    if (needsBackup && canRemind) {
+      window.localStorage.setItem(STORAGE_KEYS.BACKUP_REMINDER_LAST_SHOWN, new Date().toISOString());
+      useToastStore.getState().info('Backup reminder: export your ProjectLoom data.', {
+        action: { label: 'Open Settings', onClick: openSettings },
+        duration: 8000,
+      });
+    }
+  }, [openSettings]);
 
   // Force fitView when nodes are loaded
   useEffect(() => {
@@ -695,10 +748,6 @@ export function InfiniteCanvas() {
       },
     },
   });
-
-  // Settings panel handlers (memoized to prevent re-renders)
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
-  const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   // Canvas context modal handlers
   const openCanvasContext = useCallback(() => setCanvasContextOpen(true), []);

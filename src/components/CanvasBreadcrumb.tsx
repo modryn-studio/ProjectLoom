@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { ChevronRight, Zap, PanelLeft, FileText } from 'lucide-react';
+import { ChevronRight, Zap, PanelLeft, FileText, BarChart3 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
@@ -107,6 +107,8 @@ interface CanvasBreadcrumbProps {
   showSidebarToggle?: boolean;
   onToggleSidebar?: () => void;
   onOpenCanvasContext?: () => void;
+  onToggleUsagePanel?: () => void;
+  isUsagePanelOpen?: boolean;
 }
 
 /**
@@ -119,6 +121,8 @@ export function CanvasBreadcrumb({
   showSidebarToggle = false,
   onToggleSidebar,
   onOpenCanvasContext,
+  onToggleUsagePanel,
+  isUsagePanelOpen = false,
 }: CanvasBreadcrumbProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
@@ -276,7 +280,7 @@ export function CanvasBreadcrumb({
         </span>
       )}
 
-      {onOpenCanvasContext && (
+      {(onOpenCanvasContext || onToggleUsagePanel) && (
         <div style={{ display: 'flex', gap: spacing[2], marginLeft: 'auto' }}>
           {onOpenCanvasContext && (
             <button
@@ -296,6 +300,31 @@ export function CanvasBreadcrumb({
             >
               <FileText size={12} />
               Canvas Context
+            </button>
+          )}
+          {onToggleUsagePanel && (
+            <button
+              onClick={onToggleUsagePanel}
+              title="Usage"
+              style={{
+                ...contextButtonStyles,
+                backgroundColor: isUsagePanelOpen ? colors.accent.muted : contextButtonStyles.backgroundColor,
+                border: `1px solid ${isUsagePanelOpen ? colors.accent.primary : 'var(--border-primary)'}`,
+                color: isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.accent.muted;
+                e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
+                e.currentTarget.style.color = colors.accent.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = isUsagePanelOpen ? colors.accent.muted : colors.bg.inset;
+                e.currentTarget.style.border = `1px solid ${isUsagePanelOpen ? colors.accent.primary : 'var(--border-primary)'}`;
+                e.currentTarget.style.color = isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary;
+              }}
+            >
+              <BarChart3 size={12} />
+              Usage
             </button>
           )}
         </div>

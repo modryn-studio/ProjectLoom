@@ -22,7 +22,7 @@ import {
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useCanvasTreeStore, buildWorkspaceTree, type ConversationTreeNode } from '@/stores/canvas-tree-store';
 import { colors, spacing, effects, typography, layout } from '@/lib/design-tokens';
-import type { Workspace } from '@/types';
+import type { Conversation, Workspace } from '@/types';
 import { SidePanel } from './SidePanel';
 
 // =============================================================================
@@ -61,11 +61,15 @@ const createWorkspaceTreeSelector = (workspaceId: string) =>
     return JSON.stringify(arr);
   };
 
+const EMPTY_ROOT_NODES: ConversationTreeNode[] = [];
+
 function ConversationTree({ workspaceId, isExpanded, onFocusNode }: ConversationTreeProps) {
   const selectedNodeIds = useCanvasStore(state => state.selectedNodeIds);
   const setSelected = useCanvasStore(state => state.setSelected);
   const setTree = useCanvasTreeStore((state) => state.setTree);
-  const rootNodes = useCanvasTreeStore((state) => state.treeCache[workspaceId]?.rootNodes ?? []);
+  const rootNodes = useCanvasTreeStore(
+    (state) => state.treeCache[workspaceId]?.rootNodes ?? EMPTY_ROOT_NODES
+  );
   
   // Track which conversation nodes are collapsed in this workspace
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => {

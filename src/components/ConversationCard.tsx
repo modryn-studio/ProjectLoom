@@ -90,6 +90,7 @@ function ConversationCardComponent({
   const isSelected = data.isSelected;
   const messages = conversation.content;
   const metadata = conversation.metadata;
+  const firstMessageContent = messages[0]?.content ?? '';
   
   // v4: Detect merge and branch state for visual styling
   const isMergeNode = conversation.isMergeNode;
@@ -135,8 +136,8 @@ function ConversationCardComponent({
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
-    () => getTextStyles(messages[0]?.content || ''),
-    [messages[0]?.content]
+    () => getTextStyles(firstMessageContent),
+    [firstMessageContent]
   );
 
   // Calculate z-index based on state
