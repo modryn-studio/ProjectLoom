@@ -364,6 +364,35 @@ export function ChatPanel() {
     }
   }, [activeConversationId, getConversationMessages, setMessages]);
 
+  // Save partial message when streaming stops (e.g., user clicks stop button)
+  const prevIsStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingRef.current;
+    prevIsStreamingRef.current = isStreaming;
+
+    // If streaming just stopped and we have messages
+    if (wasStreaming && !isStreaming && chatMessages.length > 0) {
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      
+      // Check if it's an assistant message with content
+      if (lastMessage?.role === 'assistant' && lastMessage.content.trim()) {
+        const storeMessages = activeConversationId ? getConversationMessages(activeConversationId) : [];
+        const lastStoreMessage = storeMessages[storeMessages.length - 1];
+        
+        // Only save if this message isn't already in the store (avoid duplicate saves)
+        // Compare content to detect if it's a new/partial message
+        if (!lastStoreMessage || lastStoreMessage.content !== lastMessage.content) {
+          if (activeConversationId && currentModel) {
+            addAIMessage(activeConversationId, lastMessage.content, currentModel);
+          }
+          // Clear attachments after partial save (intentional effect-based cleanup)
+          /* eslint-disable-next-line react-hooks/set-state-in-effect */
+          setPendingAttachments([]);
+        }
+      }
+    }
+  }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages]);
+
   // Sync with preferences when they change
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
