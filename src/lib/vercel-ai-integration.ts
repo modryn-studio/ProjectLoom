@@ -44,7 +44,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'high',
-    description: 'Most capable model for complex reasoning, multi-step workflows, and advanced coding. Excels at research, analysis, and agentic tasks. 200K context (1M beta available).',
+    description: 'Most capable model for complex reasoning, multi-step workflows, and advanced coding. Excels at research, analysis, and agentic tasks.',
   },
   {
     id: 'claude-sonnet-4-5',
@@ -54,7 +54,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Ideal balance of performance and cost. Fast responses with strong reasoning for everyday coding, writing, and conversation. 200K context (1M beta available).',
+    description: 'Ideal balance of performance and cost. Fast responses with strong reasoning for everyday coding, writing, and conversation.',
   },
   {
     id: 'claude-haiku-4-5',
@@ -64,7 +64,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Fastest and most affordable option with impressive intelligence. Great for quick tasks, simple coding, and high-volume use cases. 200K context.',
+    description: 'Fastest and most affordable option with impressive intelligence. Great for quick tasks, simple coding, and high-volume use cases.',
   },
 
   // OpenAI Models
@@ -76,7 +76,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'OpenAI flagship model for production use. Excellent at coding, creative tasks, and structured output. Massive 400K context window for large codebases.',
+    description: 'OpenAI flagship model for production use. Excellent at coding, creative tasks, and structured output.',
   },
   {
     id: 'gpt-5.2-pro',
@@ -96,7 +96,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Affordable model for straightforward tasks like editing, summarization, and well-scoped coding. Fast and cost-effective with 400K context.',
+    description: 'Affordable model for straightforward tasks like editing, summarization, and well-scoped coding. Fast and cost-effective.',
   },
   {
     id: 'gpt-5-nano',
@@ -116,7 +116,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Advanced model with enormous 1M token context window. Perfect for analyzing entire codebases, long documents, or maintaining extensive conversation history.',
+    description: 'Advanced model perfect for analyzing entire codebases, long documents, or maintaining extensive conversation history.',
   },
 ];
 
