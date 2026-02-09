@@ -581,7 +581,7 @@ function TaskList({ tasks }) {
   })
   
   return (
-    <div ref={parentRef} className="h-[600px] overflow-auto">
+    <div ref={parentRef} className="h-150 overflow-auto">
       <div style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((virtualRow) => (
           <TaskItem 

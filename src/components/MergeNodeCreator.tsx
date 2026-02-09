@@ -227,7 +227,7 @@ export function MergeNodeCreator({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="w-[480px] max-h-[80vh] bg-bg-secondary rounded-xl border border-border-primary shadow-2xl overflow-hidden"
+          className="w-120 max-h-[80vh] bg-bg-secondary rounded-xl border border-border-primary shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -270,12 +270,12 @@ export function MergeNodeCreator({
                       className={`flex items-center justify-between px-3 py-2 rounded-lg ${mergeStyle.border} border bg-bg-tertiary`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-fg-primary text-sm truncate max-w-[140px]">
+                        <span className="text-fg-primary text-sm truncate max-w-35">
                           {card.metadata.title}
                         </span>
                         <span className="text-fg-tertiary text-xs whitespace-nowrap">{msgCount} msgs</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         {/* Inheritance mode toggle */}
                         <button
                           onClick={() => handleToggleMode(card.id)}
@@ -324,7 +324,7 @@ export function MergeNodeCreator({
           </div>
 
           {/* Available Cards List */}
-          <div className="max-h-[240px] overflow-y-auto">
+          <div className="max-h-60 overflow-y-auto">
             <div className="p-2 space-y-1">
               {availableCards.map((card) => {
                 const isSelected = selectedCardIds.includes(card.id);
@@ -347,7 +347,7 @@ export function MergeNodeCreator({
                     `}
                   >
                     <div className={`
-                      w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0
+                      w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0
                       ${isSelected ? 'bg-success-solid border-success-solid' : 'border-border-secondary'}
                     `}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}

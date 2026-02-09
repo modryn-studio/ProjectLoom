@@ -178,7 +178,7 @@ export function InlineBranchPanel({
         {/* Error Message */}
         {error && (
           <div className="mx-3 mb-2 px-3 py-2 bg-error-bg border border-error-border rounded-md flex items-center gap-2 text-xs text-error-fg">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
