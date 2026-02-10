@@ -412,6 +412,8 @@ const MessageBubble = memo(function MessageBubble({
     onMouseEnter(index);
   }, [index, onMouseEnter]);
 
+  const [isCopied, setIsCopied] = useState(false);
+
   const handleBranchClickLocal = useCallback((e: React.MouseEvent) => {
     onBranchClick(index, e);
   }, [index, onBranchClick]);
@@ -420,7 +422,8 @@ const MessageBubble = memo(function MessageBubble({
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(message.content);
-      toast.success('Copied to clipboard');
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('[MessageBubble] Failed to copy:', err);
       toast.error('Failed to copy');
@@ -572,6 +575,7 @@ const MessageBubble = memo(function MessageBubble({
             <MessageActionButtons
               messageIndex={index}
               isUserMessage={isUser}
+              isCopied={isCopied}
               onCopyClick={handleCopyClickLocal}
               onEditClick={handleEditClickLocal}
               onBranchClick={handleBranchClickLocal}
@@ -590,6 +594,7 @@ const MessageBubble = memo(function MessageBubble({
 interface MessageActionButtonsProps {
   messageIndex: number;
   isUserMessage: boolean;
+  isCopied: boolean;
   onCopyClick: (e: React.MouseEvent) => void;
   onEditClick: (e: React.MouseEvent) => void;
   onBranchClick: (e: React.MouseEvent) => void;
@@ -598,6 +603,7 @@ interface MessageActionButtonsProps {
 const MessageActionButtons = memo(function MessageActionButtons({
   messageIndex,
   isUserMessage,
+  isCopied,
   onCopyClick,
   onEditClick,
   onBranchClick,
@@ -612,12 +618,15 @@ const MessageActionButtons = memo(function MessageActionButtons({
         onMouseLeave={() => setHoveredButton(null)}
         style={{
           ...actionButtonGroupStyles.button,
-          color: hoveredButton === 'copy' ? colors.fg.secondary : colors.fg.tertiary,
+          color: isCopied ? colors.semantic.success : (hoveredButton === 'copy' ? colors.fg.secondary : colors.fg.tertiary),
+          fontSize: isCopied ? '10px' : undefined,
+          fontWeight: isCopied ? 500 : undefined,
+          pointerEvents: isCopied ? 'none' : 'auto',
         }}
-        title="Copy message"
-        aria-label="Copy message"
+        title={isCopied ? 'Copied!' : 'Copy message'}
+        aria-label={isCopied ? 'Copied!' : 'Copy message'}
       >
-        <Copy size={12} />
+        {isCopied ? 'Copied' : <Copy size={12} />}
       </button>
       {isUserMessage && (
         <button

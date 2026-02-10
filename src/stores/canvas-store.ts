@@ -1024,16 +1024,66 @@ export const useCanvasStore = create<WorkspaceState>()(
       const result = storage.load();
       const workspaceResult = workspaceStorage.load();
 
-      // Check if we have any actual conversation data
+      // Check if we have any actual conversation data in canvas-data
       const hasStoredConversations = result.success && 
                                      result.data.conversations && 
                                      result.data.conversations.length > 0;
       
-      // Load mock data if there are no conversations in storage
-      // (even if a workspace structure exists)
-      if (!hasStoredConversations) {
-        logger.debug('Loading mock data (no stored conversations found)');
+      // Check if workspace storage has any workspaces (user-created or previously saved)
+      const hasStoredWorkspaces = workspaceResult.success &&
+                                  workspaceResult.data.workspaces &&
+                                  workspaceResult.data.workspaces.length > 0;
+      
+      // Only load mock data on truly first-time use:
+      // no conversations AND no workspaces in storage.
+      // If the user has workspaces (even empty ones), respect that.
+      if (!hasStoredConversations && !hasStoredWorkspaces) {
+        logger.debug('First-time use: loading mock data');
         get().loadMockData();
+        return;
+      }
+      
+      // If workspace storage has data but canvas-data is empty,
+      // restore from the active workspace in workspace storage.
+      if (!hasStoredConversations && hasStoredWorkspaces) {
+        logger.debug('Restoring from workspace storage');
+        const workspaces = workspaceResult.data.workspaces.map((workspace: Workspace) => ({
+          ...workspace,
+          context: normalizeWorkspaceContext(workspace.context),
+        }));
+        const activeId = workspaceResult.data.activeWorkspaceId || workspaces[0]?.id || '';
+        const activeWorkspace = workspaces.find((w: Workspace) => w.id === activeId) || workspaces[0];
+        
+        const conversations = new Map<string, Conversation>();
+        const nodes: ConversationNode[] = [];
+        let edges: Edge[] = [];
+        
+        if (activeWorkspace) {
+          activeWorkspace.conversations.forEach((conv: Conversation) => {
+            conversations.set(conv.id, conv);
+          });
+          activeWorkspace.conversations.forEach((conv: Conversation) => {
+            nodes.push(conversationToNode(conv, conv.position, false, false));
+          });
+          edges = (activeWorkspace.edges || []).map(connectionToEdge);
+        }
+        
+        set({
+          nodes,
+          edges,
+          conversations,
+          workspaces,
+          activeWorkspaceId: activeId,
+          expandedNodeIds: new Set(),
+          selectedNodeIds: new Set(),
+          isInitialized: true,
+          history: [{
+            nodes: [...nodes],
+            edges: [...edges],
+            conversations: new Map(conversations),
+          }],
+          historyIndex: 0,
+        });
         return;
       }
 
@@ -1256,13 +1306,40 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     navigateToWorkspace: (workspaceId: string) => {
-      const workspace = get().workspaces.find(w => w.id === workspaceId);
+      const { workspaces, activeWorkspaceId, conversations: currentConversations, edges: currentEdges } = get();
+      const workspace = workspaces.find(w => w.id === workspaceId);
       if (!workspace) {
         logger.warn(`Workspace ${workspaceId} not found`);
         return;
       }
 
-      // Load conversations for this workspace
+      // Save current workspace's state before switching
+      if (activeWorkspaceId && activeWorkspaceId !== workspaceId) {
+        const currentConnections: EdgeConnection[] = currentEdges.map((edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          curveType: (edge.type as 'smoothstep' | 'bezier' | 'straight') || 'smoothstep',
+          relationType: (edge.data?.relationType as EdgeRelationType) || 'branch',
+          animated: edge.animated ?? false,
+        }));
+
+        const updatedWorkspaces = workspaces.map(w => {
+          if (w.id === activeWorkspaceId) {
+            return {
+              ...w,
+              conversations: Array.from(currentConversations.values()),
+              edges: currentConnections,
+              metadata: { ...w.metadata, updatedAt: new Date() },
+            };
+          }
+          return w;
+        });
+
+        set({ workspaces: updatedWorkspaces });
+      }
+
+      // Load conversations for the target workspace
       const conversations = new Map<string, Conversation>();
       workspace.conversations.forEach((conv) => {
         conversations.set(conv.id, conv);
@@ -1283,6 +1360,8 @@ export const useCanvasStore = create<WorkspaceState>()(
         conversations,
         expandedNodeIds: new Set(),
         selectedNodeIds: new Set(),
+        chatPanelOpen: false,
+        activeConversationId: null,
         history: [{
           nodes: [...nodes],
           edges: [...edges],
@@ -1290,6 +1369,9 @@ export const useCanvasStore = create<WorkspaceState>()(
         }],
         historyIndex: 0,
       });
+
+      // Persist the workspace switch
+      get().saveToStorage();
     },
 
     getCurrentWorkspace: () => {

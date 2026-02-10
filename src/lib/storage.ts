@@ -139,9 +139,10 @@ export function applyBackupPayload(payload: BackupPayload): void {
 export function clearLegacyStorage(): void {
   if (typeof window === 'undefined') return;
   
+  // Only clear keys that are genuinely unused in v4.
+  // CANVAS_DATA is still actively used by v4 storage — do NOT clear it.
   const legacyKeys = [
     STORAGE_KEYS.CANVAS,
-    STORAGE_KEYS.CANVAS_DATA,
     STORAGE_KEYS.CANVASES,
   ];
   
