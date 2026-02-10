@@ -677,6 +677,7 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
             isStreaming={isStreaming}
             onHeightChange={setMessageListHeight}
             webSearchState={{ isSearching: webSearchState.isSearching }}
+            isMaximized={isMaximized}
           />
 
           {/* Message Input */}
@@ -695,6 +696,7 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
             currentModel={currentModel}
             onModelChange={handleModelChange}
             maxTextareaHeight={messageListHeight > 0 ? Math.floor(messageListHeight * 0.5) : undefined}
+            isMaximized={isMaximized}
           />
         </>
       ) : (

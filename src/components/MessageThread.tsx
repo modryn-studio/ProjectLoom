@@ -137,6 +137,8 @@ interface MessageThreadProps {
   onHeightChange?: (height: number) => void;
   /** Web search state for showing searching indicator */
   webSearchState?: { isSearching: boolean };
+  /** Whether chat panel is maximized (fullscreen) */
+  isMaximized?: boolean;
 }
 
 export function MessageThread({
@@ -145,6 +147,7 @@ export function MessageThread({
   isStreaming = false,
   onHeightChange,
   webSearchState,
+  isMaximized = false,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
@@ -265,15 +268,16 @@ export function MessageThread({
 
   return (
     <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
-      {/* Inherited From Banner */}
-      {conversation.parentCardIds.length > 0 && (
-        <InheritedFromBanner
-          parentCardIds={conversation.parentCardIds}
-          inheritedContext={conversation.inheritedContext}
-        />
-      )}
-      
-      <AnimatePresence mode="sync">
+      <div style={isMaximized ? threadStyles.maximizedContent : undefined}>
+        {/* Inherited From Banner */}
+        {conversation.parentCardIds.length > 0 && (
+          <InheritedFromBanner
+            parentCardIds={conversation.parentCardIds}
+            inheritedContext={conversation.inheritedContext}
+          />
+        )}
+        
+        <AnimatePresence mode="sync">
         {displayMessages
           .filter((m): m is Message => m != null && typeof m.id === 'string')
           .map((message: Message, index: number) => {
@@ -311,13 +315,14 @@ export function MessageThread({
         </div>
       )}
       
-      {/* Empty state */}
-      {displayMessages.length === 0 && (
+        {/* Empty state */}
+        {displayMessages.length === 0 && (
         <div style={threadStyles.emptyState}>
           <p style={threadStyles.emptyStateTitle}>No messages yet. Start the conversation!</p>
           <p style={threadStyles.emptyStateDisclaimer}>AI responses may be inaccurate. Please double-check.</p>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -680,6 +685,15 @@ const threadStyles: Record<string, React.CSSProperties> = {
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
+  } as React.CSSProperties,
+
+  maximizedContent: {
+    maxWidth: '900px',
+    width: '100%',
+    margin: '0 auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[2],
   } as React.CSSProperties,
 
   emptyState: {

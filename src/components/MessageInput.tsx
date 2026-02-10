@@ -47,6 +47,8 @@ interface MessageInputProps {
   onModelChange?: (modelId: string) => void;
   /** Optional max textarea height in pixels */
   maxTextareaHeight?: number;
+  /** Whether chat panel is maximized (fullscreen) */
+  isMaximized?: boolean;
 }
 
 // Vision support constants
@@ -69,6 +71,7 @@ export function MessageInput({
   currentModel,
   onModelChange,
   maxTextareaHeight,
+  isMaximized = false,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +246,7 @@ export function MessageInput({
 
   return (
     <div style={inputStyles.container}>
+      <div style={isMaximized ? inputStyles.maximizedContent : undefined}>
       {/* Error banner */}
       {error && (
         <div style={inputStyles.errorBanner}>
@@ -389,6 +393,7 @@ export function MessageInput({
           </div>
         </div>
       </form>
+      </div>
     </div>
   );
 }
@@ -403,6 +408,12 @@ const inputStyles: Record<string, React.CSSProperties> = {
     borderTop: `1px solid ${colors.border.default}`,
     backgroundColor: colors.bg.secondary,
     flexShrink: 0,
+  },
+
+  maximizedContent: {
+    maxWidth: '900px',
+    width: '100%',
+    margin: '0 auto',
   },
 
   errorBanner: {
