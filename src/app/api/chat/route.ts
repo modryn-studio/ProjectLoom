@@ -234,6 +234,8 @@ export async function POST(req: Request): Promise<Response> {
                 image: base64Data,
                 mimeType: att.contentType,
               });
+            } else {
+              console.warn(`[chat/route] Skipping malformed attachment: ${att.name || 'unknown'}`);
             }
           }
         }

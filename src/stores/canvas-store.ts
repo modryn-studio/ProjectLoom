@@ -67,7 +67,21 @@ function wouldCreateCycle(
   edges: Edge[],
   conversations: Map<string, Conversation>
 ): boolean {
-  // If we can reach sourceId starting from targetId, we'd create a cycle
+  // Build adjacency map once for O(1) child lookups
+  const childMap = new Map<string, string[]>();
+  edges.forEach(edge => {
+    if (!childMap.has(edge.source)) childMap.set(edge.source, []);
+    childMap.get(edge.source)!.push(edge.target);
+  });
+  conversations.forEach((conv) => {
+    conv.parentCardIds.forEach((parentId) => {
+      if (!childMap.has(parentId)) childMap.set(parentId, []);
+      const children = childMap.get(parentId)!;
+      if (!children.includes(conv.id)) children.push(conv.id);
+    });
+  });
+
+  // DFS from targetId to see if we can reach sourceId
   const visited = new Set<string>();
   const stack = [targetId];
 
@@ -75,31 +89,19 @@ function wouldCreateCycle(
     const current = stack.pop()!;
     
     if (current === sourceId) {
-      // Found a path from target to source - would create cycle
       return true;
     }
     
     if (visited.has(current)) continue;
     visited.add(current);
     
-    // Find all nodes that the current node points to (children)
-    const conv = conversations.get(current);
-    if (conv) {
-      // Check edges where current is the source
-      edges.forEach(edge => {
-        if (edge.source === current && !visited.has(edge.target)) {
-          stack.push(edge.target);
+    const children = childMap.get(current);
+    if (children) {
+      for (const childId of children) {
+        if (!visited.has(childId)) {
+          stack.push(childId);
         }
-      });
-      
-      // Also check parentCardIds (for merge node relationships not represented by edges)
-      // If current has parents, those parents' children include current
-      // So we need to find cards where current is in their parentCardIds
-      conversations.forEach((otherConv) => {
-        if (otherConv.parentCardIds.includes(current) && !visited.has(otherConv.id)) {
-          stack.push(otherConv.id);
-        }
-      });
+      }
     }
   }
   
@@ -228,7 +230,7 @@ function buildStructuralMetadata(
     const branchIdx = conversation.branchPoint?.messageIndex;
     parts.push('Type: Branched conversation');
     if (parent) {
-      parts.push(`Parent card: "${parent.metadata.title}"${branchIdx !== undefined ? ` (branched at message ${branchIdx + 1})` : ''}`);
+      parts.push(`Parent card: "${parent.metadata.title}"${branchIdx !== undefined ? ` (includes first ${branchIdx + 1} messages)` : ''}`);
     }
   }
 
@@ -973,14 +975,34 @@ export const useCanvasStore = create<WorkspaceState>()(
       let didRemove = false;
       set((state) => {
         // Handle remove changes
-        const removeIds = changes
-          .filter((c) => c.type === 'remove')
-          .map((c) => c.id);
+        const removeChanges = changes.filter((c) => c.type === 'remove');
+        const removeIds = removeChanges.map((c) => c.id);
 
         if (removeIds.length > 0) {
           didRemove = true;
+
+          // Find edges being removed to clean up parentCardIds
+          const removedEdges = state.edges.filter((e) => removeIds.includes(e.id));
+          const newConversations = new Map(state.conversations);
+
+          for (const edge of removedEdges) {
+            const targetConv = newConversations.get(edge.target);
+            if (targetConv && targetConv.parentCardIds.includes(edge.source)) {
+              const updated = {
+                ...targetConv,
+                parentCardIds: targetConv.parentCardIds.filter(id => id !== edge.source),
+              };
+              // Also remove inherited context from that parent
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { [edge.source]: _removed, ...remainingContext } = updated.inheritedContext;
+              updated.inheritedContext = remainingContext;
+              newConversations.set(edge.target, updated);
+            }
+          }
+
           return {
             edges: state.edges.filter((e) => !removeIds.includes(e.id)),
+            conversations: newConversations,
           };
         }
 
@@ -2267,6 +2289,11 @@ export const useCanvasStore = create<WorkspaceState>()(
               const truncatedCount = startIdx;
               allInheritedMessages = allInheritedMessages.slice(startIdx);
 
+              // Safety check: if still over limit after preserving last 2, keep only last message
+              if (estimateTokens(allInheritedMessages as Message[]) > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS) {
+                allInheritedMessages = allInheritedMessages.slice(-1);
+              }
+
               result.push({
                 role: 'system',
                 content: `[Note: ${truncatedCount} older inherited messages were omitted for context length.]`,
@@ -2308,6 +2335,11 @@ export const useCanvasStore = create<WorkspaceState>()(
               }
               const truncatedCount = startIdx;
               inheritedMessages = inheritedMessages.slice(startIdx);
+
+              // Safety check: if still over limit after preserving last 2, keep only last message
+              if (estimateTokens(inheritedMessages as Message[]) > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS) {
+                inheritedMessages = inheritedMessages.slice(-1);
+              }
 
               result.push({
                 role: 'system',

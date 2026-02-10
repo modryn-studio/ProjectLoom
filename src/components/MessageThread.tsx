@@ -180,7 +180,7 @@ export function MessageThread({
         // O(1) lookup by ID
         const storeMsg = storeIndex.get(msg.id);
         return {
-          id: msg.id || `streaming-${idx}`,
+          id: msg.id ?? `streaming-${idx}`,
           role: msg.role as 'user' | 'assistant' | 'system',
           content: msg.content,
           timestamp: storeMsg?.timestamp || fallbackTimestamp,

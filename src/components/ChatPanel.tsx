@@ -552,8 +552,10 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
     setIsResizing(true);
   }, []);
 
+  const resizeListenersRef = useRef(false);
   useEffect(() => {
-    if (!isResizing) return;
+    if (!isResizing || resizeListenersRef.current) return;
+    resizeListenersRef.current = true;
 
     const handleMouseMove = (e: MouseEvent) => {
       // For right panel, calculate width from right edge
@@ -572,6 +574,7 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
     document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      resizeListenersRef.current = false;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
