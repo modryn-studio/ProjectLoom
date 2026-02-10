@@ -70,6 +70,16 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     maxTokens: 8192,
     systemPrompt: undefined,
   },
+  'gpt-4.1-mini': {
+    temperature: 0.7,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
+  'gpt-4.1-nano': {
+    temperature: 0.7,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
 };
 
 // =============================================================================

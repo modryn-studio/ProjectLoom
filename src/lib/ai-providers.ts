@@ -511,7 +511,19 @@ export class OpenAIProvider implements AIProvider {
       {
         id: 'gpt-4.1',
         name: 'GPT-4.1',
-        maxTokens: 32768,
+        maxTokens: 1047576,
+        supportsStreaming: true,
+      },
+      {
+        id: 'gpt-4.1-mini',
+        name: 'GPT-4.1 Mini',
+        maxTokens: 1047576,
+        supportsStreaming: true,
+      },
+      {
+        id: 'gpt-4.1-nano',
+        name: 'GPT-4.1 Nano',
+        maxTokens: 1047576,
         supportsStreaming: true,
       },
     ];

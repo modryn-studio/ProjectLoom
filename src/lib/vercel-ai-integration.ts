@@ -108,6 +108,26 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     costTier: 'medium',
     description: 'Advanced model perfect for analyzing entire codebases, long documents, or maintaining extensive conversation history.',
   },
+  {
+    id: 'gpt-4.1-mini',
+    name: 'GPT-4.1 Mini',
+    provider: 'openai',
+    maxTokens: 1047576,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'low',
+    description: 'Cost-effective option with large context window. Great for long document tasks with budget constraints.',
+  },
+  {
+    id: 'gpt-4.1-nano',
+    name: 'GPT-4.1 Nano',
+    provider: 'openai',
+    maxTokens: 1047576,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'low',
+    description: 'Most economical option with massive context. Perfect for processing large files at scale.',
+  },
 ];
 
 /**
@@ -252,10 +272,11 @@ export const MODEL_PRICING = {
   'claude-sonnet-4-5': { input: 3, output: 15 },
   'claude-haiku-4-5': { input: 1, output: 5 },
   'gpt-5.2': { input: 1.75, output: 14 },
-  'gpt-5.2-pro': { input: 21, output: 168 },
   'gpt-5-mini': { input: 0.25, output: 2 },
   'gpt-5-nano': { input: 0.05, output: 0.4 },
   'gpt-4.1': { input: 2, output: 8 },
+  'gpt-4.1-mini': { input: 0.5, output: 2 },
+  'gpt-4.1-nano': { input: 0.1, output: 0.4 },
   'text-embedding-3-small': { input: 0.02, output: 0 },
 } as const;
 
