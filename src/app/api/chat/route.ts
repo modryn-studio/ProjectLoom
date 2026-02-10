@@ -201,64 +201,74 @@ export async function POST(req: Request): Promise<Response> {
         { recoverable: false }
       );
     }
-    const contextMessages: Array<{ role: 'system'; content: string }> = [];
+    
+    // Collect ALL system messages and combine them into ONE system prompt
+    // Anthropic requires all system content in a single system parameter
+    const systemMessageParts: string[] = [];
+    
+    // Add canvas context to system prompt
     if (canvasContext?.instructions?.trim()) {
-      contextMessages.push({
-        role: 'system',
-        content: `[Workspace Instructions]\n\n${canvasContext.instructions.trim()}`,
-      });
+      systemMessageParts.push(`[Workspace Instructions]\n\n${canvasContext.instructions.trim()}`);
     }
     if (canvasContext?.knowledgeBase?.trim()) {
-      contextMessages.push({
-        role: 'system',
-        content: `[Knowledge Base]\n\n${canvasContext.knowledgeBase.trim()}`,
-      });
+      systemMessageParts.push(`[Knowledge Base]\n\n${canvasContext.knowledgeBase.trim()}`);
     }
 
-    const conversationMessages = messages.map((msg, idx) => {
-      const isLastUserMessage = msg.role === 'user' && idx === lastUserMessageIdx;
-      
-      if (isLastUserMessage && attachments && attachments.length > 0) {
-        // Convert to multimodal content parts
-        const parts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType?: string }> = [
-          { type: 'text' as const, text: msg.content },
-        ];
+    // Extract system messages from conversation and only keep user/assistant messages
+    const conversationMessages = messages
+      .map((msg, originalIdx) => {
+        // Check if this is the last user message using the original index
+        const isLastUserMessage = msg.role === 'user' && originalIdx === lastUserMessageIdx;
         
-        for (const att of attachments) {
-          if (att.url.startsWith('data:')) {
-            // Extract base64 data from data URL
-            const base64Data = att.url.split(',')[1];
-            if (base64Data) {
-              parts.push({
-                type: 'image' as const,
-                image: base64Data,
-                mimeType: att.contentType,
-              });
-            } else {
-              console.warn(`[chat/route] Skipping malformed attachment: ${att.name || 'unknown'}`);
+        if (msg.role === 'system') {
+          // Add to system prompt parts instead of keeping in message flow
+          systemMessageParts.push(msg.content);
+          return null; // Will filter out
+        }
+        
+        if (isLastUserMessage && attachments && attachments.length > 0) {
+          // Convert to multimodal content parts
+          const parts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType?: string }> = [
+            { type: 'text' as const, text: msg.content },
+          ];
+          
+          for (const att of attachments) {
+            if (att.url.startsWith('data:')) {
+              // Extract base64 data from data URL
+              const base64Data = att.url.split(',')[1];
+              if (base64Data) {
+                parts.push({
+                  type: 'image' as const,
+                  image: base64Data,
+                  mimeType: att.contentType,
+                });
+              } else {
+                console.warn(`[chat/route] Skipping malformed attachment: ${att.name || 'unknown'}`);
+              }
             }
           }
+          
+          return {
+            role: msg.role as 'user',
+            content: parts,
+          };
         }
         
         return {
-          role: msg.role as 'user',
-          content: parts,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
         };
-      }
-      
-      return {
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-      };
-    });
-
-    // Only prepend system messages when the user has set canvas context
-    const aiMessages = contextMessages.length > 0
-      ? [...contextMessages, ...conversationMessages]
-      : conversationMessages;
+      })
+      .filter((msg): msg is NonNullable<typeof msg> => msg !== null);
 
     // Get per-model tuning (temperature, maxTokens)
     const modelConfig = getModelConfig(model);
+
+    // Combine all system messages into ONE system prompt
+    // This ensures Anthropic compatibility (requires single system parameter)
+    const combinedSystemPrompt = systemMessageParts.length > 0
+      ? systemMessageParts.join('\n\n---\n\n')
+      : modelConfig.systemPrompt;
 
     // OpenAI GPT-5+ models require maxCompletionTokens instead of maxTokens
     const tokenConfig = providerType === 'openai'
@@ -273,10 +283,10 @@ export async function POST(req: Request): Promise<Response> {
     // Stream the response with error handling
     const result = streamText({
       model: aiModel,
-      system: modelConfig.systemPrompt,
+      system: combinedSystemPrompt,
       ...temperatureConfig,
       ...tokenConfig,
-      messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
+      messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
       onError: (error) => {
         // Log streaming errors for debugging
         console.error('[Chat API Streaming Error]', {

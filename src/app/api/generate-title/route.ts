@@ -85,7 +85,7 @@ Examples:
       model: string;
       messages: Array<{ role: string; content: string }>;
       system?: string;
-      temperature: number;
+      temperature?: number;
       max_tokens: number;
     };
 
@@ -100,7 +100,7 @@ Examples:
         model: model,
         messages: [{ role: 'user', content: userPrompt }],
         system: systemPrompt,
-        temperature: 0.3,
+        // Don't specify temperature - let model use its default
         max_tokens: 20,
       };
     } else {
@@ -116,7 +116,7 @@ Examples:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.3,
+        // Don't specify temperature - models like gpt-5-nano only support default (1.0)
         max_tokens: 20,
       };
     }
