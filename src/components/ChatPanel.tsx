@@ -43,19 +43,37 @@ interface WebSearchResult {
 
 /**
  * Detect if user message requires web search
+ * Uses more precise pattern matching to avoid false positives
  */
 function detectSearchIntent(message: string): boolean {
   const lowerMessage = message.toLowerCase();
   
-  // Explicit search keywords
-  const searchKeywords = [
-    'search', 'research', 'look up', 'find out', 'check',
-    'what is', 'what are', 'who is', 'where is', 'when did',
-    'latest', 'recent', 'current', 'today', 'this week',
-    'news about', 'update on', 'information about',
+  // Explicit search command keywords (stronger signals)
+  const strongKeywords = [
+    'search for', 'look up', 'find out', 'research',
+    'latest news', 'recent news', 'today\'s news',
+    'what is the latest', 'what are the latest',
+    'current news', 'news about', 'update on',
   ];
   
-  return searchKeywords.some(keyword => lowerMessage.includes(keyword));
+  if (strongKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    return true;
+  }
+  
+  // Question patterns that often need current info
+  const questionPatterns = [
+    /^what is (?:the )?(?:latest|current|recent)/,
+    /^what are (?:the )?(?:latest|current|recent)/,
+    /^who is (?:the )?(?:current|latest)/,
+    /^when did .+ happen/,
+    /^when was .+ released/,
+  ];
+  
+  if (questionPatterns.some(pattern => pattern.test(lowerMessage))) {
+    return true;
+  }
+  
+  return false;
 }
 
 // =============================================================================
@@ -412,7 +430,9 @@ export function ChatPanel() {
 
   // Execute web search before chat
   const executeWebSearch = useCallback(async (query: string): Promise<WebSearchResult | null> => {
+    // Double-check Tavily key is valid before making API call
     if (!tavilyKey || !tavilyKey.trim()) {
+      console.log('[Web Search] No valid Tavily API key configured');
       return null;
     }
 
@@ -430,7 +450,18 @@ export function ChatPanel() {
       });
 
       if (!response.ok) {
-        console.error('[Web Search] API error:', response.status);
+        // Parse error details if available
+        let errorMessage = `Status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          if (errorData.code === 'MISSING_API_KEY') {
+            console.log('[Web Search] Tavily API key not configured. Add one in Settings to enable web search.');
+          }
+        } catch {
+          // Response not JSON, use status code
+        }
+        console.warn('[Web Search] Search failed:', errorMessage);
         setWebSearchState({ isSearching: false, result: null });
         return null;
       }
@@ -457,12 +488,15 @@ export function ChatPanel() {
     // Clear input immediately so user sees instant feedback
     setInput('');
 
-    // Check if we should search first
+    // Check if we should search first (only if Tavily key is configured)
     const needsSearch = detectSearchIntent(userMessage);
 
     let searchResult: WebSearchResult | null = null;
     if (needsSearch && tavilyKey) {
       searchResult = await executeWebSearch(userMessage);
+    } else if (needsSearch && !tavilyKey) {
+      // User's message looks like it needs search, but no Tavily key configured
+      console.log('[Web Search] Search intent detected but Tavily API key not configured. Proceeding without search.');
     }
 
     // Build canvas context (pass explicit message since input is now cleared)
