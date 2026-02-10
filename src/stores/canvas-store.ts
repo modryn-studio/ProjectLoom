@@ -1397,7 +1397,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
 
     branchFromMessage: (data: BranchFromMessageData) => {
-      const { sourceCardId, messageIndex, inheritanceMode = 'full', branchReason, targetPosition } = data;
+      const { sourceCardId, messageIndex, branchReason, targetPosition } = data;
       const { conversations, nodes, activeWorkspaceId } = get();
       
       const sourceConversation = conversations.get(sourceCardId);
@@ -1439,11 +1439,6 @@ export const useCanvasStore = create<WorkspaceState>()(
       const messagesUpToIndex = hasOwnMessages
         ? contentMessages.slice(0, messageIndex + 1)
         : [];
-      const inheritedMessages: Message[] = [
-        ...inheritedParentMessages,
-        ...messagesUpToIndex,
-      ];
-
       // Create branch point info
       const branchPoint: BranchPoint = {
         parentCardId: sourceCardId,
@@ -1453,13 +1448,12 @@ export const useCanvasStore = create<WorkspaceState>()(
       // Create inherited context entry
       const now = new Date();
       const inheritedContext: Record<string, InheritedContextEntry> = {
+        ...sourceConversation.inheritedContext,
         [sourceCardId]: {
-          mode: inheritanceMode,
-          messages: inheritedMessages,
+          mode: 'full',
+          messages: messagesUpToIndex,
           timestamp: now,
-          totalParentMessages: hasOwnMessages
-            ? contentMessages.length
-            : inheritedParentMessages.length,
+          totalParentMessages: contentMessages.length,
         },
       };
 

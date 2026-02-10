@@ -11,7 +11,7 @@ import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useToast } from '@/stores/toast-store';
-import type { Conversation, Message, MessageAttachment } from '@/types';
+import type { Conversation, InheritedContextEntry, Message, MessageAttachment } from '@/types';
 
 // =============================================================================
 // INHERITED FROM BANNER COMPONENT
@@ -19,21 +19,28 @@ import type { Conversation, Message, MessageAttachment } from '@/types';
 
 interface InheritedFromBannerProps {
   parentCardIds: string[];
+  inheritedContext: Record<string, InheritedContextEntry>;
 }
 
 const InheritedFromBanner = memo(function InheritedFromBanner({
   parentCardIds,
+  inheritedContext,
 }: InheritedFromBannerProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const setSelected = useCanvasStore((s) => s.setSelected);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
 
+  const inheritedSourceIds = useMemo(() => {
+    const contextIds = Object.keys(inheritedContext || {});
+    return Array.from(new Set([...parentCardIds, ...contextIds]));
+  }, [parentCardIds, inheritedContext]);
+
   const parentConversations = useMemo(() => {
-    return parentCardIds
+    return inheritedSourceIds
       .map(id => conversations.get(id))
       .filter((c): c is Conversation => c !== undefined);
-  }, [parentCardIds, conversations]);
+  }, [inheritedSourceIds, conversations]);
 
   const handleParentClick = useCallback((parentId: string) => {
     setSelected([parentId]);
@@ -278,7 +285,6 @@ export function MessageThread({
     branchFromMessage({
       sourceCardId: conversation.id,
       messageIndex,
-      inheritanceMode: 'full',
       branchReason: 'Branch from message',
     });
   }, [conversation.id, branchFromMessage]);
@@ -296,7 +302,10 @@ export function MessageThread({
     <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
       {/* Inherited From Banner */}
       {conversation.parentCardIds.length > 0 && (
-        <InheritedFromBanner parentCardIds={conversation.parentCardIds} />
+        <InheritedFromBanner
+          parentCardIds={conversation.parentCardIds}
+          inheritedContext={conversation.inheritedContext}
+        />
       )}
       
       <AnimatePresence mode="sync">

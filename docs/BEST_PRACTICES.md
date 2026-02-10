@@ -46,11 +46,9 @@
 - Try different parameters without losing original
 - Preserve decision points for later reference
 
-**Inheritance modes:**
-- **Full** - All parent messages (default, best for complex tasks)
-- **Summary** - AI-generated summary (50-90% token reduction)
-- **Custom** - Select specific messages
-- **None** - Fresh start with no context
+**Inheritance:**
+- All branches inherit full parent context (all messages up to branch point)
+- Keeps AI fully informed for maximum quality
 
 **Quick branch:** Click branch icon (🌿) on any message in chat panel
 
@@ -65,8 +63,6 @@
 - Green ⚡ (2 parents) - Ideal, best AI quality
 - Amber ⚠️ (3-4 parents) - Complex but acceptable
 - Red ⚠️ (5 parents) - Maximum limit, consider hierarchical merge
-
-**Per-parent modes:** Each parent can use different inheritance mode (mix Full + Summary to reduce tokens)
 
 ## Vision Support
 

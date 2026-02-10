@@ -197,7 +197,6 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                   store.branchFromMessage({
                     sourceCardId: parentCardId,
                     messageIndex: messageCount - 1,
-                    inheritanceMode: 'full',
                     branchReason,
                   });
                   log.push(`✅ Created branch: "${branchReason}"`);

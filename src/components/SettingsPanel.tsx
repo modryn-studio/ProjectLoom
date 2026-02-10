@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, GitBranch, FileText, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
+import { Settings, X, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
 
-import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
+import { usePreferencesStore, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
 import { STORAGE_KEYS, createBackupPayload, applyBackupPayload } from '@/lib/storage';
 import { useToast } from '@/stores/toast-store';
 import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
-import type { InheritanceMode } from '@/types';
 
 // =============================================================================
 // STYLES
@@ -97,13 +96,6 @@ const checkboxLabelStyles: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const descriptionStyles: React.CSSProperties = {
-  fontSize: typography.sizes.xs,
-  color: colors.fg.tertiary,
-  marginTop: spacing[1],
-  fontFamily: typography.fonts.body,
-};
-
 const footerStyles: React.CSSProperties = {
   padding: spacing[3],
   borderTop: `1px solid ${colors.border.default}`,
@@ -111,25 +103,6 @@ const footerStyles: React.CSSProperties = {
   justifyContent: 'flex-end',
   gap: spacing[2],
 };
-
-// =============================================================================
-// INHERITANCE MODE OPTIONS
-// =============================================================================
-
-const INHERITANCE_MODE_OPTIONS: Array<{
-  id: InheritanceMode;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-}> = [
-  {
-    id: 'full',
-    label: 'Full Context',
-    description: 'Inherit all messages from the parent conversation',
-    icon: <FileText size={14} />,
-  },
-];
-
 
 // =============================================================================
 // SETTINGS PANEL COMPONENT
@@ -143,10 +116,8 @@ interface SettingsPanelProps {
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   // Preferences state
-  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
   const currentTheme = usePreferencesStore(selectTheme);
-  const setBranchingPreferences = usePreferencesStore((s) => s.setBranchingPreferences);
   const setUIPreferences = usePreferencesStore((s) => s.setUIPreferences);
   const setTheme = usePreferencesStore((s) => s.setTheme);
   const resetToDefaults = usePreferencesStore((s) => s.resetToDefaults);
@@ -419,35 +390,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       );
                     })}
                   </div>
-                </div>
-              </div>
-
-              {/* Branching Section */}
-              <div style={sectionStyles}>
-                <div style={sectionTitleStyles}>
-                  <GitBranch size={16} color={colors.accent.primary} />
-                  Branching
-                </div>
-
-                {/* Default Inheritance Mode */}
-                <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>Default context inheritance</label>
-                  <select
-                    value={branchingPrefs.defaultInheritanceMode}
-                    onChange={(e) => setBranchingPreferences({
-                      defaultInheritanceMode: e.target.value as InheritanceMode
-                    })}
-                    style={selectStyles}
-                  >
-                    {INHERITANCE_MODE_OPTIONS.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p style={descriptionStyles}>
-                    {INHERITANCE_MODE_OPTIONS.find(o => o.id === branchingPrefs.defaultInheritanceMode)?.description}
-                  </p>
                 </div>
               </div>
 

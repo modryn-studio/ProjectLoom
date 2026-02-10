@@ -10,6 +10,7 @@
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
 // TYPES
@@ -111,7 +112,7 @@ function handleProviderError(error: unknown): Response {
   // Context length exceeded
   if (err.status === 400 && err.message?.includes('context_length')) {
     return createErrorResponse(
-      'Context too long. Try reducing the number of messages or splitting into a new branch.',
+      'Context too long. Try starting a new branch to reduce message history.',
       'CONTEXT_TOO_LONG',
       400,
       { recoverable: false }
@@ -249,11 +250,20 @@ export async function POST(req: Request): Promise<Response> {
       };
     });
 
-    const aiMessages = [...contextMessages, ...conversationMessages];
+    // Only prepend system messages when the user has set canvas context
+    const aiMessages = contextMessages.length > 0
+      ? [...contextMessages, ...conversationMessages]
+      : conversationMessages;
+
+    // Get per-model tuning (temperature, maxTokens)
+    const modelConfig = getModelConfig(model);
 
     // Stream the response
     const result = streamText({
       model: aiModel,
+      temperature: modelConfig.temperature,
+      maxTokens: modelConfig.maxTokens,
+      ...(modelConfig.systemPrompt ? { system: modelConfig.systemPrompt } : {}),
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
     });
 

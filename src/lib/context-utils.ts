@@ -8,7 +8,6 @@
 
 import type { 
   Message, 
-  InheritanceMode, 
   ContextSnapshot,
   ContextMetadata,
   BranchMetadata,
@@ -42,15 +41,11 @@ export function estimateTokens(messages: Message[]): number {
 // =============================================================================
 
 /**
- * Select context messages based on inheritance mode
+ * Select context messages (always full context)
  */
 export function selectContextMessages(
-  messages: Message[],
-  mode: InheritanceMode,
-  _selectedIds?: string[]
+  messages: Message[]
 ): Message[] {
-  void _selectedIds;
-  // Always return full context
   return [...messages];
 }
 
@@ -63,13 +58,11 @@ export function selectContextMessages(
  */
 export function createContextSnapshot(
   messages: Message[],
-  mode: InheritanceMode,
   branchReason: string,
   sourceConversationId: string,
-  parentCanvasId: string,
-  selectedIds?: string[]
+  parentCanvasId: string
 ): ContextSnapshot {
-  const selectedMessages = selectContextMessages(messages, mode, selectedIds);
+  const selectedMessages = selectContextMessages(messages);
   
   const metadata: ContextMetadata = {
     decisions: [],
@@ -94,14 +87,13 @@ export function createContextSnapshot(
 export function createBranchMetadata(
   parentCardId: string,
   messageIndex: number,
-  inheritedMessageCount: number,
-  inheritanceMode: InheritanceMode
+  inheritedMessageCount: number
 ): BranchMetadata {
   return {
     parentCardId,
     messageIndex,
     inheritedMessageCount,
-    inheritanceMode,
+    inheritanceMode: 'full',
     createdAt: new Date(),
   };
 }
@@ -113,14 +105,7 @@ export function createBranchMetadata(
 /**
  * Validate branch data before creation
  */
-export function validateBranchData(
-  _mode: InheritanceMode,
-  _customMessageIds?: string[],
-  _messages?: Message[]
-): { valid: boolean; error?: string; warning?: string } {
-  void _mode;
-  void _customMessageIds;
-  void _messages;
+export function validateBranchData(): { valid: boolean; error?: string; warning?: string } {
   // Always valid with full context
   return { valid: true };
 }

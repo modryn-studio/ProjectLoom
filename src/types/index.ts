@@ -480,8 +480,6 @@ export interface BranchFromMessageData {
   sourceCardId: string;
   /** Message index to branch from (0-indexed) */
   messageIndex: number;
-  /** How to inherit context: 'full' only */
-  inheritanceMode: InheritanceMode;
   /** Optional reason for the branch */
   branchReason?: string;
   /** Optional target position for the new card */
@@ -498,8 +496,6 @@ export interface CreateMergeNodeData {
   position: Position;
   /** Optional synthesis prompt */
   synthesisPrompt?: string;
-  /** Per-parent inheritance mode (defaults to 'full' if not specified) */
-  inheritanceModes?: Record<string, InheritanceMode>;
 }
 
 /**
@@ -510,8 +506,6 @@ export interface BranchData {
   sourceConversationId: string;
   /** User-provided reason for the branch */
   branchReason: string;
-  /** How to inherit context */
-  inheritanceMode: InheritanceMode;
   /** Selected message IDs (for custom mode) */
   customMessageIds?: string[];
 }

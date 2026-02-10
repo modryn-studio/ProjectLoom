@@ -60,8 +60,7 @@ Open `http://localhost:3000`
 **Method 1: Keyboard**
 1. Select card
 2. Press `Ctrl+B`
-3. Configure inheritance mode (Full/Summary/Custom/None)
-4. Click "Create Branch"
+3. Click "Create Branch"
 
 **Method 2: Branch icon**
 1. Open chat panel
@@ -69,12 +68,9 @@ Open `http://localhost:3000`
 3. Click icon → inline branch panel
 4. Configure and create
 
-## Inheritance Modes
+## Context Inheritance
 
-- **Full** - All parent messages (default)
-- **Summary** - AI-generated summary (50-90% token reduction)
-- **Custom** - Select specific messages
-- **None** - Fresh start
+- **Full Context** - All parent messages up to branch point are inherited automatically
 
 ## Merge Cards
 
@@ -85,7 +81,7 @@ Open `http://localhost:3000`
 3. **Merge node created** (⚡ icon)
 4. **Max 5 parents** (warns at 3, errors at 5)
 
-**Per-parent modes:** Each parent can use Full or Summary independently
+**Per-parent context:** Each parent's full context is inherited in merge nodes
 
 ## Vision Support
 
@@ -170,7 +166,6 @@ Open `http://localhost:3000`
 
 **Branching Tab:**
 - "Always ask when branching" (ON by default)
-- Default inheritance mode
 - Confirm before deleting
 
 **API Keys Tab:**
@@ -192,7 +187,7 @@ Open `http://localhost:3000`
 **Shows when card has parents:**
 - Appears at top of canvas
 - Shows parent titles
-- Displays inheritance mode per parent
+- Displays inherited message count per parent
 - Expand/collapse details
 
 ## Undo System
@@ -337,12 +332,10 @@ This is the **core v4 feature**! You can branch from any message in any card.
 3. **Click the branch icon** 🌿
 4. **Inline panel appears** on the right side showing:
    - Branch settings
-   - Inheritance mode selector (Full/Summary/Custom/None)
-   - Message range slider
+   - Message count to inherit
    - Branch reason input
 
 **Configure the branch:**
-- **Inheritance Mode:** Try "Full Context" (default)
 - **Message Range:** Leave as default (all messages up to branch point)
 - **Branch Reason:** Type "Testing branch workflow"
 - Click **"Create Branch"**
@@ -368,7 +361,6 @@ This is the **core v4 feature**! You can branch from any message in any card.
 2. Press **Ctrl+B** (or **⌘+B** on Mac)
 3. **Branch dialog appears** (centered modal)
 4. Configure settings:
-   - Choose inheritance mode
    - Select message index to branch from
    - Add branch reason
 5. Click **"Create Branch"** or press **Enter**
@@ -380,18 +372,12 @@ This is the **core v4 feature**! You can branch from any message in any card.
 
 ### 3.3 Understanding Context Inheritance
 
-**4 Inheritance Modes:**
+All branches inherit **full context** — every message up to the branch point is carried forward to the new card. This ensures maximum AI quality and continuity.
 
-| Mode | What Gets Inherited | Use Case |
-|------|-------------------|----------|
-| **Full Context** | All messages up to branch point | Maximum context for AI |
-| **Summary** | AI-generated summary of context | Reduce token usage |
-| **Custom** | User-selected specific messages | Surgical context control |
-| **None** | Nothing (fresh start) | Start over with no history |
-
-**Test different modes:**
-- Create 2 branches from the same parent with different inheritance modes
-- Notice how the inherited context panel shows different amounts of data
+**What gets inherited:**
+- All messages from parent card(s) up to the branch point
+- Full conversation history for AI context
+- Parent lineage metadata for tree tracking
 
 ---
 
@@ -421,17 +407,15 @@ This is the **core v4 feature**! You can branch from any message in any card.
 2. Right-click → "Create merge node from selection"
 3. **Merge Node Creator dialog appears** with per-parent controls:
    - Each selected card shown with its title and message count
-   - Toggle **"📄 Full"** / **"📝 Summary"** for each parent independently
-   - When switching to Summary mode, AI generates a summary on-demand
-   - Cost estimate shown during summary generation
-   - Loading spinner per parent during generation
+   - Full context from each parent is inherited
+   - Cost estimate shown
 4. Click **"Create Merge Node"** to finalize
-5. New merge node created with configured inheritance modes per parent
+5. New merge node created with full context from all parents
 
-**Per-Parent Inheritance Benefits:**
-- Use Full context for critical parents, Summary for background context
-- Reduces token costs while preserving key information
-- Each parent can have different treatment based on importance
+**Merge Benefits:**
+- Full context from all parents gives AI maximum information
+- Each parent's complete conversation history is preserved
+- Enables comprehensive synthesis across threads
 
 ### 4.2 Merge Node Limits
 
@@ -681,15 +665,13 @@ ProjectLoom enforces these limits:
 
 **Branching Tab:**
 - **Always ask when branching** - Opens dialog vs instant branch
-- **Default inheritance mode** - What mode to use for instant branches
 - **Show branch icons on hover** - Toggle message branch icons
 - **Confirm before deleting** - Safety check
 
 **Test settings:**
 1. Turn off "Always ask when branching"
-2. Set default to "Summary"
-3. Press Ctrl+B on a card → instant branch with summary context
-4. Turn setting back on
+2. Press Ctrl+B on a card → instant branch with full context
+3. Turn setting back on
 
 ### 5.9 Canvas Tree Sidebar Features
 
@@ -719,7 +701,7 @@ ProjectLoom enforces these limits:
 **What it shows:**
 - Parent card titles grouped per parent
 - Inherited message count per parent
-- Inheritance mode badge per parent (Full/Summary/Custom/None)
+- Full context badge per parent
 - Expand/collapse to see full message details
 - Merge nodes show combined context from all parents
 

@@ -53,7 +53,6 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
     const newConversation = branchFromMessage({
       sourceCardId: conversation.id,
       messageIndex: branchIndex,
-      inheritanceMode: 'full',
       branchReason: 'Branch from chat',
     });
     if (newConversation) {

@@ -464,6 +464,16 @@ export function InfiniteCanvas() {
         const store = useCanvasStore.getState();
         if (!store.canAddMergeParent(connection.target)) {
           // Max parents reached
+          useToastStore.getState().error(
+            'Merge limit reached (5 sources). Create an intermediate merge first.',
+            {
+              action: {
+                label: 'Learn More',
+                onClick: () => store.openHierarchicalMergeDialog(),
+              },
+              duration: 8000,
+            }
+          );
           logger.warn('Cannot add more parents to merge node - max reached');
           return;
         }
@@ -555,7 +565,6 @@ export function InfiniteCanvas() {
           const newConversation = branchFromMessage({
             sourceCardId: sourceNodeId,
             messageIndex: messageCount > 0 ? messageCount - 1 : 0,
-            inheritanceMode: 'full',
             branchReason: 'Branch from drag',
             targetPosition: dropPosition,
           });
@@ -779,7 +788,6 @@ export function InfiniteCanvas() {
           const newConversation = branchFromMessage({
             sourceCardId: firstSelectedId,
             messageIndex: branchIndex,
-            inheritanceMode: 'full',
             branchReason: 'Branch from keyboard',
           });
           if (newConversation) {

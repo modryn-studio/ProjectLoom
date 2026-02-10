@@ -11,9 +11,8 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, FileText, X, Check, AlertCircle } from 'lucide-react';
+import { GitBranch, FileText, X, AlertCircle } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
-import type { InheritanceMode } from '@/types';
 
 // =============================================================================
 // TYPES
@@ -35,19 +34,6 @@ interface InlineBranchPanelProps {
 }
 
 // =============================================================================
-// CONSTANTS
-// =============================================================================
-
-const INHERITANCE_OPTIONS: { value: InheritanceMode; label: string; description: string; icon: React.ReactNode }[] = [
-  {
-    value: 'full',
-    label: 'Full Context',
-    description: 'Include all messages up to this point',
-    icon: <FileText className="w-4 h-4" />,
-  },
-];
-
-// =============================================================================
 // COMPONENT
 // =============================================================================
 
@@ -61,7 +47,6 @@ export function InlineBranchPanel({
 }: InlineBranchPanelProps) {
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   
-  const [selectedMode, setSelectedMode] = useState<InheritanceMode>('full');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,7 +62,6 @@ export function InlineBranchPanel({
       const result = branchFromMessage({
         sourceCardId: parentCardId,
         messageIndex,
-        inheritanceMode: selectedMode,
       });
 
       if (result) {
@@ -92,7 +76,7 @@ export function InlineBranchPanel({
     } finally {
       setIsCreating(false);
     }
-  }, [branchFromMessage, parentCardId, messageIndex, selectedMode, onClose, onComplete]);
+  }, [branchFromMessage, parentCardId, messageIndex, onClose, onComplete]);
 
   return (
     <AnimatePresence>
@@ -132,41 +116,10 @@ export function InlineBranchPanel({
             <span>Estimated tokens:</span>
             <span className="text-fg-secondary">~{estimatedTokens}</span>
           </div>
-        </div>
-
-        {/* Inheritance Mode Options */}
-        <div className="p-2 space-y-1">
-          {INHERITANCE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setSelectedMode(option.value)}
-              className={`
-                w-full flex items-start gap-3 p-2 rounded-md text-left transition-colors
-                ${selectedMode === option.value
-                  ? 'bg-accent-muted border border-accent-primary'
-                  : 'hover:bg-bg-tertiary border border-transparent'
-                }
-              `}
-            >
-              <div className={`
-                mt-0.5 p-1 rounded
-                ${selectedMode === option.value ? 'text-accent-primary' : 'text-fg-tertiary'}
-              `}>
-                {option.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium ${selectedMode === option.value ? 'text-fg-primary' : 'text-fg-secondary'}`}>
-                  {option.label}
-                </div>
-                <div className="text-xs text-fg-tertiary mt-0.5">
-                  {option.description}
-                </div>
-              </div>
-              {selectedMode === option.value && (
-                <Check className="w-4 h-4 text-accent-primary mt-1" />
-              )}
-            </button>
-          ))}
+          <div className="flex items-center gap-1.5 mt-1 text-fg-secondary">
+            <FileText className="w-3 h-3" />
+            <span>Full context inheritance</span>
+          </div>
         </div>
 
         {/* Error Message */}

@@ -19,6 +19,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { nanoid } from 'nanoid';
 
 import { estimateCost } from '@/lib/vercel-ai-integration';
+import { getModelConfig } from '@/lib/model-configs';
 import type {
   AgentRunnerConfig,
   AgentRunResult,
@@ -116,6 +117,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
 
   try {
     const model = createModel(config.modelId, config.apiKey);
+    const modelConfig = getModelConfig(config.modelId);
 
     // Create a timeout promise
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -127,6 +129,8 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
       model,
       system: systemPrompt,
       prompt: userPrompt,
+      temperature: modelConfig.temperature,
+      maxTokens: modelConfig.maxTokens,
       tools,
       maxSteps: config.maxSteps,
       abortSignal,

@@ -12,7 +12,6 @@ import { subscribeWithSelector } from 'zustand/middleware';
 
 import type { 
   BranchingPreferences, 
-  InheritanceMode, 
 } from '@/types';
 import { STORAGE_KEYS, VersionedStorage, CURRENT_SCHEMA_VERSION } from '@/lib/storage';
 
@@ -60,8 +59,7 @@ interface PreferencesActions {
   setTheme: (theme: ThemeMode) => void;
   /** Reset to defaults */
   resetToDefaults: () => void;
-  /** Get current inheritance mode (considering defaults) */
-  getDefaultInheritanceMode: () => InheritanceMode;
+
 }
 
 // =============================================================================
@@ -244,9 +242,7 @@ export const usePreferencesStore = create<PreferencesState & PreferencesActions>
       get().savePreferences();
     },
 
-    getDefaultInheritanceMode: () => {
-      return get().preferences.branching.defaultInheritanceMode;
-    },
+
   }))
 );
 
@@ -254,14 +250,8 @@ export const usePreferencesStore = create<PreferencesState & PreferencesActions>
 // SELECTORS
 // =============================================================================
 
-export const selectBranchingPreferences = (state: PreferencesState) => 
-  state.preferences.branching;
-
 export const selectUIPreferences = (state: PreferencesState) => 
   state.preferences.ui;
-
-export const selectDefaultInheritanceMode = (state: PreferencesState) => 
-  state.preferences.branching.defaultInheritanceMode;
 
 export const selectTheme = (state: PreferencesState) => 
   state.preferences.ui.theme;

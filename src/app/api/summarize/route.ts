@@ -10,6 +10,7 @@
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
 // TYPES
@@ -192,10 +193,14 @@ export async function POST(req: Request): Promise<Response> {
       aiModel = openai(model);
     }
 
+    // Get per-model temperature
+    const modelConfig = getModelConfig(model);
+
     // Generate summary (non-streaming)
     const result = await generateText({
       model: aiModel,
       prompt: buildSummaryPrompt(messages, parentTitle),
+      temperature: modelConfig.temperature,
       maxTokens: 1000, // Summaries should be concise
     });
 

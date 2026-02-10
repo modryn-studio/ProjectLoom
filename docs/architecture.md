@@ -14,6 +14,23 @@ ProjectLoom is a Next.js app that visualizes AI conversations as a spatial canva
 - Context flows forward only (parent → child, never backward)
 - All state managed by Zustand, persisted to localStorage
 
+## Invariant Contract (Do Not Break)
+
+1. **Branching preserves full lineage.**
+  - A branched card must inherit all upstream context entries plus the parent card's own messages up to the branch point.
+  - `inheritedContext` stores per-parent snapshots; do not flatten multiple parents into one entry.
+
+2. **Merge limits are enforced.**
+  - A merge node cannot exceed 5 parents.
+  - At 3+ parents, warn; at 6th parent, block and notify.
+
+3. **Undo/redo is consistent for structural actions.**
+  - Creating cards, branching, merging, edge removal, and position changes must be undoable and redoable.
+
+4. **Context snapshots are time-bound.**
+  - Workspace instructions and knowledge base references are captured per message at send time.
+  - Past messages do not change when workspace context changes.
+
 ## Key Data Structures
 
 ### Workspace (Flat Container)

@@ -180,7 +180,6 @@ function ConversationCardComponent({
       branchFromMessage({
         sourceCardId: conversation.id,
         messageIndex: branchIndex,
-        inheritanceMode: 'full',
         branchReason: 'Branch from card',
       });
     };

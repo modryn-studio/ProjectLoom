@@ -13,7 +13,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge, X, Check, AlertTriangle } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
-import type { Conversation, Position, InheritanceMode } from '@/types';
+import type { Conversation, Position } from '@/types';
 
 // =============================================================================
 // TYPES
@@ -54,7 +54,6 @@ export function MergeNodeCreator({
   const createMergeNode = useCanvasStore((s) => s.createMergeNode);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>(initialCardIds);
   const [synthesisPrompt, setSynthesisPrompt] = useState('');
-  const [inheritanceModes, setInheritanceModes] = useState<Record<string, InheritanceMode>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const overlayMouseDownRef = useRef(false);
@@ -101,8 +100,6 @@ export function MergeNodeCreator({
 
   const handleRemoveCard = useCallback((cardId: string) => {
     setSelectedCardIds((prev) => prev.filter((id) => id !== cardId));
-    // Clean up mode for removed card
-    setInheritanceModes((prev) => { const next = { ...prev }; delete next[cardId]; return next; });
   }, []);
 
   const handleCreateMerge = useCallback(async () => {
@@ -116,7 +113,6 @@ export function MergeNodeCreator({
         sourceCardIds: selectedCardIds,
         position,
         synthesisPrompt: synthesisPrompt.trim() || undefined,
-        inheritanceModes,
       });
 
       if (result) {
@@ -131,7 +127,7 @@ export function MergeNodeCreator({
     } finally {
       setIsCreating(false);
     }
-  }, [createMergeNode, selectedCardIds, position, synthesisPrompt, inheritanceModes, canCreate, onClose, onComplete]);
+  }, [createMergeNode, selectedCardIds, position, synthesisPrompt, canCreate, onClose, onComplete]);
 
   // Get merge node style based on parent count
   const getMergeStyle = () => {

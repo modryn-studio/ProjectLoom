@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Mock Data Generator
  * 
  * Creates narrative-driven mock conversations forming a coherent
@@ -19,7 +19,7 @@ import type {
   Position,
   BranchPoint,
   InheritedContextEntry,
-  InheritanceMode,
+
   EdgeRelationType,
 } from '@/types';
 import { generateTreeLayout } from '@/utils/layoutGenerator';
@@ -99,16 +99,16 @@ const projectKickoffMessages: Message[] = [
 ## Architecture Overview
 
 \`\`\`
-┌─────────────────┐     ┌─────────────────┐
-│   Next.js App   │────▶│   Supabase DB   │
-│   (Frontend)    │     │   (PostgreSQL)  │
-└────────┬────────┘     └─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│   AI Service    │
-│  (Claude API)   │
-└─────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚   Next.js App   â”‚â”€â”€â”€â”€â–¶â”‚   Supabase DB   â”‚
+â”‚   (Frontend)    â”‚     â”‚   (PostgreSQL)  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+         â”‚
+         â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚   AI Service    â”‚
+â”‚  (Claude API)   â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 \`\`\`
 
 Key features to consider:
@@ -230,7 +230,7 @@ CREATE INDEX idx_tasks_search
   ON tasks USING GIN(search_vector);
 \`\`\`
 
-This gives you fast queries and full-text search! 🚀`, 65),
+This gives you fast queries and full-text search! ðŸš€`, 65),
 ];
 
 /**
@@ -238,45 +238,45 @@ This gives you fast queries and full-text search! 🚀`, 65),
  */
 const japaneseLocalizationMessages: Message[] = [
   createMessage('user', `I want to add Japanese language support. Can you help translate the UI strings?`, 48),
-  createMessage('assistant', `もちろんです！日本語のUIテキストを用意しました：
+  createMessage('assistant', `ã‚‚ã¡ã‚ã‚“ã§ã™ï¼æ—¥æœ¬èªžã®UIãƒ†ã‚­ã‚¹ãƒˆã‚’ç”¨æ„ã—ã¾ã—ãŸï¼š
 
 \`\`\`typescript
 // locales/ja.ts
 export const ja = {
   common: {
-    save: '保存',
-    cancel: 'キャンセル',
-    delete: '削除',
-    edit: '編集',
-    loading: '読み込み中...',
+    save: 'ä¿å­˜',
+    cancel: 'ã‚­ãƒ£ãƒ³ã‚»ãƒ«',
+    delete: 'å‰Šé™¤',
+    edit: 'ç·¨é›†',
+    loading: 'èª­ã¿è¾¼ã¿ä¸­...',
   },
   tasks: {
-    title: 'タスク',
-    addTask: 'タスクを追加',
-    dueDate: '期限',
+    title: 'ã‚¿ã‚¹ã‚¯',
+    addTask: 'ã‚¿ã‚¹ã‚¯ã‚’è¿½åŠ ',
+    dueDate: 'æœŸé™',
     priority: {
-      high: '高',
-      medium: '中',
-      low: '低',
+      high: 'é«˜',
+      medium: 'ä¸­',
+      low: 'ä½Ž',
     },
     status: {
-      pending: '未完了',
-      completed: '完了',
-      archived: 'アーカイブ済み',
+      pending: 'æœªå®Œäº†',
+      completed: 'å®Œäº†',
+      archived: 'ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–æ¸ˆã¿',
     },
-    empty: 'タスクがありません',
+    empty: 'ã‚¿ã‚¹ã‚¯ãŒã‚ã‚Šã¾ã›ã‚“',
     naturalLanguagePlaceholder: 
-      '例：明日の午後5時に母に電話する',
+      'ä¾‹ï¼šæ˜Žæ—¥ã®åˆå¾Œ5æ™‚ã«æ¯ã«é›»è©±ã™ã‚‹',
   },
   ai: {
-    analyzing: 'AI分析中...',
-    suggestion: 'AIの提案',
-    autoTag: '自動タグ付け',
+    analyzing: 'AIåˆ†æžä¸­...',
+    suggestion: 'AIã®ææ¡ˆ',
+    autoTag: 'è‡ªå‹•ã‚¿ã‚°ä»˜ã‘',
   },
 };
 \`\`\`
 
-日本語のNLPにはClaude 3が対応しています。日付の形式（2024年3月15日）も自動認識されます。`, 47),
+æ—¥æœ¬èªžã®NLPã«ã¯Claude 3ãŒå¯¾å¿œã—ã¦ã„ã¾ã™ã€‚æ—¥ä»˜ã®å½¢å¼ï¼ˆ2024å¹´3æœˆ15æ—¥ï¼‰ã‚‚è‡ªå‹•èªè­˜ã•ã‚Œã¾ã™ã€‚`, 47),
 ];
 
 /**
@@ -292,19 +292,19 @@ const arabicRTLMessages: Message[] = [
 // locales/ar.ts
 export const ar = {
   common: {
-    save: 'حفظ',
-    cancel: 'إلغاء',
-    delete: 'حذف',
-    edit: 'تعديل',
+    save: 'Ø­ÙØ¸',
+    cancel: 'Ø¥Ù„ØºØ§Ø¡',
+    delete: 'Ø­Ø°Ù',
+    edit: 'ØªØ¹Ø¯ÙŠÙ„',
   },
   tasks: {
-    title: 'المهام',
-    addTask: 'إضافة مهمة',
-    dueDate: 'تاريخ الاستحقاق',
+    title: 'Ø§Ù„Ù…Ù‡Ø§Ù…',
+    addTask: 'Ø¥Ø¶Ø§ÙØ© Ù…Ù‡Ù…Ø©',
+    dueDate: 'ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ø³ØªØ­Ù‚Ø§Ù‚',
     priority: {
-      high: 'عالية',
-      medium: 'متوسطة',
-      low: 'منخفضة',
+      high: 'Ø¹Ø§Ù„ÙŠØ©',
+      medium: 'Ù…ØªÙˆØ³Ø·Ø©',
+      low: 'Ù…Ù†Ø®ÙØ¶Ø©',
     },
   },
 };
@@ -333,7 +333,7 @@ export const ar = {
 <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
 \`\`\`
 
-The key is using CSS logical properties instead of left/right! 📝`, 45),
+The key is using CSS logical properties instead of left/right! ðŸ“`, 45),
 ];
 
 /**
@@ -456,7 +456,7 @@ export async function createTask(formData: FormData) {
 }
 \`\`\`
 
-Now errors are typed and user-friendly! ✨`, 37),
+Now errors are typed and user-friendly! âœ¨`, 37),
 ];
 
 /**
@@ -520,26 +520,26 @@ function TaskList({ tasks, isLoading }) {
 }
 \`\`\`
 
-I recommend Option 3 for the best UX! 🎯`, 23),
+I recommend Option 3 for the best UX! ðŸŽ¯`, 23),
   createMessage('user', `Option 3 worked perfectly. But now I'm seeing hydration errors in Next.js.`, 22),
   createMessage('assistant', `Hydration errors happen when server and client HTML don't match. Common causes:
 
 ## 1. Using \`Date.now()\` or \`Math.random()\`
 \`\`\`tsx
-// ❌ Bad - different on server vs client
+// âŒ Bad - different on server vs client
 <span>{Date.now()}</span>
 
-// ✅ Good - use effect for client-only values
+// âœ… Good - use effect for client-only values
 const [time, setTime] = useState<number>()
 useEffect(() => setTime(Date.now()), [])
 \`\`\`
 
 ## 2. Browser-only APIs
 \`\`\`tsx
-// ❌ Bad - window doesn't exist on server
+// âŒ Bad - window doesn't exist on server
 const width = window.innerWidth
 
-// ✅ Good - check for browser
+// âœ… Good - check for browser
 const [width, setWidth] = useState(0)
 useEffect(() => {
   setWidth(window.innerWidth)
@@ -548,10 +548,10 @@ useEffect(() => {
 
 ## 3. Timestamps in locale format
 \`\`\`tsx
-// ❌ Bad - locale differs between server/client
+// âŒ Bad - locale differs between server/client
 <span>{new Date(task.createdAt).toLocaleString()}</span>
 
-// ✅ Good - use consistent formatting
+// âœ… Good - use consistent formatting
 import { format } from 'date-fns'
 <span>{format(new Date(task.createdAt), 'PPp')}</span>
 \`\`\`
@@ -622,7 +622,7 @@ const TaskItem = memo(function TaskItem({ task }) {
 })
 \`\`\`
 
-These changes should handle 10,000+ tasks smoothly! 📊`, 11),
+These changes should handle 10,000+ tasks smoothly! ðŸ“Š`, 11),
 ];
 
 /**
@@ -688,7 +688,7 @@ Consider Rust when:
 - Running ML models on-device
 - Need sub-millisecond response times
 
-Stick with TypeScript for now, optimize later if needed! 🦀`, 7),
+Stick with TypeScript for now, optimize later if needed! ðŸ¦€`, 7),
 ];
 
 /**
@@ -696,7 +696,7 @@ Stick with TypeScript for now, optimize later if needed! 🦀`, 7),
  */
 const spanishUIMessages: Message[] = [
   createMessage('user', `Adding Spanish as well. Can you provide the translations?`, 6),
-  createMessage('assistant', `¡Por supuesto! Aquí están las traducciones al español:
+  createMessage('assistant', `Â¡Por supuesto! AquÃ­ estÃ¡n las traducciones al espaÃ±ol:
 
 \`\`\`typescript
 // locales/es.ts
@@ -708,13 +708,13 @@ export const es = {
     edit: 'Editar',
     loading: 'Cargando...',
     search: 'Buscar',
-    settings: 'Configuración',
+    settings: 'ConfiguraciÃ³n',
   },
   tasks: {
     title: 'Tareas',
     addTask: 'Agregar tarea',
     newTask: 'Nueva tarea',
-    dueDate: 'Fecha límite',
+    dueDate: 'Fecha lÃ­mite',
     priority: {
       high: 'Alta',
       medium: 'Media',
@@ -726,25 +726,25 @@ export const es = {
       completed: 'Completada',
       archived: 'Archivada',
     },
-    empty: 'No hay tareas todavía',
+    empty: 'No hay tareas todavÃ­a',
     naturalLanguagePlaceholder: 
-      'Ej: Llamar a mamá mañana a las 5pm',
+      'Ej: Llamar a mamÃ¡ maÃ±ana a las 5pm',
   },
   ai: {
     analyzing: 'Analizando con IA...',
     suggestion: 'Sugerencia de IA',
-    autoTag: 'Etiquetado automático',
-    smartSchedule: 'Programación inteligente',
+    autoTag: 'Etiquetado automÃ¡tico',
+    smartSchedule: 'ProgramaciÃ³n inteligente',
   },
   errors: {
-    generic: 'Algo salió mal',
+    generic: 'Algo saliÃ³ mal',
     notFound: 'No encontrado',
     unauthorized: 'Acceso no autorizado',
   },
 };
 \`\`\`
 
-Claude entiende español perfectamente para el análisis de lenguaje natural. ¡Tu app estará lista para el mercado hispanohablante! 🇪🇸🇲🇽🇦🇷`, 5),
+Claude entiende espaÃ±ol perfectamente para el anÃ¡lisis de lenguaje natural. Â¡Tu app estarÃ¡ lista para el mercado hispanohablante! ðŸ‡ªðŸ‡¸ðŸ‡²ðŸ‡½ðŸ‡¦ðŸ‡·`, 5),
 ];
 
 /**
@@ -754,7 +754,7 @@ const deploymentMessages: Message[] = [
   createMessage('user', `We're ready to deploy! What's the production checklist?`, 2),
   createMessage('assistant', `Here's your production deployment checklist:
 
-## Pre-Deployment ✅
+## Pre-Deployment âœ…
 
 ### Security
 - [ ] Environment variables secured (not in repo)
@@ -803,7 +803,7 @@ ANTHROPIC_API_KEY=
 - [ ] Check mobile responsiveness
 - [ ] Verify i18n routes work
 
-Ready to launch! 🚀`, 1),
+Ready to launch! ðŸš€`, 1),
   createMessage('user', `Amazing! One last thing - how do we set up preview deployments for PRs?`, 0.5),
   createMessage('assistant', `Vercel handles this automatically! But here's how to customize:
 
@@ -849,7 +849,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '🚀 Preview: https://...'
+              body: 'ðŸš€ Preview: https://...'
             })
 \`\`\`
 
@@ -866,7 +866,7 @@ jobs:
 }
 \`\`\`
 
-You're all set for a professional CI/CD workflow! 🎉`, 0),
+You're all set for a professional CI/CD workflow! ðŸŽ‰`, 0),
 ];
 
 // =============================================================================
@@ -899,11 +899,10 @@ export function generateMockData(): MockDataResult {
   
   // Helper to create inherited context entry with sample messages
   const makeInheritedContext = (
-    mode: InheritanceMode,
     messages: Message[],
     totalParentMessages: number
   ): InheritedContextEntry => ({
-    mode,
+    mode: 'full',
     messages,
     timestamp: new Date(),
     totalParentMessages,
@@ -930,7 +929,7 @@ export function generateMockData(): MockDataResult {
     [kickoff.id], // branched from kickoff
     makeBranchPoint(kickoff.id, 2), // branched after 3rd message
     {
-      [kickoff.id]: makeInheritedContext('full', projectKickoffMessages.slice(0, 3), projectKickoffMessages.length),
+      [kickoff.id]: makeInheritedContext(projectKickoffMessages.slice(0, 3), projectKickoffMessages.length),
     },
     false
   );
@@ -943,7 +942,7 @@ export function generateMockData(): MockDataResult {
     [kickoff.id],
     makeBranchPoint(kickoff.id, 1),
     {
-      [kickoff.id]: makeInheritedContext('full', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
+      [kickoff.id]: makeInheritedContext(projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
     },
     false
   );
@@ -956,7 +955,7 @@ export function generateMockData(): MockDataResult {
     [kickoff.id],
     makeBranchPoint(kickoff.id, 1),
     {
-      [kickoff.id]: makeInheritedContext('full', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
+      [kickoff.id]: makeInheritedContext(projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
     },
     false
   );
@@ -969,7 +968,7 @@ export function generateMockData(): MockDataResult {
     [database.id],
     makeBranchPoint(database.id, 3),
     {
-      [database.id]: makeInheritedContext('full', databaseDesignMessages.slice(0, 4), databaseDesignMessages.length),
+      [database.id]: makeInheritedContext(databaseDesignMessages.slice(0, 4), databaseDesignMessages.length),
     },
     false
   );
@@ -982,7 +981,7 @@ export function generateMockData(): MockDataResult {
     [apiImpl.id],
     makeBranchPoint(apiImpl.id, 5),
     {
-      [apiImpl.id]: makeInheritedContext('full', apiImplementationMessages.slice(0, 6), apiImplementationMessages.length),
+      [apiImpl.id]: makeInheritedContext(apiImplementationMessages.slice(0, 6), apiImplementationMessages.length),
     },
     false
   );
@@ -995,7 +994,7 @@ export function generateMockData(): MockDataResult {
     [debugging.id],
     makeBranchPoint(debugging.id, 7),
     {
-      [debugging.id]: makeInheritedContext('full', debuggingSessionMessages.slice(0, 8), debuggingSessionMessages.length),
+      [debugging.id]: makeInheritedContext(debuggingSessionMessages.slice(0, 8), debuggingSessionMessages.length),
     },
     false
   );
@@ -1008,7 +1007,7 @@ export function generateMockData(): MockDataResult {
     [performance.id],
     makeBranchPoint(performance.id, 3),
     {
-      [performance.id]: makeInheritedContext('full', performanceMessages.slice(0, 2), performanceMessages.length),
+      [performance.id]: makeInheritedContext(performanceMessages.slice(0, 2), performanceMessages.length),
     },
     false
   );
@@ -1021,7 +1020,7 @@ export function generateMockData(): MockDataResult {
     [japaneseI18n.id],
     makeBranchPoint(japaneseI18n.id, 3),
     {
-      [japaneseI18n.id]: makeInheritedContext('full', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
+      [japaneseI18n.id]: makeInheritedContext(japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
     },
     false
   );
@@ -1034,7 +1033,7 @@ export function generateMockData(): MockDataResult {
     [performance.id],
     makeBranchPoint(performance.id, 4),
     {
-      [performance.id]: makeInheritedContext('full', performanceMessages.slice(0, 5), performanceMessages.length),
+      [performance.id]: makeInheritedContext(performanceMessages.slice(0, 5), performanceMessages.length),
     },
     false
   );
@@ -1042,7 +1041,7 @@ export function generateMockData(): MockDataResult {
   // Step 3: Create a MERGE NODE that synthesizes i18n work
   // This demonstrates the v4 multi-parent merge capability
   const i18nSynthesis = createConversation(
-    '🔀 i18n Synthesis',
+    'ðŸ”€ i18n Synthesis',
     [
       createMessage('user', 'Can you synthesize our internationalization approach based on the Japanese, Arabic, and Spanish implementations?', 2),
       createMessage('assistant', `## i18n Strategy Synthesis
@@ -1069,16 +1068,16 @@ const i18nConfig = {
 };
 \`\`\`
 
-This synthesis combines the best practices from each language exploration! 🌍`, 1),
+This synthesis combines the best practices from each language exploration! ðŸŒ`, 1),
     ],
     tempPosition,
     [],
     [japaneseI18n.id, arabicRTL.id, spanishUI.id], // THREE parents - merge node
     undefined, // merge nodes don't have a single branch point
     {
-      [japaneseI18n.id]: makeInheritedContext('full', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
-      [arabicRTL.id]: makeInheritedContext('full', arabicRTLMessages.slice(0, 4), arabicRTLMessages.length),
-      [spanishUI.id]: makeInheritedContext('full', spanishUIMessages.slice(0, 4), spanishUIMessages.length),
+      [japaneseI18n.id]: makeInheritedContext(japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
+      [arabicRTL.id]: makeInheritedContext(arabicRTLMessages.slice(0, 4), arabicRTLMessages.length),
+      [spanishUI.id]: makeInheritedContext(spanishUIMessages.slice(0, 4), spanishUIMessages.length),
     },
     true // IS a merge node
   );
@@ -1104,19 +1103,19 @@ This synthesis combines the best practices from each language exploration! 🌍`
     targetIdx: number;
     relationType: EdgeRelationType;
   }> = [
-    { sourceIdx: 0, targetIdx: 1, relationType: 'branch' },  // Kickoff → Database
-    { sourceIdx: 0, targetIdx: 2, relationType: 'branch' },  // Kickoff → Japanese
-    { sourceIdx: 0, targetIdx: 3, relationType: 'branch' },  // Kickoff → Arabic
-    { sourceIdx: 1, targetIdx: 4, relationType: 'branch' },  // Database → API
-    { sourceIdx: 4, targetIdx: 5, relationType: 'branch' },  // API → Debugging
-    { sourceIdx: 5, targetIdx: 6, relationType: 'branch' },  // Debugging → Performance
-    { sourceIdx: 6, targetIdx: 7, relationType: 'branch' },  // Performance → Rust
-    { sourceIdx: 2, targetIdx: 8, relationType: 'branch' },  // Japanese → Spanish
-    { sourceIdx: 6, targetIdx: 9, relationType: 'branch' },  // Performance → Deployment
+    { sourceIdx: 0, targetIdx: 1, relationType: 'branch' },  // Kickoff â†’ Database
+    { sourceIdx: 0, targetIdx: 2, relationType: 'branch' },  // Kickoff â†’ Japanese
+    { sourceIdx: 0, targetIdx: 3, relationType: 'branch' },  // Kickoff â†’ Arabic
+    { sourceIdx: 1, targetIdx: 4, relationType: 'branch' },  // Database â†’ API
+    { sourceIdx: 4, targetIdx: 5, relationType: 'branch' },  // API â†’ Debugging
+    { sourceIdx: 5, targetIdx: 6, relationType: 'branch' },  // Debugging â†’ Performance
+    { sourceIdx: 6, targetIdx: 7, relationType: 'branch' },  // Performance â†’ Rust
+    { sourceIdx: 2, targetIdx: 8, relationType: 'branch' },  // Japanese â†’ Spanish
+    { sourceIdx: 6, targetIdx: 9, relationType: 'branch' },  // Performance â†’ Deployment
     // Merge edges (emerald colored)
-    { sourceIdx: 2, targetIdx: 10, relationType: 'merge' }, // Japanese → Synthesis
-    { sourceIdx: 3, targetIdx: 10, relationType: 'merge' }, // Arabic → Synthesis
-    { sourceIdx: 8, targetIdx: 10, relationType: 'merge' }, // Spanish → Synthesis
+    { sourceIdx: 2, targetIdx: 10, relationType: 'merge' }, // Japanese â†’ Synthesis
+    { sourceIdx: 3, targetIdx: 10, relationType: 'merge' }, // Arabic â†’ Synthesis
+    { sourceIdx: 8, targetIdx: 10, relationType: 'merge' }, // Spanish â†’ Synthesis
   ];
   
   // Generate tree layout (excluding merge node for initial layout)
