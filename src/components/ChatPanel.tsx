@@ -469,7 +469,7 @@ export function ChatPanel() {
     if (searchResult) {
       const searchContext = `
 
-Web Search Results:
+The following information was retrieved to help answer the question:
 
 ${searchResult.summary}
 
