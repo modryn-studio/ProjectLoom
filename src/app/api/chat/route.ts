@@ -59,6 +59,7 @@ const WEB_SEARCH_SYSTEM_PROMPT = `You have access to the web_search tool. Use it
 - Recent information (anything from the last few years)
 - Facts that change over time or vary by location
 - When user asks "what's happening", "latest", "current", "today", "now"
+- When user explicitly requests: "search", "research", "look up", "find out", "check"
 
 If you need location/specifics for a search, make a reasonable guess or search general terms first.
 Example: "weather today" → search "current weather forecast" or "weather news today"
