@@ -65,11 +65,13 @@ export function ChatPanel() {
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [messageListHeight, setMessageListHeight] = useState(0);
   
   // Keep ref in sync with state
   useEffect(() => {
     panelWidthRef.current = panelWidth;
   }, [panelWidth]);
+
 
   // Determine current model for conversation
   const currentModel = useMemo(() => {
@@ -531,6 +533,7 @@ export function ChatPanel() {
             conversation={activeConversation}
             streamingMessages={chatMessages}
             isStreaming={isStreaming}
+            onHeightChange={setMessageListHeight}
           />
 
           {/* Message Input */}
@@ -548,6 +551,7 @@ export function ChatPanel() {
             onAttachmentsChange={setPendingAttachments}
             currentModel={currentModel}
             onModelChange={handleModelChange}
+            maxTextareaHeight={messageListHeight > 0 ? Math.floor(messageListHeight * 0.5) : undefined}
           />
         </>
       ) : (

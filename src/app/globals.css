@@ -384,6 +384,16 @@ html {
   display: none; /* Chrome/Safari */
 }
 
+/* Chat textarea: hide vertical scrollbar while allowing scroll */
+.chat-textarea {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge Legacy */
+}
+
+.chat-textarea::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* Fade in handles on node hover */
 .react-flow__node:hover .react-flow__handle {
   opacity: 1;

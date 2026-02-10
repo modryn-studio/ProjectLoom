@@ -197,12 +197,15 @@ interface MessageThreadProps {
   streamingMessages?: ChatMessage[];
   /** Whether AI is currently streaming a response */
   isStreaming?: boolean;
+  /** Notify parent of scroll container height changes */
+  onHeightChange?: (height: number) => void;
 }
 
 export function MessageThread({
   conversation,
   streamingMessages = [],
   isStreaming = false,
+  onHeightChange,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
@@ -268,6 +271,24 @@ export function MessageThread({
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [displayMessages.length, streamingMessages.length, lastStreamingContent]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !onHeightChange) return;
+
+    const updateHeight = () => {
+      onHeightChange(container.clientHeight);
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => updateHeight());
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [onHeightChange]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;

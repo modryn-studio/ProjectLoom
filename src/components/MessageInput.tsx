@@ -13,7 +13,7 @@ import type { MessageAttachment } from '@/types';
 // =============================================================================
 
 const MIN_INPUT_HEIGHT = 28; // Single line height
-const MAX_INPUT_HEIGHT = 200; // ~9-10 lines before scrolling (VS Code style)
+const MAX_INPUT_HEIGHT = 200; // Default max height before scrolling
 
 // =============================================================================
 // MESSAGE INPUT COMPONENT
@@ -45,6 +45,8 @@ interface MessageInputProps {
   currentModel?: string | null;
   /** Callback when model is changed */
   onModelChange?: (modelId: string) => void;
+  /** Optional max textarea height in pixels */
+  maxTextareaHeight?: number;
 }
 
 // Vision support constants
@@ -66,6 +68,7 @@ export function MessageInput({
   onAttachmentsChange,
   currentModel,
   onModelChange,
+  maxTextareaHeight,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,9 +107,10 @@ export function MessageInput({
     
     // Calculate new height within bounds
     const scrollHeight = textarea.scrollHeight;
-    const newHeight = Math.min(MAX_INPUT_HEIGHT, Math.max(MIN_INPUT_HEIGHT, scrollHeight));
+    const maxHeight = Math.max(MIN_INPUT_HEIGHT, maxTextareaHeight ?? MAX_INPUT_HEIGHT);
+    const newHeight = Math.min(maxHeight, Math.max(MIN_INPUT_HEIGHT, scrollHeight));
     textarea.style.height = `${newHeight}px`;
-  }, []);
+  }, [maxTextareaHeight]);
 
   // Adjust height when content changes
   useEffect(() => {
@@ -303,8 +307,10 @@ export function MessageInput({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder={hasApiKey ? "Type a message..." : "Configure API key to start chatting..."}
+            className="chat-textarea"
             style={{
               ...inputStyles.textarea,
+              maxHeight: maxTextareaHeight ?? MAX_INPUT_HEIGHT,
               opacity: !hasApiKey ? 0.6 : 1,
             }}
             disabled={isStreaming || !hasApiKey}
@@ -439,7 +445,6 @@ const inputStyles: Record<string, React.CSSProperties> = {
   },
 
   textarea: {
-    flex: 1,
     minHeight: MIN_INPUT_HEIGHT,
     maxHeight: MAX_INPUT_HEIGHT,
     resize: 'none',
@@ -453,9 +458,8 @@ const inputStyles: Record<string, React.CSSProperties> = {
     padding: `${spacing[1]} ${spacing[2]}`,
     margin: 0,
     overflowY: 'auto',
-    // Discrete scrollbar
-    scrollbarWidth: 'thin',
-    scrollbarColor: 'var(--fg-quaternary) transparent',
+    // Hide scrollbar while preserving scroll behavior
+    scrollbarWidth: 'none',
   } as React.CSSProperties,
 
   sendButton: {
