@@ -268,7 +268,7 @@ export function MessageThread({
 
   return (
     <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
-      <div style={isMaximized ? threadStyles.maximizedContent : undefined}>
+      <div style={isMaximized ? threadStyles.maximizedContent : threadStyles.normalContent}>
         {/* Inherited From Banner */}
         {conversation.parentCardIds.length > 0 && (
           <InheritedFromBanner
@@ -696,6 +696,13 @@ const threadStyles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
   } as React.CSSProperties,
 
+  normalContent: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[2],
+  } as React.CSSProperties,
+
   emptyState: {
     display: 'flex',
     flexDirection: 'column',
@@ -705,9 +712,9 @@ const threadStyles: Record<string, React.CSSProperties> = {
     flex: 1,
     textAlign: 'center',
     padding: spacing[4],
-    maxWidth: 520,
-    width: '100%',
-    alignSelf: 'center',
+    maxWidth: '520px',
+    width: 'calc(100% - 32px)',
+    margin: '0 auto',
     backgroundColor: colors.bg.secondary,
     border: `1px solid ${colors.border.muted}`,
     borderRadius: effects.border.radius.default,
