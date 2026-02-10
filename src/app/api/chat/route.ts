@@ -263,11 +263,16 @@ export async function POST(req: Request): Promise<Response> {
       ? { maxCompletionTokens: modelConfig.maxTokens }
       : { maxTokens: modelConfig.maxTokens };
 
+    // Some models only support default temperature (1.0), omit parameter for those
+    const temperatureConfig = modelConfig.temperature === 1.0 && providerType === 'openai'
+      ? {} // Omit temperature to use default
+      : { temperature: modelConfig.temperature };
+
     // Stream the response with error handling
     const result = streamText({
       model: aiModel,
       system: modelConfig.systemPrompt,
-      temperature: modelConfig.temperature,
+      ...temperatureConfig,
       ...tokenConfig,
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
       onError: (error) => {

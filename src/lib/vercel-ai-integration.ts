@@ -79,16 +79,6 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: 'OpenAI flagship model for production use. Excellent at coding, creative tasks, and structured output.',
   },
   {
-    id: 'gpt-5.2-pro',
-    name: 'GPT-5.2 Pro',
-    provider: 'openai',
-    maxTokens: 400000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'high',
-    description: 'Extended reasoning mode for complex problems requiring deeper thought. Best for research, mathematics, system design, and challenging technical questions.',
-  },
-  {
     id: 'gpt-5-mini',
     name: 'GPT-5 Mini',
     provider: 'openai',

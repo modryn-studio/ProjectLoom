@@ -55,18 +55,13 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     maxTokens: 16384,
     systemPrompt: undefined,
   },
-  'gpt-5.2-pro': {
-    temperature: 0.7,
-    maxTokens: 16384,
-    systemPrompt: undefined,
-  },
   'gpt-5-mini': {
-    temperature: 0.7,
+    temperature: 1.0,         // Only temperature: 1 supported for this model
     maxTokens: 8192,
     systemPrompt: undefined,
   },
   'gpt-5-nano': {
-    temperature: 0.7,
+    temperature: 1.0,         // Only temperature: 1 supported for this model
     maxTokens: 4096,
     systemPrompt: undefined,
   },
