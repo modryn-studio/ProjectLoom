@@ -567,10 +567,7 @@ export function ChatPanel() {
     () => deriveWebSearchState(data as unknown[] | undefined),
     [data, deriveWebSearchState]
   );
-
-  useEffect(() => {
-    webSearchStateRef.current = webSearchState;
-  }, [webSearchState]);
+  webSearchStateRef.current = webSearchState;
 
   return (
     <SidePanel
