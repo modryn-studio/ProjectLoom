@@ -16,7 +16,7 @@ import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
 import { SidePanel } from './SidePanel';
-import type { MessageAttachment, Conversation } from '@/types';
+import type { MessageAttachment } from '@/types';
 
 // =============================================================================
 // CONSTANTS
@@ -97,7 +97,7 @@ export function ChatPanel() {
   const conversationModel = useCanvasStore(
     useCallback((s) => {
       if (!s.activeConversationId) return null;
-      const conversation = s.conversations.get(s.activeConversationId) as (Conversation & { model?: string }) | undefined;
+      const conversation = s.conversations.get(s.activeConversationId);
       return conversation?.model ?? null;
     }, [])
   );

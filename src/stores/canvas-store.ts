@@ -707,7 +707,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       const finalPosition = position ?? { x: Math.random() * 500, y: Math.random() * 500 };
       const content: Message[] = [];
 
-      const newConversation: Conversation & { model?: string } = {
+      const newConversation: Conversation = {
         id: nanoid(),
         canvasId: workspaceId,
         position: finalPosition,
@@ -1360,6 +1360,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         activeWorkspaceId,
         expandedNodeIds,
         selectedNodeIds,
+        lastUsedModel: storedData.lastUsedModel ?? null,
         isInitialized: true,
         // Initialize history with the initial state
         history: [{
@@ -1402,6 +1403,7 @@ export const useCanvasStore = create<WorkspaceState>()(
           conversations: Array.from(conversations.values()),
           positions,
           connections,
+          lastUsedModel: get().lastUsedModel,
           settings: {
             theme: 'dark',
             showMinimap: true,
@@ -1772,10 +1774,9 @@ export const useCanvasStore = create<WorkspaceState>()(
 
       // Create the new branched conversation
       // Copy model from parent conversation if available, otherwise use lastUsedModel
-      const sourceConvWithModel = sourceConversation as Conversation & { model?: string };
-      const inheritedModel = sourceConvWithModel.model ?? get().lastUsedModel ?? undefined;
+      const inheritedModel = sourceConversation.model ?? get().lastUsedModel ?? undefined;
       
-      const newConversation: Conversation & { model?: string } = {
+      const newConversation: Conversation = {
         id: nanoid(),
         canvasId: activeWorkspaceId,
         position: newPosition,
@@ -1876,11 +1877,10 @@ export const useCanvasStore = create<WorkspaceState>()(
       };
 
       // Copy model from first parent conversation if available, otherwise use lastUsedModel
-      const firstParentWithModel = sourceConversations[0] as Conversation & { model?: string };
-      const inheritedModel = firstParentWithModel.model ?? get().lastUsedModel ?? undefined;
+      const inheritedModel = sourceConversations[0].model ?? get().lastUsedModel ?? undefined;
 
       // Create the merge node
-      const mergeNode: Conversation & { model?: string } = {
+      const mergeNode: Conversation = {
         id: nanoid(),
         canvasId: activeWorkspaceId,
         position,
@@ -2300,16 +2300,11 @@ export const useCanvasStore = create<WorkspaceState>()(
         return;
       }
 
-      // Store model in conversation metadata
-      const updatedConversation = {
+      // Store model in conversation
+      const updatedConversation: Conversation = {
         ...conversation,
-        metadata: {
-          ...conversation.metadata,
-          // Using custom metadata for model storage
-        },
-        // Store model at conversation level for easy access
         model: model,
-      } as Conversation & { model?: string };
+      };
 
       // Update store
       const newConversations = new Map(conversations);
@@ -2344,7 +2339,7 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     getConversationModel: (conversationId: string) => {
       const { conversations } = get();
-      const conversation = conversations.get(conversationId) as (Conversation & { model?: string }) | undefined;
+      const conversation = conversations.get(conversationId);
       return conversation?.model;
     },
 

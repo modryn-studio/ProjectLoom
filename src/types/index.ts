@@ -247,6 +247,11 @@ export interface Conversation {
   isMergeNode: boolean;
   /** Merge metadata (only if isMergeNode is true) */
   mergeMetadata?: MergeMetadata;
+  
+  // === AI Model Selection ===
+  
+  /** Selected AI model for this conversation (e.g., 'claude-3-5-sonnet-20241022') */
+  model?: string;
 }
 
 // =============================================================================
@@ -668,6 +673,8 @@ export interface StorageData {
   positions: Record<string, Position>;
   /** Edge connections */
   connections: EdgeConnection[];
+  /** Last used AI model (remembered across sessions) */
+  lastUsedModel?: string | null;
   /** Canvas settings */
   settings: {
     theme: 'dark';
