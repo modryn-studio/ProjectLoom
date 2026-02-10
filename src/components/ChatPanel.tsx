@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useChat } from 'ai/react';
-import { PanelRightClose, Loader } from 'lucide-react';
+import { PanelRightClose } from 'lucide-react';
 
 import { colors, typography, spacing } from '@/lib/design-tokens';
 import { useCanvasStore, selectChatPanelOpen, selectActiveConversationId } from '@/stores/canvas-store';
@@ -292,7 +292,6 @@ export function ChatPanel() {
     stop,
     error: chatError,
     setMessages,
-    data,
     setData,
   } = useChat({
     api: '/api/chat',

@@ -161,7 +161,7 @@ export function MessageInput({
     
     // Convert files to base64 data URLs
     const readers = files.map(file => {
-      return new Promise<MessageAttachment>((resolve) => {
+      return new Promise<MessageAttachment>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           resolve({
@@ -171,13 +171,21 @@ export function MessageInput({
             url: reader.result as string,
           });
         };
+        reader.onerror = () => {
+          reject(new Error(`Failed to read file: ${file.name}`));
+        };
         reader.readAsDataURL(file);
       });
     });
     
-    Promise.all(readers).then((results) => {
-      onAttachmentsChange?.([...attachments, ...results]);
-    });
+    Promise.all(readers)
+      .then((results) => {
+        onAttachmentsChange?.([...attachments, ...results]);
+      })
+      .catch((error) => {
+        console.error('[MessageInput] Failed to read file:', error);
+        // Notify user of error (optional: could use toast)
+      });
     
     // Reset input so re-selecting same file works
     e.target.value = '';

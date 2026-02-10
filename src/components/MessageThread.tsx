@@ -207,7 +207,12 @@ export function MessageThread({
 
   useEffect(() => {
     if (scrollContainerRef.current && isPinnedToBottomRef.current) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      // Use requestAnimationFrame to ensure DOM has updated before scrolling
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      });
     }
   }, [displayMessages.length, streamingMessages.length, lastStreamingContent]);
 
