@@ -362,6 +362,9 @@ interface WorkspaceState {
   chatPanelOpen: boolean;
   activeConversationId: string | null;
   draftMessages: Map<string, string>;
+  
+  // Last used model (persisted)
+  lastUsedModel: string | null;
 
   // Usage Panel State (session-only)
   usagePanelOpen: boolean;
@@ -616,6 +619,9 @@ export const useCanvasStore = create<WorkspaceState>()(
     chatPanelOpen: false,
     activeConversationId: null,
     draftMessages: new Map(),
+    
+    // Last used model (persisted)
+    lastUsedModel: null,
 
     // Usage Panel State (session-only)
     usagePanelOpen: false,
@@ -701,7 +707,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       const finalPosition = position ?? { x: Math.random() * 500, y: Math.random() * 500 };
       const content: Message[] = [];
 
-      const newConversation: Conversation = {
+      const newConversation: Conversation & { model?: string } = {
         id: nanoid(),
         canvasId: workspaceId,
         position: finalPosition,
@@ -720,6 +726,8 @@ export const useCanvasStore = create<WorkspaceState>()(
           tags: [],
           isExpanded: false,
         },
+        // Use last used model if available
+        model: get().lastUsedModel ?? undefined,
       };
 
       get().addConversation(newConversation, finalPosition);
@@ -1763,7 +1771,11 @@ export const useCanvasStore = create<WorkspaceState>()(
       };
 
       // Create the new branched conversation
-      const newConversation: Conversation = {
+      // Copy model from parent conversation if available, otherwise use lastUsedModel
+      const sourceConvWithModel = sourceConversation as Conversation & { model?: string };
+      const inheritedModel = sourceConvWithModel.model ?? get().lastUsedModel ?? undefined;
+      
+      const newConversation: Conversation & { model?: string } = {
         id: nanoid(),
         canvasId: activeWorkspaceId,
         position: newPosition,
@@ -1781,6 +1793,8 @@ export const useCanvasStore = create<WorkspaceState>()(
           tags: [],
           isExpanded: false,
         },
+        // Inherit model from parent
+        model: inheritedModel,
       };
 
       // Add conversation to store
@@ -1861,8 +1875,12 @@ export const useCanvasStore = create<WorkspaceState>()(
         createdAt: now,
       };
 
+      // Copy model from first parent conversation if available, otherwise use lastUsedModel
+      const firstParentWithModel = sourceConversations[0] as Conversation & { model?: string };
+      const inheritedModel = firstParentWithModel.model ?? get().lastUsedModel ?? undefined;
+
       // Create the merge node
-      const mergeNode: Conversation = {
+      const mergeNode: Conversation & { model?: string } = {
         id: nanoid(),
         canvasId: activeWorkspaceId,
         position,
@@ -1880,6 +1898,8 @@ export const useCanvasStore = create<WorkspaceState>()(
           tags: ['merge'],
           isExpanded: false,
         },
+        // Inherit model from first parent
+        model: inheritedModel,
       };
 
       // Add conversation to store
@@ -2312,7 +2332,12 @@ export const useCanvasStore = create<WorkspaceState>()(
       set({
         conversations: newConversations,
         nodes: updatedNodes,
+        // Update lastUsedModel to remember this selection
+        lastUsedModel: model,
       });
+
+      // Persist to storage
+      get().saveToStorage();
 
       logger.debug(`Set model for conversation ${conversationId}: ${model}`);
     },

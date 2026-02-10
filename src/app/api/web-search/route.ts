@@ -60,6 +60,14 @@ export async function POST(req: Request): Promise<Response> {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
+      // Log what we're sending to Tavily (without exposing full key)
+      console.log('[Web Search] Calling Tavily API:', {
+        query,
+        maxResults: cappedResults,
+        keyPresent: !!tavilyKey,
+        keyPrefix: tavilyKey.substring(0, 8) + '...',
+      });
+
       const response = await fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,9 +85,24 @@ export async function POST(req: Request): Promise<Response> {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        // Try to get detailed error from Tavily
+        let tavilyErrorDetails = '';
+        try {
+          const errorBody = await response.json();
+          tavilyErrorDetails = JSON.stringify(errorBody);
+          console.error('[Tavily Error Details]', errorBody);
+        } catch {
+          tavilyErrorDetails = await response.text();
+          console.error('[Tavily Error Text]', tavilyErrorDetails);
+        }
+
         const errorMsg = response.status === 401
           ? 'Invalid Tavily API key'
+          : response.status === 400
+          ? `Tavily rejected request: ${tavilyErrorDetails || 'Invalid request format'}`
           : `Tavily API error (status ${response.status})`;
+        
+        console.error('[Web Search] Tavily error:', response.status, errorMsg);
         
         return Response.json(
           { error: errorMsg, code: 'TAVILY_ERROR' } as ErrorResponse,

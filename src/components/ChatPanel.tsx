@@ -436,6 +436,9 @@ export function ChatPanel() {
       return null;
     }
 
+    console.log('[Web Search] Executing search with query:', query);
+    console.log('[Web Search] Tavily key present:', !!tavilyKey, 'Length:', tavilyKey.length);
+
     setWebSearchState({ isSearching: true, result: null });
 
     try {
@@ -452,14 +455,23 @@ export function ChatPanel() {
       if (!response.ok) {
         // Parse error details if available
         let errorMessage = `Status ${response.status}`;
+        let errorCode = 'UNKNOWN';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          errorCode = errorData.code || errorCode;
+          console.error('[Web Search] API error details:', {
+            status: response.status,
+            code: errorCode,
+            message: errorMessage,
+            fullError: errorData,
+          });
           if (errorData.code === 'MISSING_API_KEY') {
             console.log('[Web Search] Tavily API key not configured. Add one in Settings to enable web search.');
           }
         } catch {
           // Response not JSON, use status code
+          console.error('[Web Search] Non-JSON error response:', response.status);
         }
         console.warn('[Web Search] Search failed:', errorMessage);
         setWebSearchState({ isSearching: false, result: null });
