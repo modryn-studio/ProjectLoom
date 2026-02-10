@@ -280,6 +280,10 @@ export async function POST(req: Request): Promise<Response> {
         streamData.append({ type: 'web_search_start', query });
 
         try {
+          // 10 second timeout for web search to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+
           const response = await fetch('https://api.tavily.com/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -291,10 +295,22 @@ export async function POST(req: Request): Promise<Response> {
               include_answer: true,
               include_raw_content: false,
             }),
+            signal: controller.signal,
           });
 
+          clearTimeout(timeoutId);
+
           if (!response.ok) {
-            return { error: `Web search failed with status ${response.status}` };
+            // Return empty results instead of error to prevent stream hang
+            const errorMsg = response.status === 401 
+              ? 'Invalid Tavily API key. Please check your settings.'
+              : `Web search unavailable (status ${response.status})`;
+            console.warn(`[Web Search] ${errorMsg}`);
+            streamData.append({ type: 'web_search_end', query });
+            return {
+              summary: errorMsg,
+              sources: [],
+            };
           }
 
           const data = await response.json() as {
@@ -311,13 +327,23 @@ export async function POST(req: Request): Promise<Response> {
             }));
 
           streamData.append({ type: 'web_search_result', sources });
+          streamData.append({ type: 'web_search_end', query });
 
           return {
-            summary: data.answer || '',
+            summary: data.answer || 'No results found.',
             sources,
           };
-        } finally {
+        } catch (error) {
+          // Catch all errors (timeout, network, etc.) and return gracefully
+          const errorMsg = error instanceof Error && error.name === 'AbortError'
+            ? 'Web search timed out after 10 seconds'
+            : 'Web search failed due to network error';
+          console.error(`[Web Search Error]`, error);
           streamData.append({ type: 'web_search_end', query });
+          return {
+            summary: errorMsg,
+            sources: [],
+          };
         }
       },
     }) : undefined;
