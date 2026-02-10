@@ -240,8 +240,6 @@ function buildStructuralMetadata(
     parts.push('(Messages below marked with source)');
   }
 
-  parts.push('\nNote: This is a canvas-based conversation system. Users can reference "parent card context", "workspace instructions", or "canvas" when asking questions.');
-
   return parts.join('\n');
 }
 
