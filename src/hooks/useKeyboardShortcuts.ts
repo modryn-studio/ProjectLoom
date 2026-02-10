@@ -69,13 +69,16 @@ export function useKeyboardShortcuts({
     (event: KeyboardEvent) => {
       if (!enabled) return;
 
-      // Don't trigger shortcuts when typing in inputs
+      // Don't trigger shortcuts when typing in inputs (except Ctrl/Cmd+B for branching)
       const target = event.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
+      const isEditableTarget =
+        target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA'
+        || target.isContentEditable;
+      const isBranchShortcut = (event.ctrlKey || event.metaKey)
+        && (event.key === 'b' || event.key === 'B');
+
+      if (isEditableTarget && !isBranchShortcut) {
         return;
       }
 

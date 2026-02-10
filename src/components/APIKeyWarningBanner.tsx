@@ -193,7 +193,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     margin: 0,
     fontSize: typography.sizes.sm,
-    fontWeight: 600,
+    fontWeight: typography.weights.semibold,
     color: colors.accent.primary,
     fontFamily: typography.fonts.body,
     display: 'flex',
@@ -250,7 +250,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2px 4px',
     borderRadius: 3,
     fontFamily: typography.fonts.code,
-    fontSize: '11px',
+    fontSize: typography.sizes.xs,
   },
 
   learnMoreLink: {

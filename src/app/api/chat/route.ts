@@ -111,10 +111,10 @@ function handleProviderError(error: unknown): Response {
   // Context length exceeded
   if (err.status === 400 && err.message?.includes('context_length')) {
     return createErrorResponse(
-      'Context too long. Try using AI Summary inheritance mode.',
+      'Context too long. Try reducing the number of messages or splitting into a new branch.',
       'CONTEXT_TOO_LONG',
       400,
-      { recoverable: false, suggestion: 'use_summary' }
+      { recoverable: false }
     );
   }
 

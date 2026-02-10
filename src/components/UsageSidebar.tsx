@@ -47,7 +47,7 @@ export function UsageSidebar() {
     alignItems: 'center',
     gap: spacing[2],
     fontSize: typography.sizes.sm,
-    fontWeight: 600,
+    fontWeight: typography.weights.semibold,
     color: colors.fg.primary,
     fontFamily: typography.fonts.heading,
   }), []);

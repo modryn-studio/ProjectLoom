@@ -32,9 +32,7 @@ import { treeLayout } from '@/lib/layout-utils';
 import { useToastStore } from '@/stores/toast-store';
 import { STORAGE_KEYS, createBackupPayload } from '@/lib/storage';
 import { UndoToast } from './UndoToast';
-import { BranchDialog } from './BranchDialog';
-import { InheritedContextPanel } from './InheritedContextPanel';
-import { CanvasBreadcrumb } from './CanvasBreadcrumb';
+import { CanvasBreadcrumb, CanvasHeaderControls } from './CanvasBreadcrumb';
 import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { SettingsPanel } from './SettingsPanel';
 import { CanvasContextModal } from './CanvasContextModal';
@@ -44,8 +42,8 @@ import { UsageSidebar } from './UsageSidebar';
 import { WorkspaceNameModal } from './WorkspaceNameModal';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useCanvasStore, selectBranchDialogOpen, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
-import { usePreferencesStore, selectUIPreferences, selectBranchingPreferences } from '@/stores/preferences-store';
+import { useCanvasStore, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
+import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { Plus } from 'lucide-react';
 
 // =============================================================================
@@ -112,7 +110,7 @@ const controlsStyle: React.CSSProperties = {
 
 const defaultViewport = { x: 0, y: 0, zoom: canvasConfig.viewport.defaultZoom };
 
-// Top overlay for breadcrumb and inherited context
+// Top overlay for canvas header controls
 const topOverlayStyles: React.CSSProperties = {
   position: 'absolute',
   top: 0,
@@ -121,8 +119,8 @@ const topOverlayStyles: React.CSSProperties = {
   zIndex: 10,
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
-  padding: 12,
+  gap: spacing[2],
+  padding: spacing[3],
   pointerEvents: 'none',
 };
 
@@ -157,6 +155,8 @@ const emptyCardStyles: React.CSSProperties = {
 
 export function InfiniteCanvas() {
   const reactFlowInstance = useRef<ReactFlowInstance<Node<ConversationNodeData>, Edge> | null>(null);
+  const suppressNextPaneClickRef = useRef(false);
+  const hasFitInitialView = useRef(false);
 
   // Settings panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -208,7 +208,6 @@ export function InfiniteCanvas() {
   const setSelected = useCanvasStore((s) => s.setSelected);
   const clearSelection = useCanvasStore((s) => s.clearSelection);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
-  const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const navigateToWorkspace = useCanvasStore((s) => s.navigateToWorkspace);
   const deleteWorkspace = useCanvasStore((s) => s.deleteWorkspace);
@@ -223,6 +222,9 @@ export function InfiniteCanvas() {
   const requestDeleteConversation = useCanvasStore((s) => s.requestDeleteConversation);
   const clearDeleteConversationRequest = useCanvasStore((s) => s.clearDeleteConversationRequest);
   const conversations = useCanvasStore((s) => s.conversations);
+  const focusNodeId = useCanvasStore((s) => s.focusNodeId);
+  const clearFocusNode = useCanvasStore((s) => s.clearFocusNode);
+  const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
 
   // Chat panel state
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
@@ -234,8 +236,6 @@ export function InfiniteCanvas() {
   const toggleUsagePanel = useCanvasStore((s) => s.toggleUsagePanel);
   const closeUsagePanel = useCanvasStore((s) => s.closeUsagePanel);
 
-  // Branch dialog state
-  const branchDialogOpen = useCanvasStore(selectBranchDialogOpen);
   const hierarchicalMergeDialogOpen = useCanvasStore((s) => s.hierarchicalMergeDialogOpen);
 
   // Current workspace context (v4 - flat)
@@ -308,7 +308,6 @@ export function InfiniteCanvas() {
 
   // UI Preferences
   const uiPrefs = usePreferencesStore(selectUIPreferences);
-  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const isPrefsLoaded = usePreferencesStore((s) => s.isLoaded);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
@@ -371,9 +370,10 @@ export function InfiniteCanvas() {
     }
   }, [openSettings]);
 
-  // Force fitView when nodes are loaded
+  // Force fitView once when nodes are initially loaded
   useEffect(() => {
-    if (nodes.length > 0 && reactFlowInstance.current) {
+    if (!hasFitInitialView.current && nodes.length > 0 && reactFlowInstance.current) {
+      hasFitInitialView.current = true;
       setTimeout(() => {
         reactFlowInstance.current?.fitView({
           padding: 0.2,
@@ -448,37 +448,29 @@ export function InfiniteCanvas() {
   const handleConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
-      
+
       // Read conversations from store state directly to avoid subscribing to the entire Map
       const currentConversations = useCanvasStore.getState().conversations;
       const targetConversation = currentConversations.get(connection.target);
       const sourceConversation = currentConversations.get(connection.source);
-      
+
       if (!targetConversation || !sourceConversation) {
         // Fallback to regular edge if conversations not found
         onConnect(connection);
         return;
       }
-      
-      // v4: If target is an existing conversation, offer to create merge node
-      // For now, create a merge node when connecting two existing cards
+
       if (targetConversation.isMergeNode) {
-        // Target is already a merge node - try to add source as parent
-        // This is handled by creating an edge of type 'merge'
         const store = useCanvasStore.getState();
-        if (store.canAddMergeParent(connection.target)) {
-          const edge = store.createEdge(connection.source, connection.target, 'merge');
-          if (!edge) {
-            logger.warn('Cannot add parent to merge node - would create cycle or already exists');
-          }
-        } else {
+        if (!store.canAddMergeParent(connection.target)) {
           // Max parents reached
           logger.warn('Cannot add more parents to merge node - max reached');
+          return;
         }
-      } else {
-        // Normal connection - create a standard reference edge
-        onConnect(connection);
       }
+
+      // Route through the store so parent counts and inherited context stay in sync
+      onConnect(connection);
     },
     [onConnect]
   );
@@ -503,9 +495,31 @@ export function InfiniteCanvas() {
 
   // Handle canvas click (deselect and close chat panel)
   const handlePaneClick = useCallback(() => {
+    if (suppressNextPaneClickRef.current) {
+      suppressNextPaneClickRef.current = false;
+      return;
+    }
     // Close chat panel (also clears selection and active conversation)
     closeChatPanel();
   }, [closeChatPanel]);
+
+  const getClientPoint = useCallback((event: MouseEvent | TouchEvent) => {
+    if ('touches' in event && event.touches.length > 0) {
+      const touch = event.touches[0];
+      return { x: touch.clientX, y: touch.clientY };
+    }
+
+    if ('changedTouches' in event && event.changedTouches.length > 0) {
+      const touch = event.changedTouches[0];
+      return { x: touch.clientX, y: touch.clientY };
+    }
+
+    if ('clientX' in event && 'clientY' in event) {
+      return { x: event.clientX, y: event.clientY };
+    }
+
+    return null;
+  }, []);
 
   // Handle connection drag end - create new card if dropped on empty canvas
   // Uses React Flow v12 connectionState API
@@ -513,21 +527,48 @@ export function InfiniteCanvas() {
     (event, connectionState) => {
       // Check if we had an active connection (fromNode will be set)
       // and if we dropped on empty canvas (toHandle will be null)
-      // Also ensure we have a valid drop position
-      if (connectionState.fromNode && !connectionState.toHandle && connectionState.to) {
+      if (connectionState.fromNode && !connectionState.toHandle) {
         const targetIsPane = (event.target as Element)?.classList?.contains('react-flow__pane');
         
         if (targetIsPane) {
-          // Use the drop position from connectionState (already in flow coordinates)
+          // Compute drop position from pointer coordinates
           const sourceNodeId = connectionState.fromNode.id;
-          const dropPosition = connectionState.to;
+          const sourceConversation = conversations.get(sourceNodeId);
+          const messageCount = Array.isArray(sourceConversation?.content)
+            ? sourceConversation.content.length
+            : 0;
+          const hasInheritedContext = (sourceConversation?.parentCardIds.length ?? 0) > 0;
+          if (messageCount === 0 && !hasInheritedContext) return;
 
-          // Open branch dialog with the target position
-          openBranchDialog(sourceNodeId, undefined, dropPosition);
+          const clientPoint = getClientPoint(event);
+          const dropPosition = clientPoint
+            ? reactFlowInstance.current?.screenToFlowPosition(clientPoint)
+            : null;
+
+          if (!dropPosition) return;
+
+          if (dropPosition.x <= connectionState.fromNode.position.x) {
+            useToastStore.getState().warning('Branches must flow left to right.');
+            return;
+          }
+
+          const newConversation = branchFromMessage({
+            sourceCardId: sourceNodeId,
+            messageIndex: messageCount > 0 ? messageCount - 1 : 0,
+            inheritanceMode: 'full',
+            branchReason: 'Branch from drag',
+            targetPosition: dropPosition,
+          });
+
+          if (newConversation) {
+            suppressNextPaneClickRef.current = true;
+            openChatPanel(newConversation.id);
+            requestFocusNode(newConversation.id);
+          }
         }
       }
     },
-    [openBranchDialog]
+    [branchFromMessage, conversations, getClientPoint, openChatPanel, requestFocusNode]
   );
 
   // Handle creating a new conversation
@@ -660,7 +701,6 @@ export function InfiniteCanvas() {
     settingsOpen
     || canvasContextOpen
     || agentDialogOpen
-    || branchDialogOpen
     || hierarchicalMergeDialogOpen
     || Boolean(deleteWorkspaceModal)
     || pendingDeleteConversationIds.length > 0
@@ -668,7 +708,6 @@ export function InfiniteCanvas() {
     settingsOpen,
     canvasContextOpen,
     agentDialogOpen,
-    branchDialogOpen,
     hierarchicalMergeDialogOpen,
     deleteWorkspaceModal,
     pendingDeleteConversationIds.length,
@@ -728,18 +767,24 @@ export function InfiniteCanvas() {
       onBranch: () => {
         // Ctrl+B: Branch from first selected card
         if (firstSelectedId) {
-          // Check preference: should we show dialog or create instantly?
-          if (branchingPrefs.alwaysAskOnBranch) {
-            // Show dialog for user to configure
-            openBranchDialog(firstSelectedId);
-          } else {
-            // Create branch instantly with default settings using v4 API
-            branchFromMessage({
-              sourceCardId: firstSelectedId,
-              messageIndex: 0, // Branch from first message by default
-              inheritanceMode: branchingPrefs.defaultInheritanceMode,
-              branchReason: 'Quick branch',
-            });
+          const sourceConversation = conversations.get(firstSelectedId);
+          const messageCount = Array.isArray(sourceConversation?.content)
+            ? sourceConversation.content.length
+            : 0;
+          const hasInheritedContext = (sourceConversation?.parentCardIds.length ?? 0) > 0;
+          if (messageCount === 0 && !hasInheritedContext) return;
+
+          const branchIndex = messageCount > 0 ? messageCount - 1 : 0;
+
+          const newConversation = branchFromMessage({
+            sourceCardId: firstSelectedId,
+            messageIndex: branchIndex,
+            inheritanceMode: 'full',
+            branchReason: 'Branch from keyboard',
+          });
+          if (newConversation) {
+            openChatPanel(newConversation.id);
+            requestFocusNode(newConversation.id);
           }
         }
       },
@@ -818,6 +863,13 @@ export function InfiniteCanvas() {
     }
   }, []);
 
+  useEffect(() => {
+    if (focusNodeId) {
+      focusOnNode(focusNodeId);
+      clearFocusNode();
+    }
+  }, [focusNodeId, focusOnNode, clearFocusNode]);
+
   return (
     <div style={containerStyles}>
       {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
@@ -884,24 +936,21 @@ export function InfiniteCanvas() {
           </div>
         ) : (
           <>
-            {/* Top overlay for breadcrumb and inherited context */}
+            {/* Top overlay for breadcrumb and canvas context */}
             <div style={topOverlayStyles}>
-              {/* Breadcrumb navigation */}
               <div style={pointerEventsAutoStyle}>
                 <CanvasBreadcrumb 
                   showSidebarToggle={!isSidebarOpen}
                   onToggleSidebar={() => setIsSidebarOpen(true)}
-                  onOpenCanvasContext={openCanvasContext}
                   onFocusNode={focusOnNode}
                 />
               </div>
 
-              {/* Inherited context panel (shown when enabled - cards handle their own parent check) */}
-              {isPrefsLoaded && uiPrefs.showInheritedContext && (
-                <div style={pointerEventsAutoStyle}>
-                  <InheritedContextPanel />
-                </div>
-              )}
+              <div style={pointerEventsAutoStyle}>
+                <CanvasHeaderControls
+                  onOpenCanvasContext={openCanvasContext}
+                />
+              </div>
             </div>
 
             <div style={canvasStyles}>
@@ -977,9 +1026,6 @@ export function InfiniteCanvas() {
                   edgeCount={edges.length}
                 />
               )}
-
-              {/* Branch Dialog */}
-              <BranchDialog />
 
               {/* Canvas Context Menu */}
               <ContextMenu

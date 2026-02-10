@@ -11,11 +11,8 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { GitMerge, X, Check, AlertTriangle } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { apiKeyManager } from '@/lib/api-key-manager';
-import { detectProvider } from '@/lib/vercel-ai-integration';
-import { useUsageStore } from '@/stores/usage-store';
 import type { Conversation, Position, InheritanceMode } from '@/types';
 
 // =============================================================================
@@ -55,13 +52,9 @@ export function MergeNodeCreator({
 }: MergeNodeCreatorProps) {
   const conversations = useCanvasStore((s) => s.conversations);
   const createMergeNode = useCanvasStore((s) => s.createMergeNode);
-  const addUsage = useUsageStore((s) => s.addUsage);
-  
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>(initialCardIds);
   const [synthesisPrompt, setSynthesisPrompt] = useState('');
   const [inheritanceModes, setInheritanceModes] = useState<Record<string, InheritanceMode>>({});
-  const [summaryTexts, setSummaryTexts] = useState<Record<string, string>>({});
-  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const overlayMouseDownRef = useRef(false);
@@ -108,69 +101,9 @@ export function MergeNodeCreator({
 
   const handleRemoveCard = useCallback((cardId: string) => {
     setSelectedCardIds((prev) => prev.filter((id) => id !== cardId));
-    // Clean up mode/summary for removed card
+    // Clean up mode for removed card
     setInheritanceModes((prev) => { const next = { ...prev }; delete next[cardId]; return next; });
-    setSummaryTexts((prev) => { const next = { ...prev }; delete next[cardId]; return next; });
   }, []);
-
-  // Toggle inheritance mode for a specific parent
-  const handleToggleMode = useCallback(async (cardId: string) => {
-    const currentMode = inheritanceModes[cardId] || 'full';
-    
-    if (currentMode === 'full') {
-      // Switch to summary mode — generate summary
-      const conv = conversations.get(cardId);
-      if (!conv || !Array.isArray(conv.content) || conv.content.length === 0) return;
-      
-      const apiKey = apiKeyManager.getKey('anthropic') || apiKeyManager.getKey('openai');
-      if (!apiKey) {
-        setError('Configure an API key to generate summaries.');
-        return;
-      }
-      
-      setGeneratingFor(cardId);
-      setError(null);
-      
-      try {
-        const provider = apiKeyManager.getKey('anthropic') ? 'anthropic' : 'openai';
-        const modelId = provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-5.2';
-        const messagesForApi = conv.content.map(m => ({
-          role: m.role,
-          content: m.content,
-        }));
-        
-        const res = await fetch('/api/summarize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: messagesForApi, apiKey, model: modelId }),
-        });
-        
-        if (!res.ok) throw new Error('Summary generation failed');
-        const data = await res.json() as { summary: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } };
-
-        if (data.usage?.totalTokens) {
-          addUsage({
-            provider: detectProvider(modelId),
-            model: modelId,
-            inputTokens: data.usage.promptTokens,
-            outputTokens: data.usage.completionTokens,
-            conversationId: cardId,
-            source: 'summarize',
-          });
-        }
-        
-        setSummaryTexts(prev => ({ ...prev, [cardId]: data.summary }));
-        setInheritanceModes(prev => ({ ...prev, [cardId]: 'summary' }));
-      } catch {
-        setError(`Failed to generate summary for "${conv.metadata.title}".`);
-      } finally {
-        setGeneratingFor(null);
-      }
-    } else {
-      // Switch back to full
-      setInheritanceModes(prev => ({ ...prev, [cardId]: 'full' }));
-    }
-  }, [inheritanceModes, conversations, addUsage]);
 
   const handleCreateMerge = useCallback(async () => {
     if (!canCreate) return;
@@ -184,7 +117,6 @@ export function MergeNodeCreator({
         position,
         synthesisPrompt: synthesisPrompt.trim() || undefined,
         inheritanceModes,
-        summaryTexts,
       });
 
       if (result) {
@@ -199,7 +131,7 @@ export function MergeNodeCreator({
     } finally {
       setIsCreating(false);
     }
-  }, [createMergeNode, selectedCardIds, position, synthesisPrompt, inheritanceModes, summaryTexts, canCreate, onClose, onComplete]);
+  }, [createMergeNode, selectedCardIds, position, synthesisPrompt, inheritanceModes, canCreate, onClose, onComplete]);
 
   // Get merge node style based on parent count
   const getMergeStyle = () => {
@@ -269,9 +201,7 @@ export function MergeNodeCreator({
             ) : (
               <div className="space-y-2">
                 {selectedCards.map((card) => {
-                  const mode = inheritanceModes[card.id] || 'full';
                   const msgCount = Array.isArray(card.content) ? card.content.length : 0;
-                  const isGenerating = generatingFor === card.id;
                   
                   return (
                     <div
@@ -283,28 +213,11 @@ export function MergeNodeCreator({
                           {card.metadata.title}
                         </span>
                         <span className="text-fg-tertiary text-xs whitespace-nowrap">{msgCount} msgs</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-semantic-success/20 text-semantic-success">
+                          Full Context
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* Inheritance mode toggle */}
-                        <button
-                          onClick={() => handleToggleMode(card.id)}
-                          disabled={isGenerating || isCreating}
-                          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                            mode === 'summary'
-                              ? 'bg-accent-muted text-accent-primary border border-accent-primary/40'
-                              : 'bg-bg-tertiary text-fg-tertiary border border-border-secondary hover:text-fg-primary'
-                          } ${isGenerating ? 'opacity-60' : ''}`}
-                          title={mode === 'full' ? 'Click for AI Summary' : 'Click for Full Context'}
-                        >
-                          {isGenerating ? (
-                            <span className="flex items-center gap-1">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Summarizing…
-                            </span>
-                          ) : (
-                            mode === 'summary' ? '📝 Summary' : '📄 Full'
-                          )}
-                        </button>
                         {/* Remove button */}
                         <button
                           onClick={() => handleRemoveCard(card.id)}

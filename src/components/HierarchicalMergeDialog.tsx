@@ -12,7 +12,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, spacing, effects, animation } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
 import { zIndex } from '@/constants/zIndex';
 
 // =============================================================================
@@ -158,8 +158,8 @@ export function HierarchicalMergeDialog() {
                 </div>
                 <h2 style={{ 
                   margin: 0, 
-                  fontSize: '1.125rem', 
-                  fontWeight: 600, 
+                  fontSize: typography.sizes.lg, 
+                  fontWeight: typography.weights.semibold, 
                   color: colors.fg.primary 
                 }}>
                   Merge Node Limit Reached
@@ -198,7 +198,7 @@ export function HierarchicalMergeDialog() {
               <p style={{ 
                 margin: `0 0 ${spacing[4]}`, 
                 color: colors.fg.tertiary,
-                fontSize: '0.9375rem',
+                fontSize: typography.sizes.base,
                 lineHeight: 1.6,
               }}>
                 Merge nodes work best with <strong style={{ color: colors.semantic.success }}>2-5 sources</strong>. 
@@ -220,7 +220,7 @@ export function HierarchicalMergeDialog() {
                   color: colors.accent.primary,
                 }}>
                   <LightbulbIcon />
-                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                  <span style={{ fontWeight: typography.weights.medium, fontSize: typography.sizes.sm }}>
                     Hierarchical Merge Pattern
                   </span>
                 </div>
@@ -229,9 +229,9 @@ export function HierarchicalMergeDialog() {
                 <div style={{ marginBottom: spacing[3] }}>
                   <p style={{ 
                     margin: `0 0 ${spacing[2]}`, 
-                    fontSize: '0.75rem', 
+                    fontSize: typography.sizes.xs, 
                     color: colors.semantic.error,
-                    fontWeight: 500,
+                    fontWeight: typography.weights.medium,
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                   }}>
@@ -240,7 +240,7 @@ export function HierarchicalMergeDialog() {
                   <code style={{
                     display: 'block',
                     fontFamily: '"JetBrains Mono", monospace',
-                    fontSize: '0.8125rem',
+                    fontSize: typography.sizes.sm,
                     color: colors.fg.secondary,
                     backgroundColor: 'var(--error-muted)',
                     padding: `${spacing[2]} ${spacing[3]}`,
@@ -255,9 +255,9 @@ export function HierarchicalMergeDialog() {
                 <div>
                   <p style={{ 
                     margin: `0 0 ${spacing[2]}`, 
-                    fontSize: '0.75rem', 
+                    fontSize: typography.sizes.xs, 
                     color: colors.semantic.success,
-                    fontWeight: 500,
+                    fontWeight: typography.weights.medium,
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                   }}>
@@ -266,7 +266,7 @@ export function HierarchicalMergeDialog() {
                   <code style={{
                     display: 'block',
                     fontFamily: '"JetBrains Mono", monospace',
-                    fontSize: '0.8125rem',
+                    fontSize: typography.sizes.sm,
                     color: colors.fg.tertiary,
                     backgroundColor: 'var(--success-muted)',
                     padding: `${spacing[2]} ${spacing[3]}`,
@@ -284,7 +284,7 @@ export function HierarchicalMergeDialog() {
 
               {/* Benefits */}
               <div style={{ 
-                fontSize: '0.875rem', 
+                fontSize: typography.sizes.sm, 
                 color: colors.fg.secondary,
                 lineHeight: 1.6,
               }}>
@@ -307,8 +307,8 @@ export function HierarchicalMergeDialog() {
                   color: colors.fg.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.sm,
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.medium,
                   cursor: 'pointer',
                   transition: 'background-color 0.15s, transform 0.1s, filter 0.15s',
                 }}

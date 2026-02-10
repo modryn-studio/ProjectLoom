@@ -21,7 +21,7 @@ import {
 
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useCanvasTreeStore, buildWorkspaceTree, type ConversationTreeNode } from '@/stores/canvas-tree-store';
-import { colors, spacing, effects, typography, layout } from '@/lib/design-tokens';
+import { colors, spacing, effects, typography, layout, components } from '@/lib/design-tokens';
 import { enforceTitleWordLimit } from '@/utils/formatters';
 import type { Conversation, Workspace } from '@/types';
 import { SidePanel } from './SidePanel';
@@ -235,8 +235,8 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
             display: 'flex',
             alignItems: 'center',
             gap: spacing[1],
-            padding: `${spacing[1]} ${spacing[1]}`,
-            paddingLeft: `${8 + depth * 16}px`,
+            padding: `${spacing[1]} ${spacing[2]}`,
+            paddingLeft: `${components.tree.indentBase + depth * components.tree.indentStep}px`,
             backgroundColor: isSelected ? `${colors.accent.primary}20` : 'transparent',
             borderRadius: effects.border.radius.default,
             fontSize: typography.sizes.xs,
@@ -470,7 +470,7 @@ const headerStyles: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: spacing[3],
+  padding: `${spacing[2]} ${spacing[3]}`,
   borderBottom: '1px solid var(--border-secondary)',
   flexShrink: 0,
 };
@@ -999,7 +999,7 @@ export function CanvasTreeSidebar({
       <div style={headerStyles}>
         <span style={{
           fontSize: typography.sizes.sm,
-          fontWeight: 600,
+          fontWeight: typography.weights.semibold,
           color: colors.fg.primary,
           fontFamily: typography.fonts.heading,
         }}>

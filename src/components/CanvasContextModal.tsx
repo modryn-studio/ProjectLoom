@@ -6,7 +6,7 @@ import { FileText, Upload, Trash2, X, AlertCircle } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useShallow } from 'zustand/react/shallow';
 
-import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
+import { colors, spacing, effects, typography, animation, components } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
 import type { KnowledgeBaseFileMeta, WorkspaceContext } from '@/types';
 import {
@@ -96,7 +96,7 @@ const sectionStyles: React.CSSProperties = {
 
 const sectionTitleStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
-  fontWeight: 600,
+  fontWeight: typography.weights.semibold,
   color: colors.fg.primary,
   marginBottom: spacing[2],
   display: 'flex',
@@ -114,7 +114,7 @@ const descriptionStyles: React.CSSProperties = {
 
 const usageBarTrackStyles: React.CSSProperties = {
   width: '100%',
-  height: 6,
+  height: components.progressBar.height,
   borderRadius: 999,
   backgroundColor: colors.bg.secondary,
   border: `1px solid ${colors.border.muted}`,
@@ -547,7 +547,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                 <h2
                   style={{
                     fontSize: typography.sizes.lg,
-                    fontWeight: 600,
+                    fontWeight: typography.weights.semibold,
                     color: colors.fg.primary,
                     fontFamily: typography.fonts.heading,
                     margin: 0,

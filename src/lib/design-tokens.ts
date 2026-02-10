@@ -123,6 +123,7 @@ export const typography = {
   lineHeights: {
     tight: 1.25,
     normal: 1.5,
+    comfortable: 1.6,
     relaxed: 1.75,
   },
 } as const;
@@ -168,7 +169,35 @@ export const layout = {
   sidebar: {
     width: 260,
   },
+  iconButton: {
+    minSize: '36px',
+  },
 };
+
+// =============================================================================
+// COMPONENT TOKENS
+// =============================================================================
+
+export const components = {
+  button: {
+    height: {
+      sm: '28px',
+      md: '36px',
+      lg: '40px',
+    },
+  },
+  input: {
+    minHeight: 20,
+    maxHeight: 64,
+  },
+  tree: {
+    indentBase: 8,
+    indentStep: 16,
+  },
+  progressBar: {
+    height: '6px',
+  },
+} as const;
 
 // =============================================================================
 // ANIMATION
@@ -439,6 +468,8 @@ export const tokens = {
   colors,
   typography,
   spacing,
+  layout,
+  components,
   animation,
   effects,
   canvas,

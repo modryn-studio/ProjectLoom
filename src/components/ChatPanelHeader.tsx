@@ -5,7 +5,6 @@ import { X, GitBranch, Zap, Maximize2 } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
 import { enforceTitleWordLimit } from '@/utils/formatters';
 import type { Conversation } from '@/types';
 
@@ -24,38 +23,44 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   onClose,
   onMaximize,
 }: ChatPanelHeaderProps) {
-  const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const updateConversation = useCanvasStore((s) => s.updateConversation);
-  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
+  const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(conversation.metadata.title);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // v4: Detect merge and branch state for visual styling
   const isMergeNode = conversation.isMergeNode;
-  const isBranchedCard = conversation.parentCardIds.length > 0 && !isMergeNode;
+  const hasParents = conversation.parentCardIds.length > 0;
+  const isBranchedCard = hasParents && !isMergeNode;
   const mergeSourceCount = isMergeNode ? conversation.parentCardIds.length : 0;
   const isComplexMerge = mergeSourceCount >= 3; // WARNING_THRESHOLD
   const isAtMaxMerge = mergeSourceCount >= 5; // MAX_PARENTS
+
+
 
   // Handle branch action
   const handleBranch = useCallback(() => {
     // Guard against undefined or empty content array
     const messageCount = Array.isArray(conversation.content) ? conversation.content.length : 0;
-    if (messageCount === 0) return;
+    const hasInheritedContext = conversation.parentCardIds.length > 0;
+    if (messageCount === 0 && !hasInheritedContext) return;
 
-    if (branchingPrefs.alwaysAskOnBranch) {
-      openBranchDialog(conversation.id);
-    } else {
-      branchFromMessage({
-        sourceCardId: conversation.id,
-        messageIndex: messageCount - 1,
-        inheritanceMode: branchingPrefs.defaultInheritanceMode,
-        branchReason: 'Quick branch',
-      });
+    const branchIndex = messageCount > 0 ? messageCount - 1 : 0;
+
+    const newConversation = branchFromMessage({
+      sourceCardId: conversation.id,
+      messageIndex: branchIndex,
+      inheritanceMode: 'full',
+      branchReason: 'Branch from chat',
+    });
+    if (newConversation) {
+      openChatPanel(newConversation.id);
+      requestFocusNode(newConversation.id);
     }
-  }, [conversation.id, conversation.content, openBranchDialog, branchFromMessage, branchingPrefs]);
+  }, [conversation.id, conversation.content, conversation.parentCardIds.length, branchFromMessage, openChatPanel, requestFocusNode]);
 
   // Reset draft title when conversation changes - intentional reset behavior
   useEffect(() => {
@@ -110,89 +115,91 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
 
   return (
     <div style={headerStyles.container}>
-      {/* Left side: Title and indicators */}
-      <div style={headerStyles.titleSection}>
-        {/* Merge indicator icon */}
-        {isMergeNode && (
-          <span
-            style={headerStyles.indicator}
-            title={`Merged from ${mergeSourceCount} cards`}
-          >
-            <Zap 
-              size={16} 
-              color={isAtMaxMerge 
-                ? colors.semantic.error 
-                : isComplexMerge 
-                  ? colors.semantic.warning 
-                  : colors.semantic.success
-              } 
+      <div style={headerStyles.titleRow}>
+        {/* Left side: Title and indicators */}
+        <div style={headerStyles.titleSection}>
+          {/* Merge indicator icon */}
+          {isMergeNode && (
+            <span
+              style={headerStyles.indicator}
+              title={`Merged from ${mergeSourceCount} cards`}
+            >
+              <Zap 
+                size={16} 
+                color={isAtMaxMerge 
+                  ? colors.semantic.error 
+                  : isComplexMerge 
+                    ? colors.semantic.warning 
+                    : colors.semantic.success
+                } 
+              />
+            </span>
+          )}
+          
+          {/* Branch indicator icon */}
+          {isBranchedCard && (
+            <span style={headerStyles.indicator} title="Branched card">
+              <GitBranch size={16} color={colors.accent.emphasis} />
+            </span>
+          )}
+
+          {isRenaming ? (
+            <input
+              ref={inputRef}
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              onBlur={handleFinishRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleFinishRename();
+                } else if (e.key === 'Escape') {
+                  handleCancelRename();
+                }
+              }}
+              style={headerStyles.titleInput}
+              aria-label="Rename conversation"
             />
-          </span>
-        )}
-        
-        {/* Branch indicator icon */}
-        {isBranchedCard && !isMergeNode && (
-          <span style={headerStyles.indicator} title="Branched card">
-            <GitBranch size={16} color={colors.accent.emphasis} />
-          </span>
-        )}
+          ) : (
+            <h2 style={headerStyles.title} onDoubleClick={handleStartRename}>
+              {conversation.metadata.title}
+            </h2>
+          )}
+        </div>
 
-        {isRenaming ? (
-          <input
-            ref={inputRef}
-            value={draftTitle}
-            onChange={(e) => setDraftTitle(e.target.value)}
-            onBlur={handleFinishRename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleFinishRename();
-              } else if (e.key === 'Escape') {
-                handleCancelRename();
-              }
-            }}
-            style={headerStyles.titleInput}
-            aria-label="Rename conversation"
-          />
-        ) : (
-          <h2 style={headerStyles.title} onDoubleClick={handleStartRename}>
-            {conversation.metadata.title}
-          </h2>
-        )}
-      </div>
+        {/* Right side: Actions */}
+        <div style={headerStyles.actions}>
+          {/* Maximize button */}
+          {onMaximize && (
+            <button
+              onClick={onMaximize}
+              style={headerStyles.actionButton}
+              title="Maximize chat (fullscreen)"
+              aria-label="Maximize chat"
+            >
+              <Maximize2 size={16} />
+            </button>
+          )}
 
-      {/* Right side: Actions */}
-      <div style={headerStyles.actions}>
-        {/* Maximize button */}
-        {onMaximize && (
+          {/* Branch button */}
           <button
-            onClick={onMaximize}
+            onClick={handleBranch}
             style={headerStyles.actionButton}
-            title="Maximize chat (fullscreen)"
-            aria-label="Maximize chat"
+            title="Branch from this conversation (Ctrl+B)"
+            aria-label="Branch from this conversation"
           >
-            <Maximize2 size={16} />
+            <GitBranch size={16} />
           </button>
-        )}
 
-        {/* Branch button */}
-        <button
-          onClick={handleBranch}
-          style={headerStyles.actionButton}
-          title="Branch from this conversation (Ctrl+B)"
-          aria-label="Branch from this conversation"
-        >
-          <GitBranch size={16} />
-        </button>
-
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          style={headerStyles.closeButton}
-          title="Close panel (Escape)"
-          aria-label="Close chat panel"
-        >
-          <X size={16} />
-        </button>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            style={headerStyles.closeButton}
+            title="Close panel (Escape)"
+            aria-label="Close chat panel"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -205,12 +212,18 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
 const headerStyles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: `${spacing[2]} ${spacing[3]}`,
+    flexDirection: 'column',
     borderBottom: '1px solid var(--border-secondary)',
     backgroundColor: colors.bg.secondary,
     flexShrink: 0,
+    gap: spacing[1],
+  },
+
+  titleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: `${spacing[2]} ${spacing[3]}`,
     gap: spacing[2],
   },
 
@@ -230,28 +243,26 @@ const headerStyles: Record<string, React.CSSProperties> = {
 
   title: {
     fontSize: typography.sizes.sm,
-    fontWeight: 600,
+    fontWeight: typography.weights.semibold,
     color: colors.fg.primary,
     fontFamily: typography.fonts.heading,
     margin: 0,
-    lineHeight: 1.3,
+    lineHeight: typography.lineHeights.tight,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    flex: 1,
   },
 
   titleInput: {
-    flex: 1,
     minWidth: 0,
     fontSize: typography.sizes.sm,
-    fontWeight: 600,
+    fontWeight: typography.weights.semibold,
     fontFamily: typography.fonts.heading,
     color: colors.fg.primary,
     backgroundColor: colors.bg.inset,
     border: `1px solid ${colors.accent.primary}`,
     borderRadius: effects.border.radius.default,
-    padding: `2px ${spacing[2]}`,
+    padding: `2px ${spacing[1]}`,
     outline: 'none',
   },
 
@@ -266,7 +277,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing[2],
+    padding: spacing[1],
     backgroundColor: 'transparent',
     border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
@@ -279,7 +290,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing[2],
+    padding: spacing[1],
     backgroundColor: 'transparent',
     border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,

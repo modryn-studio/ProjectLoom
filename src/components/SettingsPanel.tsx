@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, GitBranch, FileText, Scissors, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
+import { Settings, X, GitBranch, FileText, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
 
 import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
@@ -59,7 +59,7 @@ const sectionStyles: React.CSSProperties = {
 
 const sectionTitleStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
-  fontWeight: 600,
+  fontWeight: typography.weights.semibold,
   color: colors.fg.primary,
   marginBottom: spacing[2],
   display: 'flex',
@@ -127,12 +127,6 @@ const INHERITANCE_MODE_OPTIONS: Array<{
     label: 'Full Context',
     description: 'Inherit all messages from the parent conversation',
     icon: <FileText size={14} />,
-  },
-  {
-    id: 'summary',
-    label: 'Summary (Smart Truncation)',
-    description: 'Inherit only the most recent relevant messages',
-    icon: <Scissors size={14} />,
   },
 ];
 
@@ -348,7 +342,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <Settings size={20} color={colors.accent.primary} />
                 <h2 style={{
                   fontSize: typography.sizes.lg,
-                  fontWeight: 600,
+                  fontWeight: typography.weights.semibold,
                   color: colors.fg.primary,
                   fontFamily: typography.fonts.heading,
                   margin: 0,
@@ -455,32 +449,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     {INHERITANCE_MODE_OPTIONS.find(o => o.id === branchingPrefs.defaultInheritanceMode)?.description}
                   </p>
                 </div>
-
-                {/* Always Show Branch Dialog */}
-                <label style={checkboxLabelStyles}>
-                  <input
-                    type="checkbox"
-                    checked={branchingPrefs.alwaysAskOnBranch}
-                    onChange={(e) => setBranchingPreferences({
-                      alwaysAskOnBranch: e.target.checked
-                    })}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      accentColor: colors.accent.primary,
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <div>
-                    <span style={{
-                      fontSize: typography.sizes.sm,
-                      color: colors.fg.primary,
-                      fontFamily: typography.fonts.body,
-                    }}>
-                      Always show branch dialog
-                    </span>
-                  </div>
-                </label>
               </div>
 
               {/* UI Section */}
@@ -783,7 +751,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   color: colors.bg.inset,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
-                  fontWeight: 500,
+                  fontWeight: typography.weights.medium,
                   cursor: 'pointer',
                 }}
               >

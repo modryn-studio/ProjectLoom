@@ -155,13 +155,7 @@ interface WorkspaceState {
   selectedNodeIds: Set<string>;
   isInitialized: boolean;
   isAnyNodeDragging: boolean;
-
-  // Branch Dialog State (for keyboard workflow)
-  branchDialogOpen: boolean;
-  branchSourceId: string | null;
-  branchMessageIndex: number | null;
-  branchSourcePosition: Position | null;
-  branchTargetPosition: Position | null;
+  focusNodeId: string | null;
 
   // Hierarchical Merge Dialog State
   hierarchicalMergeDialogOpen: boolean;
@@ -191,12 +185,15 @@ interface WorkspaceState {
   setExpanded: (id: string, expanded: boolean) => void;
   setSelected: (ids: string[]) => void;
   clearSelection: () => void;
+  requestFocusNode: (id: string) => void;
+  clearFocusNode: () => void;
 
   // Actions - History
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  recordHistory: () => void;
 
   // Actions - React Flow Handlers
   onNodesChange: (changes: NodeChange<ConversationNode>[]) => void;
@@ -224,11 +221,6 @@ interface WorkspaceState {
   createEdge: (sourceId: string, targetId: string, relationType: EdgeRelationType) => Edge | null;
   canAddMergeParent: (mergeNodeId: string) => boolean;
   getMergeParentCount: (mergeNodeId: string) => number;
-  updateInheritedSummary: (conversationId: string, parentId: string, newSummaryText: string) => void;
-
-  // Actions - Branch Dialog (keyboard workflow)
-  openBranchDialog: (conversationId: string, messageIndex?: number, targetPosition?: Position) => void;
-  closeBranchDialog: () => void;
 
   // Actions - Hierarchical Merge Dialog
   openHierarchicalMergeDialog: () => void;
@@ -391,7 +383,8 @@ function connectionToEdge(connection: EdgeConnection): Edge {
     source: connection.source,
     target: connection.target,
     type: connection.curveType || 'bezier',
-    animated: connection.animated ?? (relationType === 'reference'),
+    animated: connection.animated
+      ?? (relationType === 'merge' || relationType === 'reference'),
     style,
     data: { relationType },
   };
@@ -416,13 +409,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     selectedNodeIds: new Set(),
     isInitialized: false,
     isAnyNodeDragging: false,
-    
-    // Branch Dialog State (keyboard workflow)
-    branchDialogOpen: false,
-    branchSourceId: null,
-    branchMessageIndex: null,
-    branchSourcePosition: null,
-    branchTargetPosition: null,
+    focusNodeId: null,
     
     // Hierarchical Merge Dialog State
     hierarchicalMergeDialogOpen: false,
@@ -450,6 +437,27 @@ export const useCanvasStore = create<WorkspaceState>()(
     canRedo: () => {
       const { history, historyIndex } = get();
       return historyIndex < history.length - 1;
+    },
+
+    recordHistory: () => {
+      const { nodes, edges, conversations, history, historyIndex } = get();
+      const newState: HistoryState = {
+        nodes: [...nodes],
+        edges: [...edges],
+        conversations: new Map(conversations),
+      };
+
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newState);
+
+      if (newHistory.length > MAX_HISTORY_LENGTH) {
+        newHistory.shift();
+      }
+
+      set({
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      });
     },
 
     undo: () => {
@@ -521,6 +529,8 @@ export const useCanvasStore = create<WorkspaceState>()(
       if (options?.openChat) {
         get().openChatPanel(newConversation.id);
       }
+
+      get().recordHistory();
 
       return newConversation;
     },
@@ -740,6 +750,14 @@ export const useCanvasStore = create<WorkspaceState>()(
       }));
     },
 
+    requestFocusNode: (id) => {
+      set({ focusNodeId: id });
+    },
+
+    clearFocusNode: () => {
+      set({ focusNodeId: null });
+    },
+
     // =========================================================================
     // React Flow Handlers
     // =========================================================================
@@ -828,10 +846,12 @@ export const useCanvasStore = create<WorkspaceState>()(
       const hasPositionFinalized = changes.some((c) => c.type === 'position' && c.dragging === false);
       if (hasPositionFinalized) {
         get().saveToStorage();
+        get().recordHistory();
       }
     },
 
     onEdgesChange: (changes) => {
+      let didRemove = false;
       set((state) => {
         // Handle remove changes
         const removeIds = changes
@@ -839,6 +859,7 @@ export const useCanvasStore = create<WorkspaceState>()(
           .map((c) => c.id);
 
         if (removeIds.length > 0) {
+          didRemove = true;
           return {
             edges: state.edges.filter((e) => !removeIds.includes(e.id)),
           };
@@ -848,27 +869,147 @@ export const useCanvasStore = create<WorkspaceState>()(
       });
 
       get().saveToStorage();
+      if (didRemove) {
+        get().recordHistory();
+      }
     },
 
     onConnect: (connection) => {
       if (!connection.source || !connection.target) return;
 
-      const newEdge: Edge = {
-        id: `edge-${connection.source}-${connection.target}`,
-        source: connection.source,
-        target: connection.target,
-        type: 'bezier',
-        style: {
-          stroke: 'var(--accent-primary)',
-          strokeWidth: 2,
-        },
-      };
+      const { nodes, conversations, edges } = get();
+      const toast = useToastStore.getState();
 
-      set((state) => ({
-        edges: [...state.edges, newEdge],
-      }));
+      const sourceNode = nodes.find((node) => node.id === connection.source);
+      const targetNode = nodes.find((node) => node.id === connection.target);
 
-      get().saveToStorage();
+      if (!sourceNode || !targetNode) {
+        logger.warn('Connection failed: source or target node not found');
+        return;
+      }
+
+      if (sourceNode.position.x >= targetNode.position.x) {
+        toast.warning('Branches must flow left to right. Drag forward to branch.');
+        return;
+      }
+
+      const sourceConversation = conversations.get(connection.source);
+      const targetConversation = conversations.get(connection.target);
+
+      if (!sourceConversation || !targetConversation) {
+        logger.warn('Connection failed: source or target conversation missing');
+        return;
+      }
+
+      const isMergeTarget = targetConversation.isMergeNode;
+      const isAlreadyParent = targetConversation.parentCardIds.includes(sourceConversation.id);
+      const proposedParentCount = isAlreadyParent
+        ? targetConversation.parentCardIds.length
+        : targetConversation.parentCardIds.length + 1;
+      const willBecomeMerge = !isMergeTarget && proposedParentCount > 1;
+
+      if ((isMergeTarget || willBecomeMerge) && proposedParentCount > MERGE_CONFIG.MAX_PARENTS) {
+        toast.error(
+          `Merge limit reached (${MERGE_CONFIG.MAX_PARENTS} sources). Create an intermediate merge first.`,
+          {
+            action: {
+              label: 'Learn More',
+              onClick: () => get().openHierarchicalMergeDialog(),
+            },
+            duration: 8000,
+          }
+        );
+        get().openHierarchicalMergeDialog();
+        return;
+      }
+
+      if (edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) {
+        return;
+      }
+
+      const relationType: EdgeRelationType = (isMergeTarget || willBecomeMerge)
+        ? 'merge'
+        : 'branch';
+
+      const newEdge = get().createEdge(
+        connection.source,
+        connection.target,
+        relationType
+      );
+
+      if (!newEdge) return;
+
+      if (!isAlreadyParent) {
+        const now = new Date();
+        const updatedParentIds = [...targetConversation.parentCardIds, sourceConversation.id];
+        const updatedInheritedContext = {
+          ...targetConversation.inheritedContext,
+          [sourceConversation.id]: {
+            mode: 'full' as const,
+            messages: sourceConversation.content,
+            timestamp: now,
+            totalParentMessages: sourceConversation.content.length,
+          },
+        };
+
+        const shouldInsertNotice = targetConversation.content.length > 0;
+
+        const inheritedNotice: Message = {
+          id: nanoid(),
+          role: 'system',
+          content: `Inherited context added from "${sourceConversation.metadata.title}"`,
+          timestamp: now,
+          metadata: {
+            custom: { inheritedFrom: sourceConversation.id },
+          },
+        };
+
+        const updatedContent = shouldInsertNotice
+          ? [...targetConversation.content, inheritedNotice]
+          : targetConversation.content;
+
+        const nextIsMergeNode = isMergeTarget || updatedParentIds.length > 1;
+        const nextMergeMetadata = nextIsMergeNode
+          ? {
+              sourceCardIds: updatedParentIds,
+              synthesisPrompt: targetConversation.mergeMetadata?.synthesisPrompt,
+              createdAt: targetConversation.mergeMetadata?.createdAt ?? now,
+            }
+          : undefined;
+
+        if (nextIsMergeNode) {
+          set((state) => ({
+            edges: state.edges.map((edge) => {
+              if (edge.target !== targetConversation.id) return edge;
+              return {
+                ...edge,
+                animated: true,
+                style: getEdgeStyle('merge'),
+                data: { relationType: 'merge' },
+              };
+            }),
+          }));
+        }
+
+        get().updateConversation(targetConversation.id, {
+          parentCardIds: updatedParentIds,
+          inheritedContext: updatedInheritedContext,
+          content: updatedContent,
+          isMergeNode: nextIsMergeNode,
+          mergeMetadata: nextMergeMetadata,
+          branchPoint: nextIsMergeNode ? undefined : targetConversation.branchPoint,
+          metadata: {
+            ...targetConversation.metadata,
+            updatedAt: now,
+            messageCount: updatedContent.length,
+            tags: nextIsMergeNode
+              ? Array.from(new Set([...(targetConversation.metadata.tags || []), 'merge']))
+              : targetConversation.metadata.tags,
+          },
+        });
+      }
+
+      get().recordHistory();
     },
 
     // =========================================================================
@@ -1080,11 +1221,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         expandedNodeIds: new Set(),
         selectedNodeIds: new Set(),
         isInitialized: false,
-        branchDialogOpen: false,
-        branchSourceId: null,
-        branchMessageIndex: null,
-        branchSourcePosition: null,
-        branchTargetPosition: null,
+        focusNodeId: null,
       });
     },
 
@@ -1260,8 +1397,8 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
 
     branchFromMessage: (data: BranchFromMessageData) => {
-      const { sourceCardId, messageIndex, inheritanceMode = 'full', branchReason, summaryText } = data;
-      const { conversations, nodes, activeWorkspaceId, branchTargetPosition } = get();
+      const { sourceCardId, messageIndex, inheritanceMode = 'full', branchReason, targetPosition } = data;
+      const { conversations, nodes, activeWorkspaceId } = get();
       
       const sourceConversation = conversations.get(sourceCardId);
       if (!sourceConversation || !Array.isArray(sourceConversation.content)) {
@@ -1269,7 +1406,19 @@ export const useCanvasStore = create<WorkspaceState>()(
         return null;
       }
 
-      if (messageIndex < 0 || messageIndex >= sourceConversation.content.length) {
+      const contentMessages = sourceConversation.content;
+      const hasOwnMessages = contentMessages.length > 0;
+      const inheritedParentMessages = sourceConversation.parentCardIds.flatMap((parentId) => {
+        const entry = sourceConversation.inheritedContext[parentId];
+        return entry?.messages ?? [];
+      });
+
+      if (!hasOwnMessages && inheritedParentMessages.length === 0) {
+        logger.error(`No messages to branch from for conversation ${sourceCardId}`);
+        return null;
+      }
+
+      if (hasOwnMessages && (messageIndex < 0 || messageIndex >= contentMessages.length)) {
         logger.error(`Invalid message index ${messageIndex} for conversation ${sourceCardId}`);
         return null;
       }
@@ -1281,36 +1430,24 @@ export const useCanvasStore = create<WorkspaceState>()(
       }
 
       // Calculate position for new branch
-      // Use branchTargetPosition if set (from drag-to-create), otherwise calculate offset
-      const newPosition: Position = branchTargetPosition ?? {
+      const newPosition: Position = targetPosition ?? {
         x: sourceNode.position.x + 300,
         y: sourceNode.position.y + 150,
       };
 
-      // Build inherited context based on mode
-      const messagesUpToIndex = sourceConversation.content.slice(0, messageIndex + 1);
-      let inheritedMessages: Message[];
-
-      if (inheritanceMode === 'summary' && summaryText) {
-        // AI-generated summary: store as a single system message
-        inheritedMessages = [{
-          id: nanoid(),
-          role: 'system' as const,
-          content: `Summary of previous conversation (${messagesUpToIndex.length} messages):\n\n${summaryText}`,
-          timestamp: new Date(),
-          metadata: {
-            custom: { isSummary: true, originalMessageCount: messagesUpToIndex.length },
-          },
-        }];
-      } else {
-        // Full context: pass all messages up to branch point
-        inheritedMessages = messagesUpToIndex;
-      }
+      // Build inherited context - always use full context
+      const messagesUpToIndex = hasOwnMessages
+        ? contentMessages.slice(0, messageIndex + 1)
+        : [];
+      const inheritedMessages: Message[] = [
+        ...inheritedParentMessages,
+        ...messagesUpToIndex,
+      ];
 
       // Create branch point info
       const branchPoint: BranchPoint = {
         parentCardId: sourceCardId,
-        messageIndex,
+        messageIndex: hasOwnMessages ? messageIndex : 0,
       };
 
       // Create inherited context entry
@@ -1320,7 +1457,9 @@ export const useCanvasStore = create<WorkspaceState>()(
           mode: inheritanceMode,
           messages: inheritedMessages,
           timestamp: now,
-          totalParentMessages: sourceConversation.content.length,
+          totalParentMessages: hasOwnMessages
+            ? contentMessages.length
+            : inheritedParentMessages.length,
         },
       };
 
@@ -1351,61 +1490,13 @@ export const useCanvasStore = create<WorkspaceState>()(
       // Create branch edge
       get().createEdge(sourceCardId, newConversation.id, 'branch');
 
-      // Close dialog if open
-      get().closeBranchDialog();
+      get().recordHistory();
 
       return newConversation;
     },
 
-    updateInheritedSummary: (conversationId: string, parentId: string, newSummaryText: string) => {
-      const { conversations } = get();
-      const conversation = conversations.get(conversationId);
-      if (!conversation) {
-        logger.error(`Conversation not found for summary update: ${conversationId}`);
-        return;
-      }
-
-      const entry = conversation.inheritedContext[parentId];
-      if (!entry) {
-        logger.error(`No inherited context from parent ${parentId} in conversation ${conversationId}`);
-        return;
-      }
-
-      // Replace summary message(s) with new summary
-      const updatedMessages: Message[] = [{
-        id: nanoid(),
-        role: 'system' as const,
-        content: `Summary of previous conversation (${entry.totalParentMessages} messages):\n\n${newSummaryText}`,
-        timestamp: new Date(),
-        metadata: {
-          custom: { isSummary: true, originalMessageCount: entry.totalParentMessages },
-        },
-      }];
-
-      const updatedConversation: Conversation = {
-        ...conversation,
-        inheritedContext: {
-          ...conversation.inheritedContext,
-          [parentId]: {
-            ...entry,
-            messages: updatedMessages,
-            timestamp: new Date(),
-          },
-        },
-        metadata: {
-          ...conversation.metadata,
-          updatedAt: new Date(),
-        },
-      };
-
-      const newConversations = new Map(conversations);
-      newConversations.set(conversationId, updatedConversation);
-      set({ conversations: newConversations });
-      get().saveToStorage();
-    },
-
     createMergeNode: (data: CreateMergeNodeData) => {
-      const { sourceCardIds, position, synthesisPrompt, inheritanceModes = {}, summaryTexts = {} } = data;
+      const { sourceCardIds, position, synthesisPrompt } = data;
       const { conversations, activeWorkspaceId } = get();
       const toast = useToastStore.getState();
       
@@ -1449,34 +1540,13 @@ export const useCanvasStore = create<WorkspaceState>()(
       sourceCardIds.forEach(cardId => {
         const conv = conversations.get(cardId);
         if (conv && Array.isArray(conv.content)) {
-          const mode = inheritanceModes[cardId] || 'full';
-          if (mode === 'summary' && summaryTexts[cardId]) {
-            // Use pre-generated summary
-            const summaryMessage: Message = {
-              id: nanoid(),
-              role: 'system',
-              content: summaryTexts[cardId],
-              timestamp: now,
-              metadata: { custom: { isSummary: true, originalMessageCount: conv.content.length } },
-            };
-            inheritedContext[cardId] = {
-              mode: 'summary',
-              messages: [summaryMessage],
-              timestamp: now,
-              totalParentMessages: conv.content.length,
-            };
-          } else {
-            // If user requested summary but text is missing, warn and fall back to full
-            if (mode === 'summary' && !summaryTexts[cardId]) {
-              logger.warn(`Summary text missing for card ${cardId} in merge node creation, falling back to full context`);
-            }
-            inheritedContext[cardId] = {
-              mode: 'full',
-              messages: conv.content,
-              timestamp: now,
-              totalParentMessages: conv.content.length,
-            };
-          }
+          // Always use full context
+          inheritedContext[cardId] = {
+            mode: 'full',
+            messages: conv.content,
+            timestamp: now,
+            totalParentMessages: conv.content.length,
+          };
         }
       });
 
@@ -1525,15 +1595,15 @@ export const useCanvasStore = create<WorkspaceState>()(
         });
 
         // Render all edges but with reduced opacity, plus label on first
+        const mergeStyle = getEdgeStyle('merge');
         const newEdges: Edge[] = validSourceIds.map((sourceId, index) => ({
           id: `edge-merge-${sourceId}-${mergeNode.id}`,
           source: sourceId,
           target: mergeNode.id,
           type: 'bezier',
-          animated: false,
+          animated: true,
           style: {
-            stroke: '#10b981',
-            strokeWidth: 2,
+            ...mergeStyle,
             opacity: 0.6, // Reduced opacity for bundled appearance
           },
           label: index === 0 ? `${validSourceIds.length} sources` : undefined, // Only first edge gets label
@@ -1552,6 +1622,8 @@ export const useCanvasStore = create<WorkspaceState>()(
           get().createEdge(sourceId, mergeNode.id, 'merge');
         });
       }
+
+      get().recordHistory();
 
       return mergeNode;
     },
@@ -1573,7 +1645,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         source: sourceId,
         target: targetId,
         type: 'bezier',
-        animated: relationType === 'reference',
+        animated: relationType === 'merge' || relationType === 'reference',
         style,
         data: { relationType },
       };
@@ -1595,38 +1667,6 @@ export const useCanvasStore = create<WorkspaceState>()(
       const conversation = get().conversations.get(mergeNodeId);
       if (!conversation?.isMergeNode) return 0;
       return conversation.parentCardIds?.length || 0;
-    },
-
-    // =========================================================================
-    // Branch Dialog (keyboard workflow)
-    // =========================================================================
-
-    openBranchDialog: (conversationId: string, messageIndex?: number, targetPosition?: Position) => {
-      const conversation = get().conversations.get(conversationId);
-      const node = get().nodes.find(n => n.id === conversationId);
-      
-      if (!conversation || !node) {
-        logger.warn(`Conversation ${conversationId} not found`);
-        return;
-      }
-
-      set({
-        branchDialogOpen: true,
-        branchSourceId: conversationId,
-        branchMessageIndex: messageIndex ?? (Array.isArray(conversation.content) ? conversation.content.length - 1 : 0),
-        branchSourcePosition: node.position,
-        branchTargetPosition: targetPosition ?? null,
-      });
-    },
-
-    closeBranchDialog: () => {
-      set({
-        branchDialogOpen: false,
-        branchSourceId: null,
-        branchMessageIndex: null,
-        branchSourcePosition: null,
-        branchTargetPosition: null,
-      });
     },
 
     // =========================================================================
@@ -2030,12 +2070,6 @@ export const selectIsAnyNodeDragging = (state: WorkspaceState) => state.isAnyNod
 // Workspace selectors (v4 - flat)
 export const selectWorkspaces = (state: WorkspaceState) => state.workspaces;
 export const selectActiveWorkspaceId = (state: WorkspaceState) => state.activeWorkspaceId;
-
-// Branch dialog selectors
-export const selectBranchDialogOpen = (state: WorkspaceState) => state.branchDialogOpen;
-export const selectBranchSourceId = (state: WorkspaceState) => state.branchSourceId;
-export const selectBranchMessageIndex = (state: WorkspaceState) => state.branchMessageIndex;
-export const selectBranchSourcePosition = (state: WorkspaceState) => state.branchSourcePosition;
 
 // Chat panel selectors
 export const selectChatPanelOpen = (state: WorkspaceState) => state.chatPanelOpen;

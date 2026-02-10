@@ -16,6 +16,7 @@ import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useReactFlow } from '@xyflow/react';
 import designTokens from '@/lib/design-tokens';
+import { typography } from '@/lib/design-tokens';
 import { useSearchStore, searchConversations, buildSearchIndex, createSearchIndexSelector } from '@/stores/search-store';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { zIndex } from '@/constants/zIndex';
@@ -66,11 +67,11 @@ const styles = {
     border: 'none',
     outline: 'none',
     color: colors.fg.primary,
-    fontSize: '14px',
+    fontSize: typography.sizes.sm,
     fontFamily: 'inherit',
   },
   resultCount: {
-    fontSize: '12px',
+    fontSize: typography.sizes.xs,
     color: colors.fg.secondary,
     flexShrink: 0,
   },
@@ -88,13 +89,13 @@ const styles = {
     backgroundColor: colors.bg.primary,
   },
   resultTitle: {
-    fontSize: '13px',
-    fontWeight: 500,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
     color: colors.fg.primary,
     marginBottom: '4px',
   },
   resultSnippet: {
-    fontSize: '12px',
+    fontSize: typography.sizes.xs,
     color: colors.fg.secondary,
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden',
@@ -102,7 +103,7 @@ const styles = {
   },
   matchBadge: {
     display: 'inline-block',
-    fontSize: '10px',
+    fontSize: typography.sizes.xs,
     padding: '2px 6px',
     borderRadius: '4px',
     backgroundColor: colors.accent.muted,
@@ -114,11 +115,11 @@ const styles = {
     padding: '24px 16px',
     textAlign: 'center' as const,
     color: colors.fg.quaternary,
-    fontSize: '13px',
+    fontSize: typography.sizes.sm,
   },
   hint: {
     padding: '8px 16px',
-    fontSize: '11px',
+    fontSize: typography.sizes.xs,
     color: colors.fg.quaternary,
     backgroundColor: colors.bg.primary,
     display: 'flex',
@@ -127,7 +128,7 @@ const styles = {
   kbd: {
     display: 'inline-block',
     padding: '1px 5px',
-    fontSize: '10px',
+    fontSize: typography.sizes.xs,
     fontFamily: 'monospace',
     backgroundColor: colors.bg.primary,
     borderRadius: '3px',

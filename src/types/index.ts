@@ -230,8 +230,6 @@ export interface Conversation {
   position: Position;
   /** Messages in this conversation */
   content: Message[];
-  /** AI-generated summary */
-  summary?: string;
   /** IDs of connected conversations (reference edges) */
   connections: string[];
   /** Conversation metadata */
@@ -448,7 +446,7 @@ export interface ContextSnapshot {
 /**
  * How context is inherited
  */
-export type InheritanceMode = 'full' | 'summary';
+export type InheritanceMode = 'full';
 
 /**
  * Message selection for custom inheritance
@@ -482,12 +480,12 @@ export interface BranchFromMessageData {
   sourceCardId: string;
   /** Message index to branch from (0-indexed) */
   messageIndex: number;
-  /** How to inherit context: 'full' or 'summary' */
+  /** How to inherit context: 'full' only */
   inheritanceMode: InheritanceMode;
   /** Optional reason for the branch */
   branchReason?: string;
-  /** Pre-generated AI summary text (for summary mode) */
-  summaryText?: string;
+  /** Optional target position for the new card */
+  targetPosition?: Position;
 }
 
 /**
@@ -502,8 +500,6 @@ export interface CreateMergeNodeData {
   synthesisPrompt?: string;
   /** Per-parent inheritance mode (defaults to 'full' if not specified) */
   inheritanceModes?: Record<string, InheritanceMode>;
-  /** Pre-generated summaries keyed by parent card ID */
-  summaryTexts?: Record<string, string>;
 }
 
 /**
@@ -521,37 +517,11 @@ export interface BranchData {
 }
 
 /**
- * Truncation strategy for summary mode
- */
-export interface TruncationStrategy {
-  /** Type of truncation */
-  type: 'recent' | 'important' | 'boundary';
-  /** Maximum number of messages to keep */
-  maxMessages: number;
-}
-
-/**
- * Preview of truncation result
- */
-export interface TruncationPreview {
-  /** Messages after truncation */
-  truncated: Message[];
-  /** Number of messages removed */
-  removed: number;
-  /** Estimated tokens saved */
-  tokensSaved: number;
-}
-
-/**
  * User preferences for branching
  */
 export interface BranchingPreferences {
   /** Default inheritance mode */
   defaultInheritanceMode: InheritanceMode;
-  /** Whether to always show branch dialog */
-  alwaysAskOnBranch: boolean;
-  /** Default truncation strategy for summary mode */
-  defaultTruncationStrategy: TruncationStrategy;
 }
 
 // =============================================================================

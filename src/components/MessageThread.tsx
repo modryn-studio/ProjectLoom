@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2 } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message as ChatMessage } from 'ai';
@@ -10,9 +10,175 @@ import type { Message as ChatMessage } from 'ai';
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { usePreferencesStore, selectBranchingPreferences } from '@/stores/preferences-store';
 import { useToast } from '@/stores/toast-store';
 import type { Conversation, Message, MessageAttachment } from '@/types';
+
+// =============================================================================
+// INHERITED FROM BANNER COMPONENT
+// =============================================================================
+
+interface InheritedFromBannerProps {
+  parentCardIds: string[];
+}
+
+const InheritedFromBanner = memo(function InheritedFromBanner({
+  parentCardIds,
+}: InheritedFromBannerProps) {
+  const conversations = useCanvasStore((s) => s.conversations);
+  const setSelected = useCanvasStore((s) => s.setSelected);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
+  const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
+
+  const parentConversations = useMemo(() => {
+    return parentCardIds
+      .map(id => conversations.get(id))
+      .filter((c): c is Conversation => c !== undefined);
+  }, [parentCardIds, conversations]);
+
+  const handleParentClick = useCallback((parentId: string) => {
+    setSelected([parentId]);
+    openChatPanel(parentId);
+    requestFocusNode(parentId);
+  }, [openChatPanel, requestFocusNode, setSelected]);
+
+  if (parentConversations.length === 0) return null;
+
+  return (
+    <div style={inheritedBannerStyles.container}>
+      {parentConversations.map((parent) => (
+        <button
+          key={parent.id}
+          onClick={() => handleParentClick(parent.id)}
+          style={inheritedBannerStyles.button}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.bg.inset;
+            e.currentTarget.style.borderColor = colors.accent.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.borderColor = colors.border.muted;
+          }}
+        >
+          <ArrowRight size={14} style={inheritedBannerStyles.icon} />
+          <span style={inheritedBannerStyles.label}>Inherited from</span>
+          <span style={inheritedBannerStyles.title}>{parent.metadata.title}</span>
+        </button>
+      ))}
+    </div>
+  );
+});
+
+const inheritedBannerStyles: Record<string, React.CSSProperties> = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[2],
+    padding: `${spacing[4]} ${spacing[4]} ${spacing[2]} ${spacing[4]}`,
+    borderBottom: `1px solid ${colors.border.muted}`,
+  },
+  button: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: 'transparent',
+    border: `1px solid ${colors.border.muted}`,
+    borderRadius: '6px',
+    color: colors.fg.secondary,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fonts.body,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    textAlign: 'left',
+  },
+  icon: {
+    color: colors.accent.primary,
+    flexShrink: 0,
+  },
+  label: {
+    color: colors.fg.tertiary,
+    flexShrink: 0,
+  },
+  title: {
+    color: colors.fg.primary,
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+};
+
+const MarkdownCodeBlock = memo(function MarkdownCodeBlock({
+  children,
+}: {
+  children?: React.ReactNode;
+}) {
+  const toast = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    const code = React.Children.toArray(children)
+      .map((child) => {
+        if (React.isValidElement<{ children?: React.ReactNode }>(child) && child.props.children) {
+          return typeof child.props.children === 'string'
+            ? child.props.children
+            : String(child.props.children);
+        }
+        return String(child);
+      })
+      .join('');
+
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success('Copied to clipboard');
+    } catch (err) {
+      console.error('[CodeBlock] Failed to copy:', err);
+      toast.error('Failed to copy');
+    }
+  }, [children, toast]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <pre style={bubbleStyles.markdownPre}>{children}</pre>
+      <button
+        onClick={handleCopy}
+        style={{
+          position: 'absolute',
+          top: spacing[2],
+          right: spacing[2],
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 28,
+          height: 28,
+          padding: 0,
+          backgroundColor: copied ? colors.accent.primary : colors.bg.primary,
+          border: `1px solid ${colors.border.default}`,
+          borderRadius: effects.border.radius.sm || '4px',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          color: copied ? colors.bg.primary : colors.fg.secondary,
+        }}
+        onMouseEnter={(e) => {
+          if (!copied) {
+            e.currentTarget.style.backgroundColor = colors.bg.inset;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!copied) {
+            e.currentTarget.style.backgroundColor = colors.bg.primary;
+          }
+        }}
+        title={copied ? 'Copied!' : 'Copy code'}
+        aria-label={copied ? 'Copied' : 'Copy code'}
+      >
+        <Copy size={14} />
+      </button>
+    </div>
+  );
+});
 
 // =============================================================================
 // MESSAGE THREAD COMPONENT
@@ -80,9 +246,7 @@ export function MessageThread({
   }, [streamingMessages, conversation.content, isStreaming]);
   
   // Branch actions
-  const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
-  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
 
   // Auto-scroll to bottom when new messages arrive or streaming content updates
   // Use displayMessages.length for new messages and streamingMessages.length for
@@ -111,17 +275,13 @@ export function MessageThread({
   const handleBranchClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (branchingPrefs.alwaysAskOnBranch) {
-      openBranchDialog(conversation.id, messageIndex);
-    } else {
-      branchFromMessage({
-        sourceCardId: conversation.id,
-        messageIndex,
-        inheritanceMode: branchingPrefs.defaultInheritanceMode,
-        branchReason: 'Quick branch',
-      });
-    }
-  }, [conversation.id, openBranchDialog, branchFromMessage, branchingPrefs]);
+    branchFromMessage({
+      sourceCardId: conversation.id,
+      messageIndex,
+      inheritanceMode: 'full',
+      branchReason: 'Branch from message',
+    });
+  }, [conversation.id, branchFromMessage]);
 
   // Memoized handlers to prevent child re-renders
   const handleMouseEnter = useCallback((index: number) => {
@@ -134,6 +294,11 @@ export function MessageThread({
 
   return (
     <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
+      {/* Inherited From Banner */}
+      {conversation.parentCardIds.length > 0 && (
+        <InheritedFromBanner parentCardIds={conversation.parentCardIds} />
+      )}
+      
       <AnimatePresence mode="sync">
         {displayMessages
           .filter((m): m is Message => m != null && typeof m.id === 'string')
@@ -252,9 +417,7 @@ const MessageBubble = memo(function MessageBubble({
         {children}
       </code>
     ),
-    pre: ({ children }: { children?: React.ReactNode }) => (
-      <pre style={bubbleStyles.markdownPre}>{children}</pre>
-    ),
+    pre: MarkdownCodeBlock,
     ul: ({ children }: { children?: React.ReactNode }) => (
       <ul style={bubbleStyles.markdownList}>{children}</ul>
     ),
@@ -317,7 +480,7 @@ const MessageBubble = memo(function MessageBubble({
               animate={{ opacity: 1 }}
               style={bubbleStyles.streamingIndicator}
             >
-              <Loader size={12} style={{ display: 'inline', marginLeft: 4 }} className="animate-spin" />
+              <Loader size={12} style={{ display: 'inline', marginLeft: spacing[1] }} className="animate-spin" />
             </motion.span>
           )}
         </div>
@@ -459,7 +622,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
-    padding: '16px',
+    padding: spacing[4],
     display: 'flex',
     flexDirection: 'column',
     gap: spacing[5],
@@ -508,7 +671,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
 
   message: {
-    padding: '12px 16px',
+    padding: `${spacing[3]} ${spacing[4]}`,
     position: 'relative',
     width: '100%',
   },
@@ -536,7 +699,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     marginBottom: spacing[2],
   },
   markdownStrong: {
-    fontWeight: 700,
+    fontWeight: typography.weights.bold,
   },
   markdownEm: {
     fontStyle: 'italic',
@@ -546,7 +709,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     backgroundColor: colors.bg.inset,
     border: `1px solid ${colors.border.muted}`,
     borderRadius: effects.border.radius.sm || '4px',
-    padding: '0 4px',
+    padding: `0 ${spacing[1]}`,
   },
   markdownPre: {
     margin: `${spacing[2]} 0`,
@@ -636,7 +799,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-    fontSize: '10px',
+    fontSize: typography.sizes.xs,
     color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
     overflow: 'hidden',

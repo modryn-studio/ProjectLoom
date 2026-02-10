@@ -4,7 +4,7 @@ import React, { useMemo, useCallback } from 'react';
 import { ChevronRight, PanelLeft, FileText } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, spacing, effects, typography } from '@/lib/design-tokens';
+import { colors, spacing, effects, typography, layout } from '@/lib/design-tokens';
 import type { Conversation } from '@/types';
 
 // =============================================================================
@@ -22,7 +22,7 @@ const containerStyles: React.CSSProperties = {
   overflowX: 'auto',
   overflowY: 'hidden',
   whiteSpace: 'nowrap',
-  minHeight: '40px',
+  minHeight: spacing[10],
 };
 
 const breadcrumbItemStyles: React.CSSProperties = {
@@ -45,7 +45,7 @@ const clickableCrumbStyles: React.CSSProperties = {
 const activeCrumbStyles: React.CSSProperties = {
   color: colors.accent.primary,
   padding: `${spacing[1]} ${spacing[2]}`,
-  fontWeight: 500,
+  fontWeight: typography.weights.medium,
 };
 
 const chevronStyles: React.CSSProperties = {
@@ -67,8 +67,8 @@ const sidebarToggleButtonStyles: React.CSSProperties = {
   justifyContent: 'center',
   transition: 'all 0.15s ease',
   flexShrink: 0,
-  minWidth: '36px',
-  minHeight: '36px',
+  minWidth: layout.iconButton.minSize,
+  minHeight: layout.iconButton.minSize,
 };
 
 const contextButtonStyles: React.CSSProperties = {
@@ -86,6 +86,27 @@ const contextButtonStyles: React.CSSProperties = {
   transition: 'all 0.15s ease',
 };
 
+const headerControlsStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: spacing[2],
+  width: '100%',
+};
+
+const headerControlsLeftStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[2],
+};
+
+const headerControlsRightStyles: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[2],
+  marginLeft: 'auto',
+};
+
 // =============================================================================
 // CANVAS BREADCRUMB COMPONENT
 // =============================================================================
@@ -97,6 +118,65 @@ interface CanvasBreadcrumbProps {
   onFocusNode?: (nodeId: string) => void;
 }
 
+interface CanvasHeaderControlsProps {
+  showSidebarToggle?: boolean;
+  onToggleSidebar?: () => void;
+  onOpenCanvasContext?: () => void;
+}
+
+export function CanvasHeaderControls({
+  showSidebarToggle = false,
+  onToggleSidebar,
+  onOpenCanvasContext,
+}: CanvasHeaderControlsProps) {
+  return (
+    <div style={headerControlsStyles}>
+      <div style={headerControlsLeftStyles}>
+        {showSidebarToggle && (
+          <button
+            onClick={onToggleSidebar}
+            style={sidebarToggleButtonStyles}
+            title="Open workspace list"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colors.accent.muted;
+              e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = colors.bg.inset;
+              e.currentTarget.style.border = '1px solid var(--border-primary)';
+            }}
+          >
+            <PanelLeft size={16} />
+          </button>
+        )}
+      </div>
+
+      <div style={headerControlsRightStyles}>
+        {onOpenCanvasContext && (
+          <button
+            onClick={onOpenCanvasContext}
+            title="Canvas Context (active canvas only)"
+            style={contextButtonStyles}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colors.accent.muted;
+              e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
+              e.currentTarget.style.color = colors.accent.primary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = colors.bg.inset;
+              e.currentTarget.style.border = '1px solid var(--border-primary)';
+              e.currentTarget.style.color = colors.fg.secondary;
+            }}
+          >
+            <FileText size={12} />
+            Canvas Context
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * CanvasBreadcrumb - v4 Ancestry Navigation
  * 
@@ -106,7 +186,6 @@ interface CanvasBreadcrumbProps {
 export function CanvasBreadcrumb({
   showSidebarToggle = false,
   onToggleSidebar,
-  onOpenCanvasContext,
   onFocusNode,
 }: CanvasBreadcrumbProps) {
   const conversations = useCanvasStore((s) => s.conversations);
@@ -251,7 +330,7 @@ export function CanvasBreadcrumb({
           color: colors.accent.primary,
           borderRadius: effects.border.radius.default,
           fontSize: typography.sizes.xs,
-          fontWeight: 600,
+          fontWeight: typography.weights.semibold,
           marginLeft: showSidebarToggle ? spacing[1] : 0,
         }}>
           {selectedNodeIds.size} selected
@@ -290,28 +369,6 @@ export function CanvasBreadcrumb({
         </div>
       )}
 
-      {onOpenCanvasContext && (
-        <div style={{ display: 'flex', gap: spacing[2], marginLeft: 'auto' }}>
-          <button
-            onClick={onOpenCanvasContext}
-            title="Canvas Context (active canvas only)"
-            style={contextButtonStyles}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = colors.accent.muted;
-              e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
-              e.currentTarget.style.color = colors.accent.primary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = colors.bg.inset;
-              e.currentTarget.style.border = '1px solid var(--border-primary)';
-              e.currentTarget.style.color = colors.fg.secondary;
-            }}
-          >
-            <FileText size={12} />
-            Canvas Context
-          </button>
-        </div>
-      )}
     </nav>
   );
 }

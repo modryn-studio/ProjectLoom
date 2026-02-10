@@ -13,7 +13,6 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { 
   BranchingPreferences, 
   InheritanceMode, 
-  TruncationStrategy 
 } from '@/types';
 import { STORAGE_KEYS, VersionedStorage, CURRENT_SCHEMA_VERSION } from '@/lib/storage';
 
@@ -63,23 +62,14 @@ interface PreferencesActions {
   resetToDefaults: () => void;
   /** Get current inheritance mode (considering defaults) */
   getDefaultInheritanceMode: () => InheritanceMode;
-  /** Get whether to show branch dialog */
-  shouldShowBranchDialog: () => boolean;
 }
 
 // =============================================================================
 // DEFAULTS
 // =============================================================================
 
-const DEFAULT_TRUNCATION_STRATEGY: TruncationStrategy = {
-  type: 'boundary',
-  maxMessages: 10,
-};
-
 const DEFAULT_BRANCHING_PREFERENCES: BranchingPreferences = {
   defaultInheritanceMode: 'full',
-  alwaysAskOnBranch: true,
-  defaultTruncationStrategy: DEFAULT_TRUNCATION_STRATEGY,
 };
 
 const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
@@ -257,10 +247,6 @@ export const usePreferencesStore = create<PreferencesState & PreferencesActions>
     getDefaultInheritanceMode: () => {
       return get().preferences.branching.defaultInheritanceMode;
     },
-
-    shouldShowBranchDialog: () => {
-      return get().preferences.branching.alwaysAskOnBranch;
-    },
   }))
 );
 
@@ -276,9 +262,6 @@ export const selectUIPreferences = (state: PreferencesState) =>
 
 export const selectDefaultInheritanceMode = (state: PreferencesState) => 
   state.preferences.branching.defaultInheritanceMode;
-
-export const selectAlwaysAskOnBranch = (state: PreferencesState) => 
-  state.preferences.branching.alwaysAskOnBranch;
 
 export const selectTheme = (state: PreferencesState) => 
   state.preferences.ui.theme;

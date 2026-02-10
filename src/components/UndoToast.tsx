@@ -54,11 +54,13 @@ export function UndoToast() {
   const conversationCount = conversations.size;
   const edgeCount = useCanvasStore((s) => s.edges.length);
   const activeWorkspaceId = useCanvasStore((s) => s.activeWorkspaceId);
+  const historyIndex = useCanvasStore((s) => s.historyIndex);
   
   // Track previous counts to detect changes
   const prevConversationCount = useRef(conversationCount);
   const prevEdgeCount = useRef(edgeCount);
   const prevWorkspaceId = useRef(activeWorkspaceId);
+  const prevHistoryIndex = useRef(historyIndex);
 
   const showToast = useCallback((newToast: ToastState) => {
     // Clear any existing timeout
@@ -86,6 +88,15 @@ export function UndoToast() {
       return;
     }
     
+    const didTimeTravel = historyIndex !== prevHistoryIndex.current;
+    if (didTimeTravel) {
+      prevConversationCount.current = currentCount;
+      prevEdgeCount.current = edgeCount;
+      prevWorkspaceId.current = activeWorkspaceId;
+      prevHistoryIndex.current = historyIndex;
+      return;
+    }
+
     // Check if a new conversation was added
     if (currentCount > prevConversationCount.current) {
       // Find the newest conversation by createdAt timestamp
@@ -125,8 +136,9 @@ export function UndoToast() {
     
     prevConversationCount.current = currentCount;
     prevEdgeCount.current = edgeCount;
+    prevHistoryIndex.current = historyIndex;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationCount, edgeCount, activeWorkspaceId]);
+  }, [conversationCount, edgeCount, activeWorkspaceId, historyIndex]);
 
   const handleUndo = useCallback(() => {
     undo();

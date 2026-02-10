@@ -8,7 +8,7 @@ import { colors, typography, spacing, effects, card } from '@/lib/design-tokens'
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore, selectIsAnyNodeDragging, selectActiveConversationId } from '@/stores/canvas-store';
-import { usePreferencesStore, selectBranchingPreferences, selectUIPreferences } from '@/stores/preferences-store';
+import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import { InlineBranchPanel } from './InlineBranchPanel';
 import type { ConversationNodeData, Message } from '@/types';
@@ -78,7 +78,7 @@ function getPreviewContent(messages: Message[]): string {
  * - Language-aware font rendering
  * - Z-index elevation on expand
  * - Hover lift + glow effects
- * - Timestamp and message count badge
+ * - Timestamp display
  */
 function ConversationCardComponent({
   data,
@@ -103,7 +103,6 @@ function ConversationCardComponent({
   const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu, dynamicItems } = useContextMenu();
 
   // Store actions
-  const openBranchDialog = useCanvasStore((s) => s.openBranchDialog);
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const requestDeleteConversation = useCanvasStore((s) => s.requestDeleteConversation);
@@ -111,12 +110,7 @@ function ConversationCardComponent({
   // Chat panel state - detect if this card is active
   const activeConversationId = useCanvasStore(selectActiveConversationId);
   const isActiveInChatPanel = activeConversationId === conversation.id;
-  
-  // Check if any node is being dragged (to disable hover effects)
   const isAnyNodeDragging = useCanvasStore(selectIsAnyNodeDragging);
-
-  // Branching preferences
-  const branchingPrefs = usePreferencesStore(selectBranchingPreferences);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
 
   // Inline branch panel state (mouse workflow - triggered from context menu)
@@ -175,20 +169,20 @@ function ConversationCardComponent({
     // Handle branch action based on preferences
     const handleBranchAction = () => {
       closeMenu();
-      
-      // Check preference: should we show dialog or create instantly?
-      if (branchingPrefs.alwaysAskOnBranch) {
-        // Show dialog for user to configure
-        openBranchDialog(conversation.id);
-      } else {
-        // Create branch instantly with default settings using v4 API
-        branchFromMessage({
-          sourceCardId: conversation.id,
-          messageIndex: messages.length - 1,
-          inheritanceMode: branchingPrefs.defaultInheritanceMode,
-          branchReason: 'Quick branch',
-        });
-      }
+
+      const messageCount = Array.isArray(messages) ? messages.length : 0;
+      const hasInheritedContext = conversation.parentCardIds.length > 0;
+      if (messageCount === 0 && !hasInheritedContext) return;
+
+      const branchIndex = messageCount > 0 ? messageCount - 1 : 0;
+
+      // Create branch instantly with full context
+      branchFromMessage({
+        sourceCardId: conversation.id,
+        messageIndex: branchIndex,
+        inheritanceMode: 'full',
+        branchReason: 'Branch from card',
+      });
     };
     
     // Open context menu with Branch option that respects preferences
@@ -267,7 +261,7 @@ function ConversationCardComponent({
         }}
         onContextMenu={handleContextMenu}
       >
-        {/* Header: Title + Badge + Merge/Branch Indicator */}
+        {/* Header: Title + Merge/Branch Indicator */}
         <div style={cardStyles.header}>
           {/* Merge indicator icon */}
           {isMergeNode && (
@@ -334,9 +328,6 @@ function ConversationCardComponent({
               {isComplexMerge && ' ⚠️'}
             </span>
           )}
-          <span style={cardStyles.badge}>
-            {metadata.messageCount} msgs
-          </span>
         </div>
 
         {/* Content - Always show preview (conversation happens in chat panel) */}
@@ -425,8 +416,8 @@ const cardStyles: Record<string, React.CSSProperties> = {
   },
 
   title: {
-    fontSize: '15px',
-    fontWeight: 600,
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
     color: 'var(--fg-primary)',
     fontFamily: typography.fonts.heading,
     margin: 0,
@@ -467,7 +458,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
   },
 
   previewText: {
-    fontSize: '13px',
+    fontSize: typography.sizes.sm,
     color: 'var(--fg-secondary)',
     lineHeight: 1.5,  // Slightly more line height
     margin: 0,

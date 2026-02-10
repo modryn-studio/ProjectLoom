@@ -172,7 +172,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
             gap: 4,
             color: isUser ? colors.accent.primary : colors.accent.primary,
             fontSize: typography.sizes.xs,
-            fontWeight: 500,
+            fontWeight: typography.weights.medium,
             fontFamily: typography.fonts.body,
           }}>
             {isUser ? <User size={12} /> : <Bot size={12} />}
@@ -187,7 +187,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
               padding: '2px 6px',
               backgroundColor: colors.bg.primary,
               borderRadius: 4,
-              fontSize: '10px',
+              fontSize: typography.sizes.xs,
               color: colors.fg.quaternary,
               fontFamily: typography.fonts.code,
             }}>
@@ -201,7 +201,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
               padding: '2px 6px',
               backgroundColor: colors.bg.primary,
               borderRadius: 4,
-              fontSize: '10px',
+              fontSize: typography.sizes.xs,
               color: colors.fg.quaternary,
               fontFamily: typography.fonts.body,
             }}>
@@ -302,7 +302,7 @@ export function MessageSelector({ messages, selectedIds, onSelectionChange }: Me
           >
             {action.label}
             {action.shortcut && (
-              <span style={{ opacity: 0.6, fontSize: '10px' }}>
+              <span style={{ opacity: 0.6, fontSize: typography.sizes.xs }}>
                 {action.shortcut}
               </span>
             )}

@@ -218,7 +218,7 @@ export interface AIErrorResponse {
   code: string;
   recoverable: boolean;
   retryAfter?: number;
-  suggestion?: 'check_api_key' | 'use_summary' | 'add_api_key';
+  suggestion?: 'check_api_key' | 'add_api_key';
 }
 
 /**
@@ -238,14 +238,12 @@ export function isAIError(response: unknown): response is AIErrorResponse {
  */
 export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
   label: string;
-  action: 'openSettings' | 'useSummary' | 'retry';
+  action: 'openSettings' | 'retry';
 } | null {
   switch (suggestion) {
     case 'check_api_key':
     case 'add_api_key':
       return { label: 'Open Settings', action: 'openSettings' };
-    case 'use_summary':
-      return { label: 'Use AI Summary', action: 'useSummary' };
     default:
       return null;
   }

@@ -882,8 +882,8 @@ You're all set for a professional CI/CD workflow! 🎉`, 0),
  * v4 Branching Demo:
  * - Card 0 (Kickoff) is root with no parents
  * - Card 1 (Database) branches from Kickoff at message 3 (full context)
- * - Card 2 (Japanese i18n) branches from Kickoff at message 2 (summary)
- * - Card 3 (Arabic RTL) branches from Kickoff at message 2 (summary)
+ * - Card 2 (Japanese i18n) branches from Kickoff at message 2 (full context)
+ * - Card 3 (Arabic RTL) branches from Kickoff at message 2 (full context)
  * - Card 4 (API) branches from Database (full context)
  * - Card 10 (i18n Synthesis) is a MERGE NODE combining Japanese + Arabic + Spanish
  */
@@ -943,7 +943,7 @@ export function generateMockData(): MockDataResult {
     [kickoff.id],
     makeBranchPoint(kickoff.id, 1),
     {
-      [kickoff.id]: makeInheritedContext('summary', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
+      [kickoff.id]: makeInheritedContext('full', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
     },
     false
   );
@@ -956,7 +956,7 @@ export function generateMockData(): MockDataResult {
     [kickoff.id],
     makeBranchPoint(kickoff.id, 1),
     {
-      [kickoff.id]: makeInheritedContext('summary', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
+      [kickoff.id]: makeInheritedContext('full', projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
     },
     false
   );
@@ -995,7 +995,7 @@ export function generateMockData(): MockDataResult {
     [debugging.id],
     makeBranchPoint(debugging.id, 7),
     {
-      [debugging.id]: makeInheritedContext('summary', debuggingSessionMessages.slice(0, 8), debuggingSessionMessages.length),
+      [debugging.id]: makeInheritedContext('full', debuggingSessionMessages.slice(0, 8), debuggingSessionMessages.length),
     },
     false
   );
@@ -1021,7 +1021,7 @@ export function generateMockData(): MockDataResult {
     [japaneseI18n.id],
     makeBranchPoint(japaneseI18n.id, 3),
     {
-      [japaneseI18n.id]: makeInheritedContext('summary', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
+      [japaneseI18n.id]: makeInheritedContext('full', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
     },
     false
   );
@@ -1076,9 +1076,9 @@ This synthesis combines the best practices from each language exploration! 🌍`
     [japaneseI18n.id, arabicRTL.id, spanishUI.id], // THREE parents - merge node
     undefined, // merge nodes don't have a single branch point
     {
-      [japaneseI18n.id]: makeInheritedContext('summary', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
-      [arabicRTL.id]: makeInheritedContext('summary', arabicRTLMessages.slice(0, 4), arabicRTLMessages.length),
-      [spanishUI.id]: makeInheritedContext('summary', spanishUIMessages.slice(0, 4), spanishUIMessages.length),
+      [japaneseI18n.id]: makeInheritedContext('full', japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
+      [arabicRTL.id]: makeInheritedContext('full', arabicRTLMessages.slice(0, 4), arabicRTLMessages.length),
+      [spanishUI.id]: makeInheritedContext('full', spanishUIMessages.slice(0, 4), spanishUIMessages.length),
     },
     true // IS a merge node
   );

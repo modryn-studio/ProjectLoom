@@ -247,13 +247,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   modelName: {
-    fontWeight: 500,
+    fontWeight: typography.weights.medium,
   },
 
   costBadge: {
-    fontSize: '10px',
+    fontSize: typography.sizes.xs,
     fontFamily: typography.fonts.code,
-    fontWeight: 600,
+    fontWeight: typography.weights.semibold,
   },
 
   chevron: {
@@ -311,7 +311,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
     color: colors.fg.primary,
-    fontWeight: 500,
+    fontWeight: typography.weights.medium,
   },
 
   noKeys: {

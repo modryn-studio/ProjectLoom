@@ -441,7 +441,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     margin: 0,
     fontSize: typography.sizes.lg,
-    fontWeight: 600,
+    fontWeight: typography.weights.semibold,
     color: colors.fg.primary,
     fontFamily: typography.fonts.heading,
   },
@@ -512,7 +512,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   label: {
     fontSize: typography.sizes.sm,
-    fontWeight: 500,
+    fontWeight: typography.weights.medium,
     color: colors.fg.primary,
     fontFamily: typography.fonts.body,
   },
@@ -592,7 +592,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.fg.primary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
-    fontWeight: 500,
+    fontWeight: typography.weights.medium,
     cursor: 'pointer',
   },
 
@@ -629,7 +629,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   storageOptionTitle: {
     fontSize: typography.sizes.sm,
-    fontWeight: 500,
+    fontWeight: typography.weights.medium,
     color: colors.fg.primary,
     fontFamily: typography.fonts.body,
     marginBottom: spacing[1],

@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Send, Square, AlertCircle, Settings, Paperclip, X } from 'lucide-react';
 
-import { colors, typography, spacing, effects } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects, components } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { ModelSelector } from './ModelSelector';
 import type { MessageAttachment } from '@/types';
@@ -12,8 +12,8 @@ import type { MessageAttachment } from '@/types';
 // CONSTANTS
 // =============================================================================
 
-const MIN_INPUT_HEIGHT = 32;
-const MAX_INPUT_HEIGHT = 96;
+const MIN_INPUT_HEIGHT = components.input.minHeight;
+const MAX_INPUT_HEIGHT = components.input.maxHeight;
 
 // =============================================================================
 // MESSAGE INPUT COMPONENT
@@ -384,9 +384,9 @@ export function MessageInput({
 
 const inputStyles: Record<string, React.CSSProperties> = {
   container: {
-    padding: spacing[3],
+    padding: spacing[2],
     borderTop: `1px solid ${colors.border.default}`,
-    backgroundColor: colors.bg.inset,
+    backgroundColor: colors.bg.secondary,
     flexShrink: 0,
   },
 
@@ -428,7 +428,7 @@ const inputStyles: Record<string, React.CSSProperties> = {
 
   inputSurface: {
     width: '100%',
-    backgroundColor: colors.bg.secondary,
+    backgroundColor: colors.bg.tertiary,
     border: `1px solid ${colors.border.default}`,
     borderRadius: effects.border.radius.default,
     padding: spacing[2],
@@ -448,8 +448,9 @@ const inputStyles: Record<string, React.CSSProperties> = {
     color: colors.fg.primary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
-    lineHeight: typography.lineHeights.relaxed,
-    padding: 0,
+    lineHeight: typography.lineHeights.normal,
+    padding: `${spacing[1]} ${spacing[2]}`,
+    margin: 0,
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'var(--fg-quaternary) transparent',

@@ -74,7 +74,7 @@ const categoryStyles: React.CSSProperties = {
 
 const categoryTitleStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
-  fontWeight: 600,
+  fontWeight: typography.weights.semibold,
   color: colors.fg.quaternary,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
@@ -192,8 +192,8 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                 </div>
                 <h2 style={{ 
                   margin: 0, 
-                  fontSize: '1.125rem', 
-                  fontWeight: 600, 
+                  fontSize: typography.sizes.lg, 
+                  fontWeight: typography.weights.semibold, 
                   color: colors.fg.primary 
                 }}>
                   Keyboard Shortcuts

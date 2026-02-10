@@ -369,8 +369,8 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
               <Bot size={24} color={colors.accent.primary} />
               <h2 style={{
                 margin: 0,
-                fontSize: '1.25rem',
-                fontWeight: 600,
+                fontSize: typography.sizes.lg,
+                fontWeight: typography.weights.semibold,
                 color: colors.fg.primary,
                 fontFamily: typography.fonts.heading,
               }}>
@@ -403,7 +403,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                     display: 'block',
                     marginBottom: spacing[2],
                     fontSize: typography.sizes.sm,
-                    fontWeight: 500,
+                    fontWeight: typography.weights.medium,
                     color: colors.fg.secondary,
                     fontFamily: typography.fonts.body,
                   }}>
@@ -445,7 +445,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                         </div>
                         <div>
                           <div style={{
-                            fontWeight: 500,
+                            fontWeight: typography.weights.medium,
                             color: colors.fg.primary,
                             marginBottom: '2px',
                             fontFamily: typography.fonts.body,
@@ -472,7 +472,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                       display: 'block',
                       marginBottom: spacing[1],
                       fontSize: typography.sizes.sm,
-                      fontWeight: 500,
+                      fontWeight: typography.weights.medium,
                       color: colors.fg.secondary,
                       fontFamily: typography.fonts.body,
                     }}>
@@ -576,7 +576,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   )}
                   <span style={{
                     fontSize: typography.sizes.sm,
-                    fontWeight: 500,
+                    fontWeight: typography.weights.medium,
                     color: result.status === 'success' ? colors.semantic.success : colors.semantic.error,
                     fontFamily: typography.fonts.body,
                   }}>
@@ -665,7 +665,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   color: colors.fg.primary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
-                  fontWeight: 500,
+                  fontWeight: typography.weights.medium,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -687,7 +687,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   color: !selectedAgent ? colors.fg.quaternary : colors.fg.primary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
-                  fontWeight: 500,
+                  fontWeight: typography.weights.medium,
                   cursor: !selectedAgent ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',

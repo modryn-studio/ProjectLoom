@@ -73,7 +73,7 @@ export function UsageDisplay() {
           <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
             Claude (Anthropic)
           </span>
-          <span style={{ fontSize: typography.sizes.lg, fontWeight: 600, fontFamily: typography.fonts.code }}>
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.byProvider.anthropic.costUsd)}
           </span>
         </div>
@@ -81,15 +81,15 @@ export function UsageDisplay() {
           <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
             GPT (OpenAI)
           </span>
-          <span style={{ fontSize: typography.sizes.lg, fontWeight: 600, fontFamily: typography.fonts.code }}>
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.byProvider.openai.costUsd)}
           </span>
         </div>
         <div style={{ borderTop: `1px solid ${colors.border.default}`, paddingTop: spacing[2], display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: typography.sizes.sm, fontWeight: 600, color: colors.fg.primary, fontFamily: typography.fonts.body }}>
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.fg.primary, fontFamily: typography.fonts.body }}>
             Total
           </span>
-          <span style={{ fontSize: typography.sizes.xl, fontWeight: 700, fontFamily: typography.fonts.code }}>
+          <span style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.bold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.totalCostUsd)}
           </span>
         </div>
