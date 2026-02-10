@@ -1001,6 +1001,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     color: colors.accent.primary,
     textDecoration: 'none',
     wordBreak: 'break-word',
+    cursor: 'pointer',
   },
 };
 

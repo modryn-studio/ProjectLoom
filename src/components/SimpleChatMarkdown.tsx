@@ -168,8 +168,9 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
     let lastIndex = 0;
     let key = 0;
 
-    // Combined regex for all inline patterns
-    const pattern = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|(\[(.+?)\]\((.+?)\))/g;
+    // Combined regex for all inline patterns including plain URLs
+    // Matches: **bold**, *italic*, `code`, [text](url), and plain URLs
+    const pattern = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|(\[(.+?)\]\((.+?)\))|(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
@@ -199,13 +200,27 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           </code>
         );
       } else if (match[8] && match[9]) {
-        // Link: [text](url)
+        // Markdown link: [text](url)
         parts.push(
           <a key={key++} href={match[9]} target="_blank" rel="noopener noreferrer" style={{
             color: colors.accent.primary,
             textDecoration: 'underline',
+            cursor: 'pointer',
           }}>
             {match[8]}
+          </a>
+        );
+      } else if (match[10]) {
+        // Plain URL: https://example.com
+        const url = match[10];
+        parts.push(
+          <a key={key++} href={url} target="_blank" rel="noopener noreferrer" style={{
+            color: colors.accent.primary,
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            wordBreak: 'break-all',
+          }}>
+            {url}
           </a>
         );
       }
