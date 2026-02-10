@@ -279,14 +279,19 @@ export function MessageThread({
         
         <AnimatePresence mode="sync">
         {displayMessages
-          .filter((m): m is Message => m != null && typeof m.id === 'string')
-          .map((message: Message, index: number) => {
+          .map((message, originalIndex) => ({ message, originalIndex }))
+          .filter((item): item is { message: Message; originalIndex: number } => 
+            item.message != null && 
+            typeof item.message.id === 'string' && 
+            item.message.role !== 'system'
+          )
+          .map(({ message, originalIndex }) => {
             return (
               <MessageBubble
                 key={message.id}
                 message={message}
-                index={index}
-                isHovered={hoveredMessageIndex === index}
+                index={originalIndex}
+                isHovered={hoveredMessageIndex === originalIndex}
                 isStreamingMessage={!!(message.metadata as { isStreaming?: boolean } | undefined)?.isStreaming}
                 isTouchDevice={isTouchDevice}
                 onMouseEnter={handleMouseEnter}
