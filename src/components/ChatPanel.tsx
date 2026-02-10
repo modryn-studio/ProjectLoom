@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useChat } from 'ai/react';
-import { PanelRightClose } from 'lucide-react';
+import { PanelRightClose, Loader } from 'lucide-react';
 
 import { colors, typography, spacing } from '@/lib/design-tokens';
 import { useCanvasStore, selectChatPanelOpen, selectActiveConversationId } from '@/stores/canvas-store';
@@ -603,13 +603,16 @@ export function ChatPanel() {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: spacing[1],
-              padding: `${spacing[1]} ${spacing[4]}`,
-              fontSize: typography.sizes.xs,
-              color: colors.fg.tertiary,
+              gap: spacing[2],
+              padding: `${spacing[2]} ${spacing[4]}`,
+              fontSize: typography.sizes.sm,
+              color: colors.accent.primary,
               fontFamily: typography.fonts.body,
+              backgroundColor: colors.bg.inset,
+              borderBottom: `1px solid ${colors.border.muted}`,
             }}>
-              <span className="animate-pulse">Searching...</span>
+              <Loader size={14} className="animate-spin" />
+              <span>Searching web...</span>
             </div>
           )}
 

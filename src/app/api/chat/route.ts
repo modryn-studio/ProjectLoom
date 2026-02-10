@@ -283,10 +283,10 @@ export async function POST(req: Request): Promise<Response> {
       description: 'Search the web for recent or unknown information and return a concise summary with sources.',
       parameters: z.object({
         query: z.string().min(3).describe('The search query'),
-        maxResults: z.number().min(1).max(3).optional().describe('Max sources to return (1-3)'),
+        maxResults: z.number().min(1).max(5).optional().describe('Max sources to return (1-5)'),
       }),
       execute: async ({ query, maxResults }) => {
-        const cappedResults = Math.min(maxResults ?? 3, 3);
+        const cappedResults = Math.min(maxResults ?? 5, 5);
         streamData.append({ type: 'web_search_start', query });
 
         try {
