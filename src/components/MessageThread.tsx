@@ -3,8 +3,7 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { SimpleChatMarkdown } from './SimpleChatMarkdown';
 import type { Message as ChatMessage } from 'ai';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
@@ -114,78 +113,6 @@ const inheritedBannerStyles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
 };
-
-const MarkdownCodeBlock = memo(function MarkdownCodeBlock({
-  children,
-}: {
-  children?: React.ReactNode;
-}) {
-  const toast = useToast();
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    const code = React.Children.toArray(children)
-      .map((child) => {
-        if (React.isValidElement<{ children?: React.ReactNode }>(child) && child.props.children) {
-          return typeof child.props.children === 'string'
-            ? child.props.children
-            : String(child.props.children);
-        }
-        return String(child);
-      })
-      .join('');
-
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast.success('Copied to clipboard');
-    } catch (err) {
-      console.error('[CodeBlock] Failed to copy:', err);
-      toast.error('Failed to copy');
-    }
-  }, [children, toast]);
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <pre style={bubbleStyles.markdownPre}>{children}</pre>
-      <button
-        onClick={handleCopy}
-        style={{
-          position: 'absolute',
-          top: spacing[2],
-          right: spacing[2],
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 28,
-          height: 28,
-          padding: 0,
-          backgroundColor: copied ? colors.accent.primary : colors.bg.primary,
-          border: `1px solid ${colors.border.default}`,
-          borderRadius: effects.border.radius.sm || '4px',
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          color: copied ? colors.bg.primary : colors.fg.secondary,
-        }}
-        onMouseEnter={(e) => {
-          if (!copied) {
-            e.currentTarget.style.backgroundColor = colors.bg.inset;
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!copied) {
-            e.currentTarget.style.backgroundColor = colors.bg.primary;
-          }
-        }}
-        title={copied ? 'Copied!' : 'Copy code'}
-        aria-label={copied ? 'Copied' : 'Copy code'}
-      >
-        <Copy size={14} />
-      </button>
-    </div>
-  );
-});
 
 // =============================================================================
 // WEB SEARCH PARSING
@@ -524,43 +451,6 @@ const MessageBubble = memo(function MessageBubble({
     toast.info('Edit feature coming soon');
   }, [toast]);
 
-  const markdownComponents = useMemo(() => ({
-    p: ({ children }: { children?: React.ReactNode }) => (
-      <p style={bubbleStyles.markdownParagraph}>{children}</p>
-    ),
-    strong: ({ children }: { children?: React.ReactNode }) => (
-      <strong style={bubbleStyles.markdownStrong}>{children}</strong>
-    ),
-    em: ({ children }: { children?: React.ReactNode }) => (
-      <em style={bubbleStyles.markdownEm}>{children}</em>
-    ),
-    code: ({ inline = false, children }: { inline?: boolean; children?: React.ReactNode }) => (
-      <code style={inline ? bubbleStyles.markdownInlineCode : bubbleStyles.markdownCodeBlock}>
-        {children}
-      </code>
-    ),
-    pre: MarkdownCodeBlock,
-    ul: ({ children }: { children?: React.ReactNode }) => (
-      <ul style={bubbleStyles.markdownList}>{children}</ul>
-    ),
-    ol: ({ children }: { children?: React.ReactNode }) => (
-      <ol style={bubbleStyles.markdownList}>{children}</ol>
-    ),
-    li: ({ children }: { children?: React.ReactNode }) => (
-      <li style={bubbleStyles.markdownListItem}>{children}</li>
-    ),
-    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-      <a
-        href={href}
-        target={href ? '_blank' : undefined}
-        rel={href ? 'noopener noreferrer' : undefined}
-        style={bubbleStyles.markdownLink}
-      >
-        {children}
-      </a>
-    ),
-  }), []);
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -598,9 +488,7 @@ const MessageBubble = memo(function MessageBubble({
             textAlign: textStyles.textAlign,
           }}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {webSearchData.content}
-          </ReactMarkdown>
+          <SimpleChatMarkdown content={webSearchData.content} />
           {/* Streaming indicator */}
           {isStreamingMessage && (
             <motion.span
@@ -867,6 +755,10 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   },
   markdownParagraph: {
     margin: 0,
+    marginBlockStart: 0,
+    marginBlockEnd: spacing[3],
+    padding: 0,
+    lineHeight: 1.6,
   },
   markdownStrong: {
     fontWeight: typography.weights.bold,
@@ -883,11 +775,12 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   },
   markdownPre: {
     margin: `${spacing[3]} 0`,
-    padding: `${spacing[2]} ${spacing[3]}`,
+    padding: `${spacing[3]} ${spacing[3]}`,
     backgroundColor: colors.bg.inset,
     border: `1px solid ${colors.border.muted}`,
     borderRadius: effects.border.radius.default,
     overflowX: 'auto',
+    lineHeight: 1.5,
   },
   markdownCodeBlock: {
     fontFamily: typography.fonts.code || 'monospace',
@@ -895,14 +788,105 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   },
   markdownList: {
     margin: `${spacing[2]} 0`,
-    paddingLeft: spacing[3],
+    paddingLeft: spacing[5],
+    listStylePosition: 'outside',
   },
   markdownListItem: {
-    marginBottom: 0,
+    margin: 0,
+    marginBottom: spacing[1],
+    paddingLeft: spacing[1],
   },
   markdownLink: {
     color: colors.accent.primary,
     textDecoration: 'underline',
+  },
+
+  // Headings
+  markdownH1: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    margin: `${spacing[4]} 0 ${spacing[3]} 0`,
+    lineHeight: 1.3,
+    color: colors.fg.primary,
+  },
+  markdownH2: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    margin: `${spacing[4]} 0 ${spacing[2]} 0`,
+    lineHeight: 1.3,
+    color: colors.fg.primary,
+  },
+  markdownH3: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.bold,
+    margin: `${spacing[3]} 0 ${spacing[2]} 0`,
+    lineHeight: 1.3,
+    color: colors.fg.primary,
+  },
+  markdownH4: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    margin: `${spacing[3]} 0 ${spacing[2]} 0`,
+    lineHeight: 1.3,
+    color: colors.fg.primary,
+  },
+  markdownH5: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    margin: `${spacing[2]} 0 ${spacing[1]} 0`,
+    lineHeight: 1.3,
+    color: colors.fg.secondary,
+  },
+  markdownH6: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    margin: `${spacing[2]} 0 ${spacing[1]} 0`,
+    lineHeight: 1.3,
+    color: colors.fg.secondary,
+  },
+
+  // Blockquote
+  markdownBlockquote: {
+    margin: `${spacing[3]} 0`,
+    paddingLeft: spacing[4],
+    borderLeft: `3px solid ${colors.border.default}`,
+    color: colors.fg.secondary,
+    fontStyle: 'italic',
+  },
+
+  // Horizontal rule
+  markdownHr: {
+    margin: `${spacing[4]} 0`,
+    border: 'none',
+    borderTop: `1px solid ${colors.border.muted}`,
+  },
+
+  // Tables (GFM feature)
+  markdownTableWrapper: {
+    overflowX: 'auto',
+    margin: `${spacing[3]} 0`,
+  },
+  markdownTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: typography.sizes.sm,
+  },
+  markdownThead: {
+    backgroundColor: colors.bg.inset,
+    borderBottom: `2px solid ${colors.border.default}`,
+  },
+  markdownTr: {
+    borderBottom: `1px solid ${colors.border.muted}`,
+  },
+  markdownTh: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    textAlign: 'left',
+    fontWeight: typography.weights.bold,
+    color: colors.fg.primary,
+  },
+  markdownTd: {
+    padding: `${spacing[2]} ${spacing[3]}`,
+    color: colors.fg.primary,
   },
 
   streamingIndicator: {
