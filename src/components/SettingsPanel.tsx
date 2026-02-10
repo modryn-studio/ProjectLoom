@@ -130,8 +130,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   // API Keys state
   const [anthropicKey, setAnthropicKey] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
+  const [tavilyKey, setTavilyKey] = useState('');
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [showTavilyKey, setShowTavilyKey] = useState(false);
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
 
@@ -144,11 +146,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     if (isOpen && !keysLoaded) {
       const savedAnthropicKey = apiKeyManager.getKey('anthropic');
       const savedOpenAIKey = apiKeyManager.getKey('openai');
+      const savedTavilyKey = apiKeyManager.getKey('tavily');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
       if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
        
       if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
+      if (savedTavilyKey) setTavilyKey(savedTavilyKey);
        
       setStoragePreference(currentStoragePreference);
        
@@ -196,12 +200,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   }, []);
 
   const handleDeleteKey = useCallback((provider: ProviderType) => {
-    if (window.confirm(`Delete ${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key?`)) {
+    const providerName = apiKeyManager.getProviderDisplayName(provider);
+    if (window.confirm(`Delete ${providerName} API key?`)) {
       apiKeyManager.removeKey(provider);
       if (provider === 'anthropic') {
         setAnthropicKey('');
-      } else {
+      } else if (provider === 'openai') {
         setOpenaiKey('');
+      } else {
+        setTavilyKey('');
       }
     }
   }, []);
@@ -593,6 +600,64 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         </span>
                         <button
                           onClick={() => handleDeleteKey('openai')}
+                          title="Delete key"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: colors.fg.quaternary,
+                            cursor: 'pointer',
+                            padding: spacing[1],
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tavily Key */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>Tavily API Key</label>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type={showTavilyKey ? 'text' : 'password'}
+                        value={tavilyKey}
+                        onChange={(e) => setTavilyKey(e.target.value)}
+                        onBlur={() => handleSaveKey('tavily', tavilyKey)}
+                        placeholder="tvly-..."
+                        style={{
+                          ...selectStyles,
+                          fontFamily: typography.fonts.code,
+                          paddingRight: '40px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowTavilyKey(!showTavilyKey)}
+                        style={{
+                          position: 'absolute',
+                          right: spacing[2],
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: colors.fg.quaternary,
+                          cursor: 'pointer',
+                          padding: spacing[1],
+                        }}
+                      >
+                        {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    {tavilyKey && (
+                      <>
+                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
+                          <CheckCircle size={16} />
+                        </span>
+                        <button
+                          onClick={() => handleDeleteKey('tavily')}
                           title="Delete key"
                           style={{
                             background: 'none',

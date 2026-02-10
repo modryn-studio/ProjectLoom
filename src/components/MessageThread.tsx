@@ -188,6 +188,65 @@ const MarkdownCodeBlock = memo(function MarkdownCodeBlock({
 });
 
 // =============================================================================
+// WEB SEARCH PARSING
+// =============================================================================
+
+const WEB_SEARCH_MARKER = '[[WEB_SEARCH]]';
+const WEB_SEARCH_SOURCES_LABEL = 'Sources:';
+
+interface WebSource {
+  title: string;
+  url: string;
+}
+
+function parseWebSources(content: string): { content: string; sources: WebSource[]; used: boolean } {
+  if (!content.includes(WEB_SEARCH_MARKER)) {
+    return { content, sources: [], used: false };
+  }
+
+  const markerIndex = content.indexOf(WEB_SEARCH_MARKER);
+  const afterMarker = content.slice(markerIndex + WEB_SEARCH_MARKER.length);
+  const sourcesIndex = afterMarker.indexOf(WEB_SEARCH_SOURCES_LABEL);
+
+  if (sourcesIndex === -1) {
+    return {
+      content: content.replace(WEB_SEARCH_MARKER, '').trimEnd(),
+      sources: [],
+      used: true,
+    };
+  }
+
+  const cleanedContent = content.slice(0, markerIndex).trimEnd();
+  const sourcesText = afterMarker.slice(sourcesIndex + WEB_SEARCH_SOURCES_LABEL.length).trim();
+  const lines = sourcesText.split('\n').map((line) => line.trim()).filter(Boolean);
+
+  const sources: WebSource[] = [];
+
+  for (const line of lines) {
+    const urlMatch = line.match(/https?:\/\/\S+/);
+    if (!urlMatch) continue;
+
+    const url = urlMatch[0].replace(/[),.;]+$/, '');
+    const title = line
+      .replace(urlMatch[0], '')
+      .replace(/^[\s*\-\d.]+/, '')
+      .replace(/[-–—]+$/, '')
+      .trim();
+
+    sources.push({
+      title: title || url,
+      url,
+    });
+  }
+
+  return {
+    content: cleanedContent,
+    sources,
+    used: true,
+  };
+}
+
+// =============================================================================
 // MESSAGE THREAD COMPONENT
 // =============================================================================
 
@@ -389,10 +448,17 @@ const MessageBubble = memo(function MessageBubble({
   // Toast for feedback
   const toast = useToast();
 
+  const webSearchData = useMemo(() => {
+    if (isUser || isSystem) {
+      return { content: message.content, sources: [], used: false };
+    }
+    return parseWebSources(message.content);
+  }, [message.content, isUser, isSystem]);
+
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
-    () => getTextStyles(message.content),
-    [message.content]
+    () => getTextStyles(webSearchData.content),
+    [webSearchData.content]
   );
 
   // Format timestamp with validation
@@ -491,6 +557,12 @@ const MessageBubble = memo(function MessageBubble({
         }}
       >
 
+        {!isUser && webSearchData.used && (
+          <div style={bubbleStyles.webSearchBadgeRow}>
+            <span style={bubbleStyles.webSearchBadge}>Web search</span>
+          </div>
+        )}
+
         {/* Message content */}
         <div
           style={{
@@ -501,7 +573,7 @@ const MessageBubble = memo(function MessageBubble({
           }}
         >
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {message.content}
+            {webSearchData.content}
           </ReactMarkdown>
           {/* Streaming indicator */}
           {isStreamingMessage && (
@@ -514,6 +586,26 @@ const MessageBubble = memo(function MessageBubble({
             </motion.span>
           )}
         </div>
+
+        {!isUser && webSearchData.sources.length > 0 && (
+          <div style={bubbleStyles.citations}>
+            <div style={bubbleStyles.citationsTitle}>Sources</div>
+            <ol style={bubbleStyles.citationsList}>
+              {webSearchData.sources.map((source) => (
+                <li key={source.url} style={bubbleStyles.citationItem}>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={bubbleStyles.citationLink}
+                  >
+                    {source.title}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {/* Image attachments */}
         {message.attachments && message.attachments.length > 0 && (
@@ -706,6 +798,23 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     width: '100%',
   },
 
+  webSearchBadgeRow: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    marginBottom: spacing[2],
+  },
+
+  webSearchBadge: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    color: colors.fg.secondary,
+    backgroundColor: colors.bg.tertiary,
+    border: `1px solid ${colors.border.muted}`,
+    borderRadius: 999,
+    padding: '2px 8px',
+    fontFamily: typography.fonts.body,
+  },
+
   userBubble: {
     backgroundColor: colors.bg.inset,
     borderRadius: effects.border.radius.default,
@@ -836,6 +945,41 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   } as React.CSSProperties,
+
+  citations: {
+    marginTop: spacing[2],
+    borderTop: `1px solid ${colors.border.muted}`,
+    paddingTop: spacing[2],
+  },
+
+  citationsTitle: {
+    fontSize: typography.sizes.xs,
+    color: colors.fg.quaternary,
+    fontFamily: typography.fonts.body,
+    marginBottom: spacing[1],
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  },
+
+  citationsList: {
+    margin: 0,
+    paddingLeft: spacing[4],
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing[1],
+  } as React.CSSProperties,
+
+  citationItem: {
+    fontSize: typography.sizes.xs,
+    color: colors.fg.secondary,
+    fontFamily: typography.fonts.body,
+  },
+
+  citationLink: {
+    color: colors.accent.primary,
+    textDecoration: 'none',
+    wordBreak: 'break-word',
+  },
 };
 
 const actionButtonGroupStyles: Record<string, React.CSSProperties> = {

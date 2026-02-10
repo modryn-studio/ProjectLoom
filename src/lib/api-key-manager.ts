@@ -12,7 +12,7 @@
 // TYPES
 // =============================================================================
 
-export type ProviderType = 'anthropic' | 'openai';
+export type ProviderType = 'anthropic' | 'openai' | 'tavily';
 export type StorageType = 'localStorage' | 'sessionStorage';
 
 export interface APIKeyInfo {
@@ -39,6 +39,7 @@ const STORAGE_PREF_KEY = 'projectloom:storage-preference';
 const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI',
+  tavily: 'Tavily (Web Search)',
 };
 
 // =============================================================================
@@ -276,6 +277,7 @@ class APIKeyManager {
       providers: {
         anthropic: this.getKeyInfo('anthropic'),
         openai: this.getKeyInfo('openai'),
+        tavily: this.getKeyInfo('tavily'),
       },
     };
   }
@@ -322,6 +324,11 @@ class APIKeyManager {
           return { valid: false, error: 'OpenAI API keys should start with "sk-"' };
         }
         break;
+      case 'tavily':
+        if (!key.startsWith('tvly-')) {
+          return { valid: false, error: 'Tavily API keys should start with "tvly-"' };
+        }
+        break;
     }
 
     return { valid: true };
@@ -364,6 +371,8 @@ export function useAPIKeyStatus() {
     refreshStatus,
     saveKey,
     removeKey,
-    hasDevModeKeys: status.providers.anthropic.isDevMode || status.providers.openai.isDevMode,
+    hasDevModeKeys: status.providers.anthropic.isDevMode
+      || status.providers.openai.isDevMode
+      || status.providers.tavily.isDevMode,
   };
 }

@@ -66,6 +66,7 @@ export function ChatPanel() {
   const [isResizeHovered, setIsResizeHovered] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [messageListHeight, setMessageListHeight] = useState(0);
+  const [isWebSearching, setIsWebSearching] = useState(false);
   
   // Keep ref in sync with state
   useEffect(() => {
@@ -102,6 +103,8 @@ export function ChatPanel() {
     }
     return apiKeyManager.getKey('openai');
   }, [currentModel]);
+
+  const tavilyKey = apiKeyManager.getKey('tavily');
 
   // Check if we have any API key configured
   // Note: apiKeyManager reads from localStorage; no reactive deps, but we re-check
@@ -221,6 +224,7 @@ export function ChatPanel() {
   const chatBody = useMemo(() => ({
     model: currentModel,
     apiKey: currentApiKey,
+    tavilyKey: tavilyKey || undefined,
     // Pass image attachments for vision
     ...(pendingAttachments.length > 0 ? {
       attachments: pendingAttachments.map(a => ({
@@ -229,7 +233,7 @@ export function ChatPanel() {
         url: a.url,
       })),
     } : {}),
-  }), [currentModel, currentApiKey, pendingAttachments]);
+  }), [currentModel, currentApiKey, pendingAttachments, tavilyKey]);
 
   const {
     messages: chatMessages,
@@ -240,6 +244,8 @@ export function ChatPanel() {
     stop,
     error: chatError,
     setMessages,
+    data,
+    status,
   } = useChat({
     api: '/api/chat',
     id: activeConversationId || undefined,
@@ -501,6 +507,31 @@ export function ChatPanel() {
     }
   }, [activeConversationId, setConversationModel]);
 
+  useEffect(() => {
+    if (!data || data.length === 0) {
+      setIsWebSearching(false);
+      return;
+    }
+
+    let starts = 0;
+    let ends = 0;
+
+    for (const event of data) {
+      if (!event || typeof event !== 'object') continue;
+      const eventType = (event as { type?: string }).type;
+      if (eventType === 'web_search_start') starts += 1;
+      if (eventType === 'web_search_end') ends += 1;
+    }
+
+    setIsWebSearching(starts > ends);
+  }, [data]);
+
+  useEffect(() => {
+    if (status === 'ready' || status === 'error') {
+      setIsWebSearching(false);
+    }
+  }, [status]);
+
   return (
     <SidePanel
       ref={panelRef}
@@ -527,6 +558,20 @@ export function ChatPanel() {
             onClose={handleClose}
             onMaximize={handleMaximize}
           />
+
+          {isWebSearching && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[1],
+              padding: `${spacing[1]} ${spacing[4]}`,
+              fontSize: typography.sizes.xs,
+              color: colors.fg.tertiary,
+              fontFamily: typography.fonts.body,
+            }}>
+              <span className="animate-pulse">Searching...</span>
+            </div>
+          )}
 
           {/* Message Thread */}
           <MessageThread

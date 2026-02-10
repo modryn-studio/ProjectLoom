@@ -37,6 +37,7 @@ const INITIAL_KEY_STATE: KeyState = {
 export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModalProps) {
   const [anthropicKey, setAnthropicKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [openaiKey, setOpenaiKey] = useState<KeyState>(INITIAL_KEY_STATE);
+  const [tavilyKey, setTavilyKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [isSaving, setIsSaving] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
   const overlayMouseDownRef = useRef(false);
@@ -46,6 +47,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     if (isOpen) {
       const existingAnthropic = apiKeyManager.getKey('anthropic');
       const existingOpenai = apiKeyManager.getKey('openai');
+      const existingTavily = apiKeyManager.getKey('tavily');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
       if (existingAnthropic) {
@@ -53,6 +55,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       }
       if (existingOpenai) {
         setOpenaiKey(prev => ({ ...prev, value: existingOpenai, isValid: true }));
+      }
+      if (existingTavily) {
+        setTavilyKey(prev => ({ ...prev, value: existingTavily, isValid: true }));
       }
       setStoragePreference(currentStoragePreference);
     }
@@ -69,6 +74,10 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } else if (provider === 'openai') {
       if (!key.startsWith('sk-')) {
         return 'OpenAI keys start with "sk-"';
+      }
+    } else if (provider === 'tavily') {
+      if (!key.startsWith('tvly-')) {
+        return 'Tavily keys start with "tvly-"';
       }
     }
     
@@ -122,8 +131,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       // Validate both keys
       const anthropicValid = await validateKey('anthropic', anthropicKey.value, setAnthropicKey);
       const openaiValid = await validateKey('openai', openaiKey.value, setOpenaiKey);
+      const tavilyValid = await validateKey('tavily', tavilyKey.value, setTavilyKey);
 
-      if (!anthropicValid || !openaiValid) {
+      if (!anthropicValid || !openaiValid || !tavilyValid) {
         setIsSaving(false);
         return;
       }
@@ -145,6 +155,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       if (openaiKey.value.trim()) {
         apiKeyManager.saveKey('openai', openaiKey.value.trim());
       }
+      if (tavilyKey.value.trim()) {
+        apiKeyManager.saveKey('tavily', tavilyKey.value.trim());
+      }
 
       // Mark setup as complete
       if (typeof window !== 'undefined') {
@@ -156,7 +169,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } finally {
       setIsSaving(false);
     }
-  }, [anthropicKey.value, openaiKey.value, storagePreference, validateKey, onSuccess, onClose]);
+  }, [anthropicKey.value, openaiKey.value, tavilyKey.value, storagePreference, validateKey, onSuccess, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -248,6 +261,14 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                 >
                   OpenAI Platform <ExternalLink size={12} />
                 </a>
+                <a
+                  href="https://tavily.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.link}
+                >
+                  Tavily <ExternalLink size={12} />
+                </a>
               </div>
             </div>
 
@@ -300,6 +321,17 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
               isValid={openaiKey.isValid}
               isValidating={openaiKey.isValidating}
               error={openaiKey.error}
+            />
+
+            {/* Tavily Key */}
+            <KeyInput
+              label="Tavily API Key"
+              placeholder="tvly-..."
+              value={tavilyKey.value}
+              onChange={(v) => handleKeyChange('tavily', v, setTavilyKey)}
+              isValid={tavilyKey.isValid}
+              isValidating={tavilyKey.isValidating}
+              error={tavilyKey.error}
             />
           </div>
 

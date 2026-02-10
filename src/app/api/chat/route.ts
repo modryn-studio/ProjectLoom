@@ -7,9 +7,10 @@
  * @version 1.0.0
  */
 
-import { streamText } from 'ai';
+import { streamText, tool, StreamData } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { z } from 'zod';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -31,6 +32,8 @@ interface ChatRequestBody {
   model: string;
   /** User's API key for the provider */
   apiKey: string;
+  /** Optional Tavily API key for web search */
+  tavilyKey?: string;
   /** Optional image attachments for the current message (vision support) */
   attachments?: Array<{
     contentType: string;
@@ -46,6 +49,24 @@ interface APIError {
   retryAfter?: number;
   suggestion?: string;
 }
+
+// =============================================================================
+// WEB SEARCH
+// =============================================================================
+
+const WEB_SEARCH_MARKER = '[[WEB_SEARCH]]';
+const WEB_SEARCH_SOURCES_LABEL = 'Sources:';
+
+const WEB_SEARCH_SYSTEM_PROMPT = `When the user needs up-to-date info or explicitly asks to research, call the web_search tool.
+After using web_search, append a short citations block at the end of your answer using this exact format:
+
+${WEB_SEARCH_MARKER}
+${WEB_SEARCH_SOURCES_LABEL}
+1. Title - https://example.com
+2. Title - https://example.com
+3. Title - https://example.com
+
+Keep it to 3 sources max. Do not invent sources or URLs.`;
 
 // =============================================================================
 // PROVIDER DETECTION
@@ -145,7 +166,7 @@ function handleProviderError(error: unknown): Response {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, apiKey, attachments, canvasContext } = body;
+    const { messages, model, apiKey, attachments, canvasContext, tavilyKey } = body;
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -257,18 +278,77 @@ export async function POST(req: Request): Promise<Response> {
 
     // Get per-model tuning (temperature, maxTokens)
     const modelConfig = getModelConfig(model);
+    const streamData = new StreamData();
+
+    const webSearchTool = tavilyKey?.trim() ? tool({
+      description: 'Search the web for recent or unknown information and return a concise summary with sources.',
+      parameters: z.object({
+        query: z.string().min(3).describe('The search query'),
+        maxResults: z.number().min(1).max(3).optional().describe('Max sources to return (1-3)'),
+      }),
+      execute: async ({ query, maxResults }) => {
+        const cappedResults = Math.min(maxResults ?? 3, 3);
+        streamData.append({ type: 'web_search_start', query });
+
+        try {
+          const response = await fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: tavilyKey,
+              query,
+              max_results: cappedResults,
+              search_depth: 'advanced',
+              include_answer: true,
+              include_raw_content: false,
+            }),
+          });
+
+          if (!response.ok) {
+            return { error: `Web search failed with status ${response.status}` };
+          }
+
+          const data = await response.json() as {
+            answer?: string;
+            results?: Array<{ title?: string; url: string; content?: string }>;
+          };
+
+          const sources = (data.results ?? [])
+            .filter((result) => result.url)
+            .slice(0, cappedResults)
+            .map((result) => ({
+              title: result.title || result.url,
+              url: result.url,
+            }));
+
+          return {
+            summary: data.answer || '',
+            sources,
+          };
+        } finally {
+          streamData.append({ type: 'web_search_end', query });
+        }
+      },
+    }) : undefined;
+
+    const systemPromptParts = [modelConfig.systemPrompt];
+    if (tavilyKey?.trim()) {
+      systemPromptParts.push(WEB_SEARCH_SYSTEM_PROMPT);
+    }
+    const systemPrompt = systemPromptParts.filter(Boolean).join('\n\n');
 
     // Stream the response
     const result = streamText({
       model: aiModel,
       temperature: modelConfig.temperature,
       maxTokens: modelConfig.maxTokens,
-      ...(modelConfig.systemPrompt ? { system: modelConfig.systemPrompt } : {}),
+      ...(systemPrompt ? { system: systemPrompt } : {}),
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
+      ...(webSearchTool ? { tools: { web_search: webSearchTool }, toolChoice: 'auto', maxSteps: 3 } : {}),
     });
 
     // Return streaming response with usage (data protocol)
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({ data: streamData });
   } catch (error) {
     console.error('[Chat API Error]', error);
     return handleProviderError(error);
