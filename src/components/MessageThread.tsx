@@ -779,7 +779,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     padding: spacing[4],
     display: 'flex',
     flexDirection: 'column',
-    gap: spacing[3],
+    gap: spacing[2],
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
@@ -825,7 +825,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
 
   message: {
-    padding: `${spacing[2]} ${spacing[3]}`,
+    padding: `${spacing[1]} ${spacing[3]}`,
     position: 'relative',
     width: '100%',
   },
@@ -833,7 +833,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   webSearchBadgeRow: {
     display: 'flex',
     justifyContent: 'flex-start',
-    marginBottom: spacing[1],
+    marginBottom: '4px',
   },
 
   webSearchBadge: {
@@ -859,7 +859,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   content: {
     fontSize: typography.sizes.sm,
     color: colors.fg.primary,
-    lineHeight: typography.lineHeights.normal,
+    lineHeight: 1.4,
     fontFamily: typography.fonts.body,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
@@ -867,7 +867,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   },
   markdownParagraph: {
     margin: 0,
-    marginBottom: spacing[1],
+    marginBottom: '4px',
   },
   markdownStrong: {
     fontWeight: typography.weights.bold,
@@ -895,11 +895,11 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.xs,
   },
   markdownList: {
-    margin: `${spacing[1]} 0`,
+    margin: '4px 0',
     paddingLeft: spacing[3],
   },
   markdownListItem: {
-    marginBottom: spacing[1],
+    marginBottom: '2px',
   },
   markdownLink: {
     color: colors.accent.primary,
@@ -979,13 +979,13 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
 
   citations: {
-    marginTop: spacing[2],
+    marginTop: '6px',
     borderTop: `1px solid ${colors.border.muted}`,
-    paddingTop: spacing[2],
+    paddingTop: '6px',
   },
 
   citationsEmpty: {
-    marginTop: spacing[2],
+    marginTop: '6px',
     fontSize: typography.sizes.xs,
     color: colors.fg.quaternary,
     fontFamily: typography.fonts.body,
@@ -1005,7 +1005,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     paddingLeft: spacing[3],
     display: 'flex',
     flexDirection: 'column',
-    gap: spacing[1],
+    gap: '2px',
   } as React.CSSProperties,
 
   citationItem: {
