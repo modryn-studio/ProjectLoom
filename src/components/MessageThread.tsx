@@ -448,12 +448,38 @@ const MessageBubble = memo(function MessageBubble({
   // Toast for feedback
   const toast = useToast();
 
+  const webSearchMetadata = useMemo(() => {
+    const custom = message.metadata?.custom as { webSearch?: { used?: boolean; sources?: WebSource[] } } | undefined;
+    const metadata = custom?.webSearch;
+    if (!metadata) return null;
+
+    const sources = Array.isArray(metadata.sources)
+      ? metadata.sources.filter((source) => source && source.url && source.title)
+      : [];
+
+    return {
+      used: Boolean(metadata.used ?? sources.length > 0),
+      sources,
+    };
+  }, [message.metadata]);
+
   const webSearchData = useMemo(() => {
     if (isUser || isSystem) {
       return { content: message.content, sources: [], used: false };
     }
-    return parseWebSources(message.content);
-  }, [message.content, isUser, isSystem]);
+
+    const parsed = parseWebSources(message.content);
+
+    if (webSearchMetadata) {
+      return {
+        content: parsed.content,
+        sources: webSearchMetadata.sources,
+        used: webSearchMetadata.used,
+      };
+    }
+
+    return parsed;
+  }, [message.content, isUser, isSystem, webSearchMetadata]);
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(

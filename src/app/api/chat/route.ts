@@ -54,19 +54,8 @@ interface APIError {
 // WEB SEARCH
 // =============================================================================
 
-const WEB_SEARCH_MARKER = '[[WEB_SEARCH]]';
-const WEB_SEARCH_SOURCES_LABEL = 'Sources:';
-
 const WEB_SEARCH_SYSTEM_PROMPT = `When the user needs up-to-date info or explicitly asks to research, call the web_search tool.
-After using web_search, append a short citations block at the end of your answer using this exact format:
-
-${WEB_SEARCH_MARKER}
-${WEB_SEARCH_SOURCES_LABEL}
-1. Title - https://example.com
-2. Title - https://example.com
-3. Title - https://example.com
-
-Keep it to 3 sources max. Do not invent sources or URLs.`;
+Do not fabricate sources. If you use web_search, your response should summarize findings plainly; citations are handled separately.`;
 
 // =============================================================================
 // PROVIDER DETECTION
@@ -320,6 +309,8 @@ export async function POST(req: Request): Promise<Response> {
               title: result.title || result.url,
               url: result.url,
             }));
+
+          streamData.append({ type: 'web_search_result', sources });
 
           return {
             summary: data.answer || '',

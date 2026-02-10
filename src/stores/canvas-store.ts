@@ -11,6 +11,7 @@ import { clearKnowledgeBaseStorage, deleteWorkspaceKnowledgeBase } from '@/lib/k
 import type { 
   Conversation, 
   Message,
+  MessageMetadata,
   Position, 
   EdgeConnection, 
   StorageData, 
@@ -240,7 +241,7 @@ interface WorkspaceState {
   clearDeleteConversationRequest: () => void;
 
   // Actions - AI Integration (Phase 2)
-  addAIMessage: (conversationId: string, content: string, model: string) => void;
+  addAIMessage: (conversationId: string, content: string, model: string, metadata?: MessageMetadata) => void;
   setConversationModel: (conversationId: string, model: string) => void;
   getConversationModel: (conversationId: string) => string | undefined;
   getConversationMessages: (conversationId: string) => Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
@@ -1872,7 +1873,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     // AI Integration (Phase 2)
     // =========================================================================
 
-    addAIMessage: (conversationId: string, content: string, model: string) => {
+    addAIMessage: (conversationId: string, content: string, model: string, metadata?: MessageMetadata) => {
       const { conversations, nodes } = get();
       const conversation = conversations.get(conversationId);
       
@@ -1889,6 +1890,10 @@ export const useCanvasStore = create<WorkspaceState>()(
         timestamp: new Date(),
         metadata: {
           model,
+          ...(metadata ?? {}),
+          custom: {
+            ...(metadata?.custom ?? {}),
+          },
         },
       };
 

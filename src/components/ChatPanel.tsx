@@ -27,6 +27,11 @@ const MAX_PANEL_WIDTH = 800;
 const KB_CONTEXT_MAX_CHARS = 5000;
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 
+interface WebSearchSource {
+  title: string;
+  url: string;
+}
+
 // =============================================================================
 // CHAT PANEL COMPONENT
 // =============================================================================
@@ -66,8 +71,50 @@ export function ChatPanel() {
   const [isResizeHovered, setIsResizeHovered] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [messageListHeight, setMessageListHeight] = useState(0);
-  const [isWebSearching, setIsWebSearching] = useState(false);
+
+  const webSearchStateRef = useRef({
+    isSearching: false,
+    used: false,
+    sources: [] as WebSearchSource[],
+  });
+
+  const deriveWebSearchState = useCallback((events: unknown[] | undefined) => {
+    if (!events || events.length === 0) {
+      return { isSearching: false, used: false, sources: [] as WebSearchSource[] };
+    }
+
+    let starts = 0;
+    let ends = 0;
+    let latestSources: WebSearchSource[] = [];
+    let sawSearch = false;
+
+    for (const event of events) {
+      if (!event || typeof event !== 'object') continue;
+      const eventType = (event as { type?: string }).type;
+      if (eventType === 'web_search_start') {
+        starts += 1;
+        sawSearch = true;
+      }
+      if (eventType === 'web_search_end') ends += 1;
+      if (eventType === 'web_search_result') {
+        const sources = (event as { sources?: WebSearchSource[] }).sources;
+        if (Array.isArray(sources)) {
+          latestSources = sources;
+        }
+      }
+    }
+
+    return {
+      isSearching: starts > ends,
+      used: sawSearch || latestSources.length > 0,
+      sources: latestSources,
+    };
+  }, []);
   
+  const effectivePanelWidth = !isResizing && uiPrefs.chatPanelWidth
+    ? uiPrefs.chatPanelWidth
+    : panelWidth;
+
   // Keep ref in sync with state
   useEffect(() => {
     panelWidthRef.current = panelWidth;
@@ -245,15 +292,24 @@ export function ChatPanel() {
     error: chatError,
     setMessages,
     data,
-    status,
+    setData,
   } = useChat({
     api: '/api/chat',
     id: activeConversationId || undefined,
     body: chatBody,
     onFinish: (message, options) => {
+      const webSearchMetadata = webSearchStateRef.current.used ? {
+        custom: {
+          webSearch: {
+            used: true,
+            sources: webSearchStateRef.current.sources,
+          },
+        },
+      } : undefined;
+
       // Persist AI message to store when streaming finishes
       if (activeConversationId && currentModel) {
-        addAIMessage(activeConversationId, message.content, currentModel);
+        addAIMessage(activeConversationId, message.content, currentModel, webSearchMetadata);
       }
 
       if (activeConversationId && currentModel && options?.usage) {
@@ -353,8 +409,9 @@ export function ChatPanel() {
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
 
+    setData([]);
     rawHandleSubmit(e, { body });
-  }, [chatBody, rawHandleSubmit, buildCanvasContextPayload]);
+  }, [chatBody, rawHandleSubmit, buildCanvasContextPayload, setData]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
@@ -391,24 +448,23 @@ export function ChatPanel() {
         // Compare content to detect if it's a new/partial message
         if (!lastStoreMessage || lastStoreMessage.content !== lastMessage.content) {
           if (activeConversationId && currentModel) {
-            addAIMessage(activeConversationId, lastMessage.content, currentModel);
+            const webSearchMetadata = webSearchStateRef.current.used ? {
+              custom: {
+                webSearch: {
+                  used: true,
+                  sources: webSearchStateRef.current.sources,
+                },
+              },
+            } : undefined;
+            addAIMessage(activeConversationId, lastMessage.content, currentModel, webSearchMetadata);
           }
           // Clear attachments after partial save (intentional effect-based cleanup)
-          /* eslint-disable-next-line react-hooks/set-state-in-effect */
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setPendingAttachments([]);
         }
       }
     }
   }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages]);
-
-  // Sync with preferences when they change
-  useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (uiPrefs.chatPanelWidth && !isResizing) {
-      setPanelWidth(uiPrefs.chatPanelWidth);
-    }
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [uiPrefs.chatPanelWidth, isResizing]);
 
   // Resize handlers (IDENTICAL to CanvasTreeSidebar)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -457,7 +513,7 @@ export function ChatPanel() {
     top: isMaximized ? 0 : 'auto',
     left: isMaximized ? 0 : 'auto',
     right: isMaximized ? 0 : 'auto',
-    width: isMaximized ? '100vw' : panelWidth,
+    width: isMaximized ? '100vw' : effectivePanelWidth,
     minWidth: isMaximized ? '100vw' : (chatPanelOpen ? MIN_PANEL_WIDTH : 0),
     maxWidth: isMaximized ? '100vw' : (chatPanelOpen ? MAX_PANEL_WIDTH : 0),
     backgroundColor: colors.bg.secondary,
@@ -471,7 +527,7 @@ export function ChatPanel() {
     zIndex: isMaximized ? 200 : 1,
     flexShrink: 0,
     pointerEvents: chatPanelOpen ? 'auto' : 'none',
-  }), [panelWidth, isResizing, isMaximized, chatPanelOpen]);
+  }), [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen]);
 
   // Memoized resize handle styles
   const resizeHandleStyles = useMemo<React.CSSProperties>(() => ({
@@ -507,36 +563,20 @@ export function ChatPanel() {
     }
   }, [activeConversationId, setConversationModel]);
 
-  useEffect(() => {
-    if (!data || data.length === 0) {
-      setIsWebSearching(false);
-      return;
-    }
-
-    let starts = 0;
-    let ends = 0;
-
-    for (const event of data) {
-      if (!event || typeof event !== 'object') continue;
-      const eventType = (event as { type?: string }).type;
-      if (eventType === 'web_search_start') starts += 1;
-      if (eventType === 'web_search_end') ends += 1;
-    }
-
-    setIsWebSearching(starts > ends);
-  }, [data]);
+  const webSearchState = useMemo(
+    () => deriveWebSearchState(data as unknown[] | undefined),
+    [data, deriveWebSearchState]
+  );
 
   useEffect(() => {
-    if (status === 'ready' || status === 'error') {
-      setIsWebSearching(false);
-    }
-  }, [status]);
+    webSearchStateRef.current = webSearchState;
+  }, [webSearchState]);
 
   return (
     <SidePanel
       ref={panelRef}
       isOpen={chatPanelOpen}
-      width={isMaximized ? '100vw' : panelWidth}
+      width={isMaximized ? '100vw' : effectivePanelWidth}
       style={panelStyles}
     >
       {/* Resize handle */}
@@ -559,7 +599,7 @@ export function ChatPanel() {
             onMaximize={handleMaximize}
           />
 
-          {isWebSearching && (
+          {webSearchState.isSearching && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
