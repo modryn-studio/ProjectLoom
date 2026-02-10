@@ -54,8 +54,17 @@ interface APIError {
 // WEB SEARCH
 // =============================================================================
 
-const WEB_SEARCH_SYSTEM_PROMPT = `When the user needs up-to-date info or explicitly asks to research, call the web_search tool.
-Do not fabricate sources. If you use web_search, your response should summarize findings plainly; citations are handled separately.`;
+const WEB_SEARCH_SYSTEM_PROMPT = `You have access to the web_search tool. Use it proactively for:
+- Current events, news, weather, sports scores, stock prices
+- Recent information (anything from the last few years)
+- Facts that change over time or vary by location
+- When user asks "what's happening", "latest", "current", "today", "now"
+
+If you need location/specifics for a search, make a reasonable guess or search general terms first.
+Example: "weather today" → search "current weather forecast" or "weather news today"
+
+Do not ask the user for more information before searching. Search first, then ask for clarification if needed.
+Do not fabricate sources. Summarize findings plainly; citations are handled separately.`;
 
 // =============================================================================
 // PROVIDER DETECTION
