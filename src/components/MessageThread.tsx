@@ -859,7 +859,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   content: {
     fontSize: typography.sizes.sm,
     color: colors.fg.primary,
-    lineHeight: 1.4,
+    lineHeight: 1.6,
     fontFamily: typography.fonts.body,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
@@ -867,7 +867,6 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   },
   markdownParagraph: {
     margin: 0,
-    marginBottom: '4px',
   },
   markdownStrong: {
     fontWeight: typography.weights.bold,
@@ -883,7 +882,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     padding: `0 ${spacing[1]}`,
   },
   markdownPre: {
-    margin: `${spacing[2]} 0`,
+    margin: `${spacing[3]} 0`,
     padding: `${spacing[2]} ${spacing[3]}`,
     backgroundColor: colors.bg.inset,
     border: `1px solid ${colors.border.muted}`,
@@ -895,11 +894,11 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.xs,
   },
   markdownList: {
-    margin: '4px 0',
+    margin: `${spacing[2]} 0`,
     paddingLeft: spacing[3],
   },
   markdownListItem: {
-    marginBottom: '2px',
+    marginBottom: 0,
   },
   markdownLink: {
     color: colors.accent.primary,
