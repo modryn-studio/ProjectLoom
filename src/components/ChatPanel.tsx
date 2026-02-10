@@ -287,7 +287,7 @@ export function ChatPanel() {
     messages: chatMessages,
     input,
     setInput,
-    handleSubmit: rawHandleSubmit,
+    append,
     isLoading: isStreaming,
     stop,
     error: chatError,
@@ -338,7 +338,8 @@ export function ChatPanel() {
     },
   });
 
-  const getRagQuery = useCallback(() => {
+  const getRagQuery = useCallback((explicitMessage?: string) => {
+    if (explicitMessage) return explicitMessage;
     if (input.trim()) return input.trim();
     const lastUserMessage = activeConversation?.content
       ?.slice()
@@ -347,13 +348,13 @@ export function ChatPanel() {
     return lastUserMessage?.content?.trim() || '';
   }, [input, activeConversation]);
 
-  const buildCanvasContextPayload = useCallback(async () => {
+  const buildCanvasContextPayload = useCallback(async (explicitMessage?: string) => {
     const instructions = activeWorkspace?.context?.instructions?.trim() || '';
     if (!ragIndex) {
       return instructions ? { instructions } : null;
     }
 
-    const query = getRagQuery();
+    const query = getRagQuery(explicitMessage);
     if (!query) {
       return instructions ? { instructions } : null;
     }
@@ -449,9 +450,12 @@ export function ChatPanel() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Get user message but DON'T clear input yet (useChat needs it)
+    // Get user message and clear input immediately for better UX
     const userMessage = input.trim();
     if (!userMessage) return;
+    
+    // Clear input immediately so user sees instant feedback
+    setInput('');
 
     // Check if we should search first
     const needsSearch = detectSearchIntent(userMessage);
@@ -461,8 +465,8 @@ export function ChatPanel() {
       searchResult = await executeWebSearch(userMessage);
     }
 
-    // Build canvas context
-    const canvasContextPayload = await buildCanvasContextPayload();
+    // Build canvas context (pass explicit message since input is now cleared)
+    const canvasContextPayload = await buildCanvasContextPayload(userMessage);
 
     // If we have search results, inject them into the system prompt
     let enhancedContext = canvasContextPayload;
@@ -489,9 +493,17 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
 
     setData([]);
     
-    // Call useChat's handleSubmit - it will clear input automatically
-    rawHandleSubmit(e, { body });
-  }, [input, tavilyKey, executeWebSearch, buildCanvasContextPayload, chatBody, setData, rawHandleSubmit]);
+    // Use append to programmatically add the message (doesn't rely on input field)
+    await append(
+      {
+        role: 'user',
+        content: userMessage,
+      },
+      {
+        body,
+      }
+    );
+  }, [input, setInput, tavilyKey, executeWebSearch, buildCanvasContextPayload, chatBody, setData, append]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {

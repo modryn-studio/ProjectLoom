@@ -221,4 +221,55 @@ describe('branching invariants', () => {
     useCanvasStore.getState().redo();
     expect(useCanvasStore.getState().conversations.size).toBe(2);
   });
+
+  it('preserves parent conversation content when undoing branch creation', () => {
+    // Regression test for bug where parent conversation content was deleted on undo
+    const parentMessages = [
+      makeMessage('First message'),
+      makeMessage('Second message'),
+      makeMessage('Third message'),
+    ];
+    const parent = makeConversation({
+      id: 'parent',
+      content: parentMessages,
+      position: { x: 0, y: 0 },
+    });
+
+    seedStore([parent]);
+
+    // Verify parent has all messages
+    const parentBefore = useCanvasStore.getState().conversations.get('parent');
+    expect(parentBefore?.content).toHaveLength(3);
+    expect(parentBefore?.content[0]?.content).toBe('First message');
+
+    // Branch from the parent
+    const branch = useCanvasStore.getState().branchFromMessage({
+      sourceCardId: parent.id,
+      messageIndex: 1, // Branch from second message
+      branchReason: 'Test branch',
+    });
+
+    expect(branch).toBeTruthy();
+    expect(useCanvasStore.getState().conversations.size).toBe(2);
+
+    // Undo the branch creation
+    useCanvasStore.getState().undo();
+
+    // Parent should still exist and have all its messages
+    expect(useCanvasStore.getState().conversations.size).toBe(1);
+    const parentAfterUndo = useCanvasStore.getState().conversations.get('parent');
+    expect(parentAfterUndo).toBeTruthy();
+    expect(parentAfterUndo?.content).toHaveLength(3);
+    expect(parentAfterUndo?.content[0]?.content).toBe('First message');
+    expect(parentAfterUndo?.content[1]?.content).toBe('Second message');
+    expect(parentAfterUndo?.content[2]?.content).toBe('Third message');
+
+    // Redo should bring back the branch
+    useCanvasStore.getState().redo();
+    expect(useCanvasStore.getState().conversations.size).toBe(2);
+    
+    // And parent should still have all messages
+    const parentAfterRedo = useCanvasStore.getState().conversations.get('parent');
+    expect(parentAfterRedo?.content).toHaveLength(3);
+  });
 });
