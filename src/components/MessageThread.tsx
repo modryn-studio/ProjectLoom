@@ -151,6 +151,7 @@ export function MessageThread({
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
+  const prevIsStreamingRef = useRef(isStreaming);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
   const [isTouchDevice] = useState(() => (
     typeof window !== 'undefined'
@@ -209,6 +210,17 @@ export function MessageThread({
     : '';
 
   useEffect(() => {
+    const wasStreaming = prevIsStreamingRef.current;
+    const isNowStreaming = isStreaming;
+    
+    // Update ref for next render
+    prevIsStreamingRef.current = isStreaming;
+    
+    // Don't auto-scroll when streaming just finished (user may be reading above)
+    if (wasStreaming && !isNowStreaming) {
+      return;
+    }
+    
     if (scrollContainerRef.current && isPinnedToBottomRef.current) {
       // Use requestAnimationFrame to ensure DOM has updated before scrolling
       requestAnimationFrame(() => {
@@ -217,7 +229,7 @@ export function MessageThread({
         }
       });
     }
-  }, [displayMessages.length, streamingMessages.length, lastStreamingContent]);
+  }, [displayMessages.length, streamingMessages.length, lastStreamingContent, isStreaming]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
