@@ -362,6 +362,10 @@ export async function POST(req: Request): Promise<Response> {
       ...(systemPrompt ? { system: systemPrompt } : {}),
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
       ...(webSearchTool ? { tools: { web_search: webSearchTool }, toolChoice: 'auto', maxSteps: 3 } : {}),
+      onFinish: () => {
+        // Explicitly close streamData when text stream finishes
+        streamData.close();
+      },
     });
 
     // Return streaming response with usage (data protocol)
