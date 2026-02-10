@@ -633,6 +633,12 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
+        {!isUser && webSearchData.used && webSearchData.sources.length === 0 && (
+          <div style={bubbleStyles.citationsEmpty}>
+            No sources available for this search.
+          </div>
+        )}
+
         {/* Image attachments */}
         {message.attachments && message.attachments.length > 0 && (
           <div style={bubbleStyles.attachmentRow}>
@@ -773,7 +779,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     padding: spacing[4],
     display: 'flex',
     flexDirection: 'column',
-    gap: spacing[5],
+    gap: spacing[3],
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
@@ -819,7 +825,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
 
   message: {
-    padding: `${spacing[3]} ${spacing[4]}`,
+    padding: `${spacing[2]} ${spacing[3]}`,
     position: 'relative',
     width: '100%',
   },
@@ -827,7 +833,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   webSearchBadgeRow: {
     display: 'flex',
     justifyContent: 'flex-start',
-    marginBottom: spacing[2],
+    marginBottom: spacing[1],
   },
 
   webSearchBadge: {
@@ -853,7 +859,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   content: {
     fontSize: typography.sizes.sm,
     color: colors.fg.primary,
-    lineHeight: typography.lineHeights.relaxed,
+    lineHeight: typography.lineHeights.normal,
     fontFamily: typography.fonts.body,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
@@ -861,7 +867,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   },
   markdownParagraph: {
     margin: 0,
-    marginBottom: spacing[2],
+    marginBottom: spacing[1],
   },
   markdownStrong: {
     fontWeight: typography.weights.bold,
@@ -889,8 +895,8 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.xs,
   },
   markdownList: {
-    margin: `${spacing[2]} 0`,
-    paddingLeft: spacing[4],
+    margin: `${spacing[1]} 0`,
+    paddingLeft: spacing[3],
   },
   markdownListItem: {
     marginBottom: spacing[1],
@@ -918,7 +924,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing[2],
-    marginTop: spacing[1],
+    marginTop: spacing[0],
     minHeight: 20,
     transition: 'opacity 0.15s ease',
     paddingTop: '2px',
@@ -978,6 +984,13 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     paddingTop: spacing[2],
   },
 
+  citationsEmpty: {
+    marginTop: spacing[2],
+    fontSize: typography.sizes.xs,
+    color: colors.fg.quaternary,
+    fontFamily: typography.fonts.body,
+  },
+
   citationsTitle: {
     fontSize: typography.sizes.xs,
     color: colors.fg.quaternary,
@@ -989,7 +1002,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
 
   citationsList: {
     margin: 0,
-    paddingLeft: spacing[4],
+    paddingLeft: spacing[3],
     display: 'flex',
     flexDirection: 'column',
     gap: spacing[1],
