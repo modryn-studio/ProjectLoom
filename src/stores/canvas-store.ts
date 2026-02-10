@@ -26,6 +26,7 @@ import type {
   WorkspaceContext,
 } from '@/types';
 import { logger } from '@/lib/logger';
+import { estimateTokens } from '@/lib/context-utils';
 import { useToastStore } from '@/stores/toast-store';
 import { usePreferencesStore } from '@/stores/preferences-store';
 import { generateConversationTitle } from '@/utils/formatters';
@@ -42,6 +43,14 @@ const MERGE_CONFIG = {
   MAX_PARENTS: 5,
   WARNING_THRESHOLD: 3,
   BUNDLE_THRESHOLD: 4,
+};
+
+// Inherited context configuration
+const INHERITED_CONTEXT_CONFIG = {
+  /** Max estimated tokens for inherited context before truncation */
+  MAX_INHERITED_TOKENS: 10000,
+  /** Max depth for recursive context collection */
+  MAX_DEPTH: 10,
 };
 
 // =============================================================================
@@ -123,6 +132,113 @@ function canConnect(
   }
   
   return { valid: true };
+}
+
+// =============================================================================
+// INHERITED CONTEXT COLLECTION
+// =============================================================================
+
+/**
+ * Recursively collect inherited messages from all ancestor cards.
+ * Handles multi-level branching (grandparent→parent→child) and merge nodes
+ * with multiple parents. Uses a visited set for cycle prevention and
+ * deduplicates messages by ID.
+ */
+function collectInheritedMessages(
+  conversation: Conversation,
+  conversations: Map<string, Conversation>,
+  visited: Set<string> = new Set(),
+  depth: number = 0,
+): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
+  // Guard: max depth and cycle prevention
+  if (depth >= INHERITED_CONTEXT_CONFIG.MAX_DEPTH || visited.has(conversation.id)) {
+    return [];
+  }
+  visited.add(conversation.id);
+
+  const result: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+  const seenMessageIds = new Set<string>();
+
+  // Process each parent card
+  for (const parentId of conversation.parentCardIds) {
+    const parentConversation = conversations.get(parentId);
+    const inheritedEntry = conversation.inheritedContext[parentId];
+
+    if (parentConversation) {
+      // First, recursively collect the parent's own inherited context
+      // This gives us grandparent→parent chain messages
+      const ancestorMessages = collectInheritedMessages(
+        parentConversation,
+        conversations,
+        visited,
+        depth + 1,
+      );
+      for (const msg of ancestorMessages) {
+        result.push(msg);
+      }
+    }
+
+    // Then add the messages inherited from this specific parent
+    if (inheritedEntry?.messages?.length) {
+      for (const msg of inheritedEntry.messages) {
+        // Deduplicate by message ID if available
+        if (msg.id && seenMessageIds.has(msg.id)) continue;
+        if (msg.id) seenMessageIds.add(msg.id);
+
+        result.push({ role: msg.role, content: msg.content });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Build a structural metadata system message that gives the AI awareness
+ * of the conversation's position in the canvas tree.
+ */
+function buildStructuralMetadata(
+  conversation: Conversation,
+  conversations: Map<string, Conversation>,
+): string {
+  const parts: string[] = [];
+
+  // Conversation type
+  const isMerge = conversation.isMergeNode;
+  const isRoot = conversation.parentCardIds.length === 0;
+  const isBranch = !isRoot && !isMerge;
+
+  parts.push('[Conversation Context]');
+  parts.push(`Card: "${conversation.metadata.title}"`);
+
+  if (isRoot) {
+    parts.push('Type: Root conversation');
+  } else if (isMerge) {
+    const parentNames = conversation.parentCardIds
+      .map(id => conversations.get(id)?.metadata.title || 'Unknown')
+      .join(', ');
+    parts.push(`Type: Merge of ${conversation.parentCardIds.length} conversations`);
+    parts.push(`Source threads: ${parentNames}`);
+  } else if (isBranch) {
+    const parentId = conversation.parentCardIds[0];
+    const parent = conversations.get(parentId);
+    const branchIdx = conversation.branchPoint?.messageIndex;
+    parts.push('Type: Branched conversation');
+    if (parent) {
+      parts.push(`Branched from: "${parent.metadata.title}"${branchIdx !== undefined ? ` at message ${branchIdx + 1}` : ''}`);
+    }
+  }
+
+  // Inform about inherited context
+  const totalInherited = Object.values(conversation.inheritedContext)
+    .reduce((sum, entry) => sum + (entry.messages?.length || 0), 0);
+  if (totalInherited > 0) {
+    parts.push(`Inherited messages: ${totalInherited} from parent(s)`);
+  }
+
+  parts.push('This is a canvas-based conversation system where users can branch and merge conversation threads.');
+
+  return parts.join('\n');
 }
 
 // =============================================================================
@@ -2096,11 +2212,77 @@ export const useCanvasStore = create<WorkspaceState>()(
         return [];
       }
 
-      // Convert messages to format expected by useChat
-      return conversation.content.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      const result: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+
+      // --- Collect inherited context from parent cards ---
+      const hasParents = conversation.parentCardIds.length > 0;
+      const isMerge = conversation.isMergeNode;
+
+      if (hasParents) {
+        // Recursively collect all inherited messages with cycle prevention
+        const collectedMessages = collectInheritedMessages(
+          conversation,
+          conversations,
+        );
+
+        if (collectedMessages.length > 0) {
+          // Build structural metadata system message
+          const metadata = buildStructuralMetadata(conversation, conversations);
+          result.push({ role: 'system', content: metadata });
+
+          // Apply token limit to inherited messages
+          let inheritedMessages = collectedMessages;
+          const tokenCount = estimateTokens(inheritedMessages as Message[]);
+
+          if (tokenCount > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS) {
+            // Truncate oldest messages first, keep recent context
+            let currentTokens = tokenCount;
+            let startIdx = 0;
+            while (
+              startIdx < inheritedMessages.length - 2 &&
+              currentTokens > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS
+            ) {
+              const msgTokens = Math.ceil(inheritedMessages[startIdx].content.length / 4);
+              currentTokens -= msgTokens;
+              startIdx++;
+            }
+            const truncatedCount = startIdx;
+            inheritedMessages = inheritedMessages.slice(startIdx);
+
+            // Notify AI about truncation
+            result.push({
+              role: 'system',
+              content: `[Note: ${truncatedCount} older inherited messages were omitted for context length. The most recent inherited messages are preserved below.]`,
+            });
+          }
+
+          // Add inherited messages
+          for (const msg of inheritedMessages) {
+            result.push({ role: msg.role, content: msg.content });
+          }
+
+          // Separator between inherited and current context
+          result.push({
+            role: 'system',
+            content: '[The messages above are inherited context from parent conversation(s). The messages below are from the current conversation.]',
+          });
+        }
+
+        // Handle merge node synthesis prompt
+        if (isMerge && conversation.mergeMetadata?.synthesisPrompt) {
+          result.push({
+            role: 'system',
+            content: `[Synthesis objective: ${conversation.mergeMetadata.synthesisPrompt}]`,
+          });
+        }
+      }
+
+      // --- Add current conversation's own messages ---
+      for (const msg of conversation.content) {
+        result.push({ role: msg.role, content: msg.content });
+      }
+
+      return result;
     },
 
     // =========================================================================
