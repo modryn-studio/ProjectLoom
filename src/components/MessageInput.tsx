@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Send, Square, AlertCircle, Settings, Paperclip, X } from 'lucide-react';
 
-import { colors, typography, spacing, effects, components } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { ModelSelector } from './ModelSelector';
 import type { MessageAttachment } from '@/types';
@@ -12,8 +12,8 @@ import type { MessageAttachment } from '@/types';
 // CONSTANTS
 // =============================================================================
 
-const MIN_INPUT_HEIGHT = components.input.minHeight;
-const MAX_INPUT_HEIGHT = components.input.maxHeight;
+const MIN_INPUT_HEIGHT = 28; // Single line height
+const MAX_INPUT_HEIGHT = 200; // ~9-10 lines before scrolling (VS Code style)
 
 // =============================================================================
 // MESSAGE INPUT COMPONENT
@@ -298,6 +298,7 @@ export function MessageInput({
         <div style={inputStyles.inputSurface}>
           <textarea
             ref={textareaRef}
+            rows={1}
             value={inputValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
@@ -451,6 +452,7 @@ const inputStyles: Record<string, React.CSSProperties> = {
     lineHeight: typography.lineHeights.normal,
     padding: `${spacing[1]} ${spacing[2]}`,
     margin: 0,
+    overflowY: 'auto',
     // Discrete scrollbar
     scrollbarWidth: 'thin',
     scrollbarColor: 'var(--fg-quaternary) transparent',
