@@ -469,15 +469,12 @@ export function ChatPanel() {
     if (searchResult) {
       const searchContext = `
 
-[Web Search Results - Use this information to answer the user's question. DO NOT repeat these sources in your response, they will be shown separately as citations.]
+Web Search Results:
 
-Query: "${userMessage}"
-Summary: ${searchResult.summary}
+${searchResult.summary}
 
 Sources:
-${searchResult.sources.map((s, i) => `${i + 1}. ${s.title} - ${s.url}`).join('\n')}
-
-[End of search results. Answer naturally based on this information.]`;
+${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
       
       enhancedContext = {
         ...canvasContextPayload,
