@@ -64,6 +64,7 @@ export const colors = {
     errorBg: 'var(--error-bg)',
     errorFg: 'var(--error-fg)',
     errorBorder: 'var(--error-border)',
+    errorContrast: 'var(--error-contrast)',
     
     info: 'var(--info-solid)',
     infoBg: 'var(--info-bg)',

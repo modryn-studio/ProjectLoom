@@ -662,7 +662,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   backgroundColor: colors.semantic.error,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: colors.fg.primary,
+                  color: colors.semantic.errorContrast,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: typography.weights.medium,

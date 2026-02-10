@@ -46,6 +46,7 @@
   --error-border: #FECACA;
   --error-solid: #EF4444;
   --error-muted: #FEF2F2;
+  --error-contrast: #FFFFFF;
 
   --warning-bg: #FFFBEB;
   --warning-fg: #B45309;
@@ -107,6 +108,7 @@
   --error-border: rgba(239, 68, 68, 0.3);
   --error-solid: #EF4444;
   --error-muted: rgba(239, 68, 68, 0.15);
+  --error-contrast: #FFFFFF;
 
   --warning-bg: rgba(245, 158, 11, 0.15);
   --warning-fg: #FBBF24;
@@ -163,6 +165,7 @@
     --error-border: rgba(239, 68, 68, 0.3);
     --error-solid: #EF4444;
     --error-muted: rgba(239, 68, 68, 0.15);
+    --error-contrast: #FFFFFF;
 
     --warning-bg: rgba(245, 158, 11, 0.15);
     --warning-fg: #FBBF24;
@@ -224,6 +227,7 @@
   --color-error-border: var(--error-border);
   --color-error-solid: var(--error-solid);
   --color-error-muted: var(--error-muted);
+  --color-error-contrast: var(--error-contrast);
   
   --color-warning-bg: var(--warning-bg);
   --color-warning-fg: var(--warning-fg);
