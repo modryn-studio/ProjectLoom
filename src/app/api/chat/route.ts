@@ -205,13 +205,13 @@ export async function POST(req: Request): Promise<Response> {
     if (canvasContext?.instructions?.trim()) {
       contextMessages.push({
         role: 'system',
-        content: canvasContext.instructions.trim(),
+        content: `[Workspace Instructions]\n\n${canvasContext.instructions.trim()}`,
       });
     }
     if (canvasContext?.knowledgeBase?.trim()) {
       contextMessages.push({
         role: 'system',
-        content: `Knowledge Base:\n\n${canvasContext.knowledgeBase.trim()}`,
+        content: `[Knowledge Base]\n\n${canvasContext.knowledgeBase.trim()}`,
       });
     }
 

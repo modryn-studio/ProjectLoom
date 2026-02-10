@@ -208,24 +208,27 @@ function buildStructuralMetadata(
   const isRoot = conversation.parentCardIds.length === 0;
   const isBranch = !isRoot && !isMerge;
 
-  parts.push('[Conversation Context]');
-  parts.push(`Card: "${conversation.metadata.title}"`);
+  parts.push('[Current Card Context]');
+  parts.push(`Conversation: "${conversation.metadata.title}"`);
 
   if (isRoot) {
-    parts.push('Type: Root conversation');
+    parts.push('Type: Root conversation (no parent cards)');
   } else if (isMerge) {
     const parentNames = conversation.parentCardIds
-      .map(id => conversations.get(id)?.metadata.title || 'Unknown')
-      .join(', ');
-    parts.push(`Type: Merge of ${conversation.parentCardIds.length} conversations`);
-    parts.push(`Source threads: ${parentNames}`);
+      .map((id, idx) => {
+        const name = conversations.get(id)?.metadata.title || 'Unknown';
+        return `  ${idx + 1}. "${name}"`;
+      })
+      .join('\n');
+    parts.push(`Type: Merge node synthesizing ${conversation.parentCardIds.length} parent conversations:`);
+    parts.push(parentNames);
   } else if (isBranch) {
     const parentId = conversation.parentCardIds[0];
     const parent = conversations.get(parentId);
     const branchIdx = conversation.branchPoint?.messageIndex;
     parts.push('Type: Branched conversation');
     if (parent) {
-      parts.push(`Branched from: "${parent.metadata.title}"${branchIdx !== undefined ? ` at message ${branchIdx + 1}` : ''}`);
+      parts.push(`Parent card: "${parent.metadata.title}"${branchIdx !== undefined ? ` (branched at message ${branchIdx + 1})` : ''}`);
     }
   }
 
@@ -233,10 +236,11 @@ function buildStructuralMetadata(
   const totalInherited = Object.values(conversation.inheritedContext)
     .reduce((sum, entry) => sum + (entry.messages?.length || 0), 0);
   if (totalInherited > 0) {
-    parts.push(`Inherited messages: ${totalInherited} from parent(s)`);
+    parts.push(`\nInherited context: ${totalInherited} messages from parent card(s)`);
+    parts.push('(Messages below marked with source)');
   }
 
-  parts.push('This is a canvas-based conversation system where users can branch and merge conversation threads.');
+  parts.push('\nNote: This is a canvas-based conversation system. Users can reference "parent card context", "workspace instructions", or "canvas" when asking questions.');
 
   return parts.join('\n');
 }
@@ -2219,60 +2223,112 @@ export const useCanvasStore = create<WorkspaceState>()(
       const isMerge = conversation.isMergeNode;
 
       if (hasParents) {
-        // Recursively collect all inherited messages with cycle prevention
-        const collectedMessages = collectInheritedMessages(
-          conversation,
-          conversations,
-        );
+        // Build structural metadata system message
+        const metadata = buildStructuralMetadata(conversation, conversations);
+        result.push({ role: 'system', content: metadata });
 
-        if (collectedMessages.length > 0) {
-          // Build structural metadata system message
-          const metadata = buildStructuralMetadata(conversation, conversations);
-          result.push({ role: 'system', content: metadata });
+        // For merge nodes with multiple parents, label messages by source
+        // For single-parent branches, use simpler unlabeled approach
+        if (isMerge && conversation.parentCardIds.length > 1) {
+          // Merge node: label inherited messages by parent source
+          let allInheritedMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+          
+          for (const parentId of conversation.parentCardIds) {
+            const parentConv = conversations.get(parentId);
+            const parentName = parentConv?.metadata.title || 'Unknown';
+            const inheritedEntry = conversation.inheritedContext[parentId];
 
-          // Apply token limit to inherited messages
-          let inheritedMessages = collectedMessages;
-          const tokenCount = estimateTokens(inheritedMessages as Message[]);
+            if (inheritedEntry?.messages?.length) {
+              // Add parent label
+              allInheritedMessages.push({
+                role: 'system',
+                content: `--- Messages from parent: "${parentName}" ---`,
+              });
 
-          if (tokenCount > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS) {
-            // Truncate oldest messages first, keep recent context
-            let currentTokens = tokenCount;
-            let startIdx = 0;
-            while (
-              startIdx < inheritedMessages.length - 2 &&
-              currentTokens > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS
-            ) {
-              const msgTokens = Math.ceil(inheritedMessages[startIdx].content.length / 4);
-              currentTokens -= msgTokens;
-              startIdx++;
+              // Add parent's messages
+              for (const msg of inheritedEntry.messages) {
+                allInheritedMessages.push({ role: msg.role, content: msg.content });
+              }
             }
-            const truncatedCount = startIdx;
-            inheritedMessages = inheritedMessages.slice(startIdx);
+          }
 
-            // Notify AI about truncation
+          // Apply token limit
+          if (allInheritedMessages.length > 0) {
+            const tokenCount = estimateTokens(allInheritedMessages as Message[]);
+            if (tokenCount > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS) {
+              let currentTokens = tokenCount;
+              let startIdx = 0;
+              while (
+                startIdx < allInheritedMessages.length - 2 &&
+                currentTokens > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS
+              ) {
+                const msgTokens = Math.ceil(allInheritedMessages[startIdx].content.length / 4);
+                currentTokens -= msgTokens;
+                startIdx++;
+              }
+              const truncatedCount = startIdx;
+              allInheritedMessages = allInheritedMessages.slice(startIdx);
+
+              result.push({
+                role: 'system',
+                content: `[Note: ${truncatedCount} older inherited messages were omitted for context length.]`,
+              });
+            }
+
+            result.push(...allInheritedMessages);
+          }
+
+          // Handle merge node synthesis prompt
+          if (conversation.mergeMetadata?.synthesisPrompt) {
             result.push({
               role: 'system',
-              content: `[Note: ${truncatedCount} older inherited messages were omitted for context length. The most recent inherited messages are preserved below.]`,
+              content: `[Synthesis objective: ${conversation.mergeMetadata.synthesisPrompt}]`,
             });
           }
+        } else {
+          // Single parent branch: use recursive collection without labels
+          const collectedMessages = collectInheritedMessages(
+            conversation,
+            conversations,
+          );
 
-          // Add inherited messages
-          for (const msg of inheritedMessages) {
-            result.push({ role: msg.role, content: msg.content });
+          if (collectedMessages.length > 0) {
+            // Apply token limit to inherited messages
+            let inheritedMessages = collectedMessages;
+            const tokenCount = estimateTokens(inheritedMessages as Message[]);
+
+            if (tokenCount > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS) {
+              let currentTokens = tokenCount;
+              let startIdx = 0;
+              while (
+                startIdx < inheritedMessages.length - 2 &&
+                currentTokens > INHERITED_CONTEXT_CONFIG.MAX_INHERITED_TOKENS
+              ) {
+                const msgTokens = Math.ceil(inheritedMessages[startIdx].content.length / 4);
+                currentTokens -= msgTokens;
+                startIdx++;
+              }
+              const truncatedCount = startIdx;
+              inheritedMessages = inheritedMessages.slice(startIdx);
+
+              result.push({
+                role: 'system',
+                content: `[Note: ${truncatedCount} older inherited messages were omitted for context length. Recent messages preserved below.]`,
+              });
+            }
+
+            // Add inherited messages
+            for (const msg of inheritedMessages) {
+              result.push({ role: msg.role, content: msg.content });
+            }
           }
-
-          // Separator between inherited and current context
-          result.push({
-            role: 'system',
-            content: '[The messages above are inherited context from parent conversation(s). The messages below are from the current conversation.]',
-          });
         }
 
-        // Handle merge node synthesis prompt
-        if (isMerge && conversation.mergeMetadata?.synthesisPrompt) {
+        // Separator between inherited and current context
+        if (conversation.parentCardIds.length > 0) {
           result.push({
             role: 'system',
-            content: `[Synthesis objective: ${conversation.mergeMetadata.synthesisPrompt}]`,
+            content: '--- Current conversation messages (below) ---',
           });
         }
       }
