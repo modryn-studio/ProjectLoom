@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
 import { SimpleChatMarkdown } from './SimpleChatMarkdown';
 import type { Message as ChatMessage } from 'ai';
 
@@ -115,62 +115,12 @@ const inheritedBannerStyles: Record<string, React.CSSProperties> = {
 };
 
 // =============================================================================
-// WEB SEARCH PARSING
+// WEB SEARCH TYPES
 // =============================================================================
-
-const WEB_SEARCH_MARKER = '[[WEB_SEARCH]]';
-const WEB_SEARCH_SOURCES_LABEL = 'Sources:';
 
 interface WebSource {
   title: string;
   url: string;
-}
-
-function parseWebSources(content: string): { content: string; sources: WebSource[]; used: boolean } {
-  if (!content.includes(WEB_SEARCH_MARKER)) {
-    return { content, sources: [], used: false };
-  }
-
-  const markerIndex = content.indexOf(WEB_SEARCH_MARKER);
-  const afterMarker = content.slice(markerIndex + WEB_SEARCH_MARKER.length);
-  const sourcesIndex = afterMarker.indexOf(WEB_SEARCH_SOURCES_LABEL);
-
-  if (sourcesIndex === -1) {
-    return {
-      content: content.replace(WEB_SEARCH_MARKER, '').trimEnd(),
-      sources: [],
-      used: true,
-    };
-  }
-
-  const cleanedContent = content.slice(0, markerIndex).trimEnd();
-  const sourcesText = afterMarker.slice(sourcesIndex + WEB_SEARCH_SOURCES_LABEL.length).trim();
-  const lines = sourcesText.split('\n').map((line) => line.trim()).filter(Boolean);
-
-  const sources: WebSource[] = [];
-
-  for (const line of lines) {
-    const urlMatch = line.match(/https?:\/\/\S+/);
-    if (!urlMatch) continue;
-
-    const url = urlMatch[0].replace(/[),.;]+$/, '');
-    const title = line
-      .replace(urlMatch[0], '')
-      .replace(/^[\s*\-\d.]+/, '')
-      .replace(/[-–—]+$/, '')
-      .trim();
-
-    sources.push({
-      title: title || url,
-      url,
-    });
-  }
-
-  return {
-    content: cleanedContent,
-    sources,
-    used: true,
-  };
 }
 
 // =============================================================================
@@ -185,6 +135,8 @@ interface MessageThreadProps {
   isStreaming?: boolean;
   /** Notify parent of scroll container height changes */
   onHeightChange?: (height: number) => void;
+  /** Web search state for showing searching indicator */
+  webSearchState?: { isSearching: boolean };
 }
 
 export function MessageThread({
@@ -192,6 +144,7 @@ export function MessageThread({
   streamingMessages = [],
   isStreaming = false,
   onHeightChange,
+  webSearchState,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
@@ -318,20 +271,40 @@ export function MessageThread({
       <AnimatePresence mode="sync">
         {displayMessages
           .filter((m): m is Message => m != null && typeof m.id === 'string')
-          .map((message: Message, index: number) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              index={index}
-              isHovered={hoveredMessageIndex === index}
-              isStreamingMessage={!!(message.metadata as { isStreaming?: boolean } | undefined)?.isStreaming}
-              isTouchDevice={isTouchDevice}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              onBranchClick={handleBranchClick}
-            />
-          ))}
+          .map((message: Message, index: number) => {
+            return (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                index={index}
+                isHovered={hoveredMessageIndex === index}
+                isStreamingMessage={!!(message.metadata as { isStreaming?: boolean } | undefined)?.isStreaming}
+                isTouchDevice={isTouchDevice}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onBranchClick={handleBranchClick}
+              />
+            );
+          })}
       </AnimatePresence>
+      
+      {/* Searching indicator - shown after last user message */}
+      {webSearchState?.isSearching && displayMessages.length > 0 && displayMessages[displayMessages.length - 1]?.role === 'user' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[2],
+            padding: `${spacing[3]} ${spacing[4]}`,
+            marginBottom: spacing[3],
+            color: colors.fg.secondary,
+            fontSize: typography.sizes.sm,
+          }}
+        >
+          <Loader size={14} className="animate-spin" />
+          <span>Searching web...</span>
+        </div>
+      )}
       
       {/* Empty state */}
       {displayMessages.length === 0 && (
@@ -374,8 +347,13 @@ const MessageBubble = memo(function MessageBubble({
 
   // Toast for feedback
   const toast = useToast();
+  
+  // Collapsed state for sources
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(true);
 
   const webSearchMetadata = useMemo(() => {
+    if (isUser || isSystem) return null;
+
     const custom = message.metadata?.custom as { webSearch?: { used?: boolean; sources?: WebSource[] } } | undefined;
     const metadata = custom?.webSearch;
     if (!metadata) return null;
@@ -388,24 +366,22 @@ const MessageBubble = memo(function MessageBubble({
       used: Boolean(metadata.used ?? sources.length > 0),
       sources,
     };
-  }, [message.metadata]);
+  }, [message.metadata, isUser, isSystem]);
 
   const webSearchData = useMemo(() => {
     if (isUser || isSystem) {
       return { content: message.content, sources: [], used: false };
     }
 
-    const parsed = parseWebSources(message.content);
-
     if (webSearchMetadata) {
       return {
-        content: parsed.content,
+        content: message.content,
         sources: webSearchMetadata.sources,
         used: webSearchMetadata.used,
       };
     }
 
-    return parsed;
+    return { content: message.content, sources: [], used: false };
   }, [message.content, isUser, isSystem, webSearchMetadata]);
 
   // Get text styles for language-aware rendering
@@ -503,27 +479,46 @@ const MessageBubble = memo(function MessageBubble({
 
         {!isUser && webSearchData.sources.length > 0 && (
           <div style={bubbleStyles.citations}>
-            <div style={bubbleStyles.citationsTitle}>Sources</div>
-            <ol style={bubbleStyles.citationsList}>
-              {webSearchData.sources.map((source) => (
-                <li key={source.url} style={bubbleStyles.citationItem}>
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={bubbleStyles.citationLink}
-                  >
-                    {source.title}
-                  </a>
-                </li>
-              ))}
-            </ol>
+            <div 
+              style={{
+                ...bubbleStyles.citationsTitle,
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[1],
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+              onClick={() => setSourcesCollapsed(!sourcesCollapsed)}
+            >
+              {sourcesCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              <span>{webSearchData.sources.length} {webSearchData.sources.length === 1 ? 'source' : 'sources'}</span>
+            </div>
+            {!sourcesCollapsed && (
+              <ol style={bubbleStyles.citationsList}>
+                {webSearchData.sources.map((source) => (
+                  <li key={source.url} style={bubbleStyles.citationItem}>
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={bubbleStyles.citationLink}
+                    >
+                      {source.title}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
 
         {!isUser && webSearchData.used && webSearchData.sources.length === 0 && (
-          <div style={bubbleStyles.citationsEmpty}>
-            No sources available for this search.
+          <div style={{
+            ...bubbleStyles.citationsEmpty,
+            fontSize: typography.sizes.xs,
+            color: colors.fg.tertiary,
+          }}>
+            Search performed (no sources available)
           </div>
         )}
 

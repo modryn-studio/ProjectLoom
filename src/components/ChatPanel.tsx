@@ -32,6 +32,32 @@ interface WebSearchSource {
   url: string;
 }
 
+interface WebSearchResult {
+  summary: string;
+  sources: WebSearchSource[];
+}
+
+// =============================================================================
+// SEARCH INTENT DETECTION
+// =============================================================================
+
+/**
+ * Detect if user message requires web search
+ */
+function detectSearchIntent(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  
+  // Explicit search keywords
+  const searchKeywords = [
+    'search', 'research', 'look up', 'find out', 'check',
+    'what is', 'what are', 'who is', 'where is', 'when did',
+    'latest', 'recent', 'current', 'today', 'this week',
+    'news about', 'update on', 'information about',
+  ];
+  
+  return searchKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
 // =============================================================================
 // CHAT PANEL COMPONENT
 // =============================================================================
@@ -72,44 +98,20 @@ export function ChatPanel() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [messageListHeight, setMessageListHeight] = useState(0);
 
-  const webSearchStateRef = useRef({
+  // Web search state
+  const [webSearchState, setWebSearchState] = useState<{
+    isSearching: boolean;
+    result: WebSearchResult | null;
+  }>({
     isSearching: false,
-    used: false,
-    sources: [] as WebSearchSource[],
+    result: null,
   });
 
-  const deriveWebSearchState = useCallback((events: unknown[] | undefined) => {
-    if (!events || events.length === 0) {
-      return { isSearching: false, used: false, sources: [] as WebSearchSource[] };
-    }
-
-    let starts = 0;
-    let ends = 0;
-    let latestSources: WebSearchSource[] = [];
-    let sawSearch = false;
-
-    for (const event of events) {
-      if (!event || typeof event !== 'object') continue;
-      const eventType = (event as { type?: string }).type;
-      if (eventType === 'web_search_start') {
-        starts += 1;
-        sawSearch = true;
-      }
-      if (eventType === 'web_search_end') ends += 1;
-      if (eventType === 'web_search_result') {
-        const sources = (event as { sources?: WebSearchSource[] }).sources;
-        if (Array.isArray(sources)) {
-          latestSources = sources;
-        }
-      }
-    }
-
-    return {
-      isSearching: starts > ends,
-      used: sawSearch || latestSources.length > 0,
-      sources: latestSources,
-    };
-  }, []);
+  // Ref to avoid stale closure in onFinish callback
+  const webSearchResultRef = useRef<WebSearchResult | null>(null);
+  useEffect(() => {
+    webSearchResultRef.current = webSearchState.result;
+  }, [webSearchState.result]);
   
   const effectivePanelWidth = !isResizing && uiPrefs.chatPanelWidth
     ? uiPrefs.chatPanelWidth
@@ -271,7 +273,6 @@ export function ChatPanel() {
   const chatBody = useMemo(() => ({
     model: currentModel,
     apiKey: currentApiKey,
-    tavilyKey: tavilyKey || undefined,
     // Pass image attachments for vision
     ...(pendingAttachments.length > 0 ? {
       attachments: pendingAttachments.map(a => ({
@@ -280,7 +281,7 @@ export function ChatPanel() {
         url: a.url,
       })),
     } : {}),
-  }), [currentModel, currentApiKey, pendingAttachments, tavilyKey]);
+  }), [currentModel, currentApiKey, pendingAttachments]);
 
   const {
     messages: chatMessages,
@@ -297,12 +298,18 @@ export function ChatPanel() {
     api: '/api/chat',
     id: activeConversationId || undefined,
     body: chatBody,
+    onResponse: () => {
+      // Clear searching indicator when AI starts responding
+      setWebSearchState(prev => ({ ...prev, isSearching: false }));
+    },
     onFinish: (message, options) => {
-      const webSearchMetadata = webSearchStateRef.current.used ? {
+      // Read from ref to avoid stale closure (webSearchState would be stale here)
+      const searchResult = webSearchResultRef.current;
+      const webSearchMetadata = searchResult ? {
         custom: {
           webSearch: {
             used: true,
-            sources: webSearchStateRef.current.sources,
+            sources: searchResult.sources,
           },
         },
       } : undefined;
@@ -322,8 +329,10 @@ export function ChatPanel() {
           source: 'chat',
         });
       }
-      // Clear attachments after send
+      // Clear attachments and search state after send
       setPendingAttachments([]);
+      webSearchResultRef.current = null;
+      setWebSearchState({ isSearching: false, result: null });
     },
     onError: (error: Error) => {
       console.error('[ChatPanel] AI Error:', error);
@@ -401,17 +410,92 @@ export function ChatPanel() {
     };
   }, [activeWorkspace, ragIndex, getRagQuery, addUsage]);
 
-  // Wrap handleSubmit to also store attachments on user message
+  // Execute web search before chat
+  const executeWebSearch = useCallback(async (query: string): Promise<WebSearchResult | null> => {
+    if (!tavilyKey || !tavilyKey.trim()) {
+      return null;
+    }
+
+    setWebSearchState({ isSearching: true, result: null });
+
+    try {
+      const response = await fetch('/api/web-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          maxResults: 5,
+          tavilyKey,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('[Web Search] API error:', response.status);
+        setWebSearchState({ isSearching: false, result: null });
+        return null;
+      }
+
+      const result = await response.json() as WebSearchResult;
+      // Keep isSearching: true, will be cleared when AI starts responding
+      setWebSearchState({ isSearching: true, result });
+      return result;
+    } catch (error) {
+      console.error('[Web Search] Failed:', error);
+      setWebSearchState({ isSearching: false, result: null });
+      return null;
+    }
+  }, [tavilyKey]);
+
+  // Wrap handleSubmit to check for search intent and execute search first
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Get user message but DON'T clear input yet (useChat needs it)
+    const userMessage = input.trim();
+    if (!userMessage) return;
+
+    // Check if we should search first
+    const needsSearch = detectSearchIntent(userMessage);
+
+    let searchResult: WebSearchResult | null = null;
+    if (needsSearch && tavilyKey) {
+      searchResult = await executeWebSearch(userMessage);
+    }
+
+    // Build canvas context
     const canvasContextPayload = await buildCanvasContextPayload();
+
+    // If we have search results, inject them into the system prompt
+    let enhancedContext = canvasContextPayload;
+    if (searchResult) {
+      const searchContext = `
+
+[Web Search Results - Use this information to answer the user's question. DO NOT repeat these sources in your response, they will be shown separately as citations.]
+
+Query: "${userMessage}"
+Summary: ${searchResult.summary}
+
+Sources:
+${searchResult.sources.map((s, i) => `${i + 1}. ${s.title} - ${s.url}`).join('\n')}
+
+[End of search results. Answer naturally based on this information.]`;
+      
+      enhancedContext = {
+        ...canvasContextPayload,
+        instructions: (canvasContextPayload?.instructions || '') + searchContext,
+      };
+    }
+
     const body = {
       ...chatBody,
-      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
+      ...(enhancedContext ? { canvasContext: enhancedContext } : {}),
     };
 
     setData([]);
+    
+    // Call useChat's handleSubmit - it will clear input automatically
     rawHandleSubmit(e, { body });
-  }, [chatBody, rawHandleSubmit, buildCanvasContextPayload, setData]);
+  }, [input, tavilyKey, executeWebSearch, buildCanvasContextPayload, chatBody, setData, rawHandleSubmit]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
@@ -448,11 +532,11 @@ export function ChatPanel() {
         // Compare content to detect if it's a new/partial message
         if (!lastStoreMessage || lastStoreMessage.content !== lastMessage.content) {
           if (activeConversationId && currentModel) {
-            const webSearchMetadata = webSearchStateRef.current.used ? {
+            const webSearchMetadata = webSearchState.result ? {
               custom: {
                 webSearch: {
                   used: true,
-                  sources: webSearchStateRef.current.sources,
+                  sources: webSearchState.result.sources,
                 },
               },
             } : undefined;
@@ -464,7 +548,7 @@ export function ChatPanel() {
         }
       }
     }
-  }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages]);
+  }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages, webSearchState]);
 
   // Resize handlers (IDENTICAL to CanvasTreeSidebar)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -563,15 +647,6 @@ export function ChatPanel() {
     }
   }, [activeConversationId, setConversationModel]);
 
-  const webSearchState = useMemo(
-    () => deriveWebSearchState(data as unknown[] | undefined),
-    [data, deriveWebSearchState]
-  );
-
-  useEffect(() => {
-    webSearchStateRef.current = webSearchState;
-  }, [webSearchState]);
-
   return (
     <SidePanel
       ref={panelRef}
@@ -599,29 +674,13 @@ export function ChatPanel() {
             onMaximize={handleMaximize}
           />
 
-          {webSearchState.isSearching && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing[2],
-              padding: `${spacing[2]} ${spacing[4]}`,
-              fontSize: typography.sizes.sm,
-              color: colors.accent.primary,
-              fontFamily: typography.fonts.body,
-              backgroundColor: colors.bg.inset,
-              borderBottom: `1px solid ${colors.border.muted}`,
-            }}>
-              <Loader size={14} className="animate-spin" />
-              <span>Searching web...</span>
-            </div>
-          )}
-
           {/* Message Thread */}
           <MessageThread
             conversation={activeConversation}
             streamingMessages={chatMessages}
             isStreaming={isStreaming}
             onHeightChange={setMessageListHeight}
+            webSearchState={{ isSearching: webSearchState.isSearching }}
           />
 
           {/* Message Input */}

@@ -7,10 +7,9 @@
  * @version 1.0.0
  */
 
-import { streamText, tool, StreamData } from 'ai';
+import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
-import { z } from 'zod';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -32,8 +31,6 @@ interface ChatRequestBody {
   model: string;
   /** User's API key for the provider */
   apiKey: string;
-  /** Optional Tavily API key for web search */
-  tavilyKey?: string;
   /** Optional image attachments for the current message (vision support) */
   attachments?: Array<{
     contentType: string;
@@ -49,23 +46,6 @@ interface APIError {
   retryAfter?: number;
   suggestion?: string;
 }
-
-// =============================================================================
-// WEB SEARCH
-// =============================================================================
-
-const WEB_SEARCH_SYSTEM_PROMPT = `You have access to the web_search tool. Use it proactively for:
-- Current events, news, weather, sports scores, stock prices
-- Recent information (anything from the last few years)
-- Facts that change over time or vary by location
-- When user asks "what's happening", "latest", "current", "today", "now"
-- When user explicitly requests: "search", "research", "look up", "find out", "check"
-
-If you need location/specifics for a search, make a reasonable guess or search general terms first.
-Example: "weather today" → search "current weather forecast" or "weather news today"
-
-Do not ask the user for more information before searching. Search first, then ask for clarification if needed.
-Do not fabricate sources. Summarize findings plainly; citations are handled separately.`;
 
 // =============================================================================
 // PROVIDER DETECTION
@@ -165,7 +145,7 @@ function handleProviderError(error: unknown): Response {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, apiKey, attachments, canvasContext, tavilyKey } = body;
+    const { messages, model, apiKey, attachments, canvasContext } = body;
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -277,109 +257,18 @@ export async function POST(req: Request): Promise<Response> {
 
     // Get per-model tuning (temperature, maxTokens)
     const modelConfig = getModelConfig(model);
-    const streamData = new StreamData();
-
-    const webSearchTool = tavilyKey?.trim() ? tool({
-      description: 'Search the web for recent or unknown information and return a concise summary with sources.',
-      parameters: z.object({
-        query: z.string().min(3).describe('The search query'),
-        maxResults: z.number().min(1).max(5).optional().describe('Max sources to return (1-5)'),
-      }),
-      execute: async ({ query, maxResults }) => {
-        const cappedResults = Math.min(maxResults ?? 5, 5);
-        streamData.append({ type: 'web_search_start', query });
-
-        try {
-          // 10 second timeout for web search to prevent hanging
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-          const response = await fetch('https://api.tavily.com/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              api_key: tavilyKey,
-              query,
-              max_results: cappedResults,
-              search_depth: 'advanced',
-              include_answer: true,
-              include_raw_content: false,
-            }),
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            // Return empty results instead of error to prevent stream hang
-            const errorMsg = response.status === 401 
-              ? 'Invalid Tavily API key. Please check your settings.'
-              : `Web search unavailable (status ${response.status})`;
-            console.warn(`[Web Search] ${errorMsg}`);
-            streamData.append({ type: 'web_search_end', query });
-            return {
-              summary: errorMsg,
-              sources: [],
-            };
-          }
-
-          const data = await response.json() as {
-            answer?: string;
-            results?: Array<{ title?: string; url: string; content?: string }>;
-          };
-
-          const sources = (data.results ?? [])
-            .filter((result) => result.url)
-            .slice(0, cappedResults)
-            .map((result) => ({
-              title: result.title || result.url,
-              url: result.url,
-            }));
-
-          streamData.append({ type: 'web_search_result', sources });
-          streamData.append({ type: 'web_search_end', query });
-
-          return {
-            summary: data.answer || 'No results found.',
-            sources,
-          };
-        } catch (error) {
-          // Catch all errors (timeout, network, etc.) and return gracefully
-          const errorMsg = error instanceof Error && error.name === 'AbortError'
-            ? 'Web search timed out after 10 seconds'
-            : 'Web search failed due to network error';
-          console.error(`[Web Search Error]`, error);
-          streamData.append({ type: 'web_search_end', query });
-          return {
-            summary: errorMsg,
-            sources: [],
-          };
-        }
-      },
-    }) : undefined;
-
-    const systemPromptParts = [modelConfig.systemPrompt];
-    if (tavilyKey?.trim()) {
-      systemPromptParts.push(WEB_SEARCH_SYSTEM_PROMPT);
-    }
-    const systemPrompt = systemPromptParts.filter(Boolean).join('\n\n');
 
     // Stream the response
     const result = streamText({
       model: aiModel,
+      system: modelConfig.systemPrompt,
       temperature: modelConfig.temperature,
       maxTokens: modelConfig.maxTokens,
-      ...(systemPrompt ? { system: systemPrompt } : {}),
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
-      ...(webSearchTool ? { tools: { web_search: webSearchTool }, toolChoice: 'auto', maxSteps: 3 } : {}),
-      onFinish: () => {
-        // Explicitly close streamData when text stream finishes
-        streamData.close();
-      },
     });
 
-    // Return streaming response with usage (data protocol)
-    return result.toDataStreamResponse({ data: streamData });
+    // Return streaming response
+    return result.toDataStreamResponse();
   } catch (error) {
     console.error('[Chat API Error]', error);
     return handleProviderError(error);
