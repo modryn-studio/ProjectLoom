@@ -45,6 +45,7 @@ export const colors = {
     secondary: 'var(--accent-secondary)',
     muted: 'var(--accent-muted)',
     emphasis: 'var(--accent-emphasis)',
+    contrast: 'var(--accent-contrast)',
   },
   
   // Semantic colors

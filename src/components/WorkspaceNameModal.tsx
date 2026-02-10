@@ -228,7 +228,7 @@ export function WorkspaceNameModal({
                   backgroundColor: colors.accent.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: colors.bg.inset,
+                  color: colors.accent.contrast,
                   padding: `${spacing[2]} ${spacing[3]}`,
                   cursor: 'pointer',
                   fontSize: typography.sizes.sm,

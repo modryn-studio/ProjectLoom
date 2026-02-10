@@ -931,7 +931,7 @@ export function InfiniteCanvas() {
                   backgroundColor: colors.accent.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: colors.bg.inset,
+                  color: colors.accent.contrast,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   cursor: 'pointer',

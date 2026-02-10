@@ -35,7 +35,6 @@ const MAX_SIDEBAR_WIDTH = 600;
 
 // =============================================================================
 // CONVERSATION TREE COMPONENT (v4 DAG display)
-// =============================================================================
 
 interface ConversationTreeProps {
   workspaceId: string;
@@ -1016,7 +1015,7 @@ export function CanvasTreeSidebar({
               padding: spacing[1],
               cursor: 'pointer',
               borderRadius: effects.border.radius.default,
-              color: colors.bg.inset,
+              color: colors.accent.contrast,
               backgroundColor: colors.accent.primary,
               display: 'flex',
               alignItems: 'center',
@@ -1066,7 +1065,7 @@ export function CanvasTreeSidebar({
                 backgroundColor: colors.accent.primary,
                 border: 'none',
                 borderRadius: effects.border.radius.default,
-                color: colors.bg.inset,
+                color: colors.accent.contrast,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',

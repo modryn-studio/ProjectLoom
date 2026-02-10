@@ -690,7 +690,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   backgroundColor: colors.accent.primary,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: colors.bg.inset,
+                  color: colors.accent.contrast,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: typography.weights.medium,

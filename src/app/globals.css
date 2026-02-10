@@ -32,6 +32,7 @@
   --accent-secondary: #60A5FA;
   --accent-muted: #DBEAFE;
   --accent-emphasis: #1D4ED8;
+  --accent-contrast: #FFFFFF;
 
   /* Semantic colors */
   --success-bg: #F0FDF4;
@@ -92,6 +93,7 @@
   --accent-secondary: #3B82F6;
   --accent-muted: rgba(59, 130, 246, 0.2);
   --accent-emphasis: #93C5FD;
+  --accent-contrast: #FFFFFF;
 
   /* Semantic colors - adjusted for dark */
   --success-bg: rgba(34, 197, 94, 0.15);
@@ -148,6 +150,7 @@
     --accent-secondary: #3B82F6;
     --accent-muted: rgba(59, 130, 246, 0.2);
     --accent-emphasis: #93C5FD;
+    --accent-contrast: #FFFFFF;
 
     --success-bg: rgba(34, 197, 94, 0.15);
     --success-fg: #4ADE80;
@@ -207,6 +210,7 @@
   --color-accent-secondary: var(--accent-secondary);
   --color-accent-muted: var(--accent-muted);
   --color-accent-emphasis: var(--accent-emphasis);
+  --color-accent-contrast: var(--accent-contrast);
   
   /* Semantic */
   --color-success-bg: var(--success-bg);

@@ -142,14 +142,14 @@ export function InlineBranchPanel({
           <button
             onClick={handleCreateBranch}
             disabled={isCreating}
-            className="flex-1 px-3 py-2 text-sm font-medium text-bg-primary bg-accent-primary hover:brightness-110 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 px-3 py-2 text-sm font-medium text-accent-contrast bg-accent-primary hover:brightness-110 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isCreating ? (
               <>
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-bg-primary/30 border-t-bg-primary rounded-full"
+                  className="w-4 h-4 border-2 border-accent-contrast/30 border-t-accent-contrast rounded-full"
                 />
                 Creating...
               </>

@@ -87,7 +87,7 @@ const AlertDialogAction = React.forwardRef<
     ref={ref}
     className={cn(
       'inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium',
-      'bg-accent-primary text-bg-inset hover:opacity-90',
+      'bg-accent-primary text-accent-contrast hover:opacity-90',
       className
     )}
     {...props}
