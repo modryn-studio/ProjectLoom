@@ -258,19 +258,41 @@ export async function POST(req: Request): Promise<Response> {
     // Get per-model tuning (temperature, maxTokens)
     const modelConfig = getModelConfig(model);
 
-    // Stream the response
+    // OpenAI GPT-5+ models require maxCompletionTokens instead of maxTokens
+    const tokenConfig = providerType === 'openai'
+      ? { maxCompletionTokens: modelConfig.maxTokens }
+      : { maxTokens: modelConfig.maxTokens };
+
+    // Stream the response with error handling
     const result = streamText({
       model: aiModel,
       system: modelConfig.systemPrompt,
       temperature: modelConfig.temperature,
-      maxTokens: modelConfig.maxTokens,
+      ...tokenConfig,
       messages: aiMessages as Parameters<typeof streamText>[0]['messages'],
+      onError: (error) => {
+        // Log streaming errors for debugging
+        console.error('[Chat API Streaming Error]', {
+          provider: providerType,
+          model,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          // Include error details if available
+          ...(typeof error === 'object' && error !== null ? error : {}),
+        });
+      },
     });
 
     // Return streaming response
     return result.toDataStreamResponse();
   } catch (error) {
-    console.error('[Chat API Error]', error);
+    // Log the full error object for debugging
+    console.error('[Chat API Error]', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      // Include error details if available
+      ...(typeof error === 'object' && error !== null ? error : {}),
+    });
     return handleProviderError(error);
   }
 }
