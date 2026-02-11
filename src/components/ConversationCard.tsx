@@ -104,6 +104,8 @@ function ConversationCardComponent({
 
   // Store actions
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
+  const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
   const deleteConversation = useCanvasStore((s) => s.deleteConversation);
   const requestDeleteConversation = useCanvasStore((s) => s.requestDeleteConversation);
   
@@ -177,11 +179,17 @@ function ConversationCardComponent({
       const branchIndex = messageCount > 0 ? messageCount - 1 : 0;
 
       // Create branch instantly with full context
-      branchFromMessage({
+      const newConversation = branchFromMessage({
         sourceCardId: conversation.id,
         messageIndex: branchIndex,
         branchReason: 'Branch from card',
       });
+      
+      // Open chat panel and focus the new card for immediate interaction
+      if (newConversation) {
+        openChatPanel(newConversation.id);
+        requestFocusNode(newConversation.id);
+      }
     };
     
     // Open context menu with Branch option that respects preferences

@@ -200,6 +200,8 @@ export function MessageThread({
   
   // Branch actions
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
+  const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
 
   // Auto-scroll to bottom when new messages arrive or streaming content updates
   // Use displayMessages.length for new messages and streamingMessages.length for
@@ -262,12 +264,18 @@ export function MessageThread({
   const handleBranchClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    branchFromMessage({
+    const newConversation = branchFromMessage({
       sourceCardId: conversation.id,
       messageIndex,
       branchReason: 'Branch from message',
     });
-  }, [conversation.id, branchFromMessage]);
+    
+    // Open chat panel and focus the new card for immediate interaction
+    if (newConversation) {
+      openChatPanel(newConversation.id);
+      requestFocusNode(newConversation.id);
+    }
+  }, [conversation.id, branchFromMessage, openChatPanel, requestFocusNode]);
 
   // Memoized handlers to prevent child re-renders
   const handleMouseEnter = useCallback((index: number) => {
