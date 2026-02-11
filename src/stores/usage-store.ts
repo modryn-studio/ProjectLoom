@@ -124,6 +124,11 @@ export function getUsageTotals(records: UsageRecord[], range: UsageRange, now = 
   };
 
   for (const record of filtered) {
+    // Skip records with invalid data (NaN, undefined, etc.)
+    if (!Number.isFinite(record.costUsd) || !Number.isFinite(record.totalTokens)) {
+      continue;
+    }
+    
     totals.totalCostUsd += record.costUsd;
     totals.totalTokens += record.totalTokens;
     totals.byProvider[record.provider].costUsd += record.costUsd;
@@ -143,17 +148,21 @@ export const useUsageStore = create<UsageState>()(
     (set) => ({
       records: [],
       addUsage: (input) => {
-        const totalTokens = input.inputTokens + input.outputTokens;
-        if (totalTokens <= 0) return;
+        // Validate token counts are valid numbers
+        const inputTokens = Number(input.inputTokens) || 0;
+        const outputTokens = Number(input.outputTokens) || 0;
+        const totalTokens = inputTokens + outputTokens;
+        
+        if (totalTokens <= 0 || !Number.isFinite(totalTokens)) return;
 
         const record: UsageRecord = {
           id: nanoid(10),
           provider: input.provider,
           model: input.model,
-          inputTokens: input.inputTokens,
-          outputTokens: input.outputTokens,
+          inputTokens,
+          outputTokens,
           totalTokens,
-          costUsd: calculateCost(input.model, input.inputTokens, input.outputTokens),
+          costUsd: calculateCost(input.model, inputTokens, outputTokens),
           createdAt: input.createdAt ?? Date.now(),
           conversationId: input.conversationId,
           source: input.source,
@@ -169,6 +178,23 @@ export const useUsageStore = create<UsageState>()(
       name: STORAGE_KEYS.USAGE,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ records: state.records }),
+      onRehydrateStorage: () => (state) => {
+        // Clean up invalid records on load (e.g., records with NaN costs)
+        if (state?.records) {
+          const validRecords = state.records.filter(
+            (record) =>
+              Number.isFinite(record.costUsd) &&
+              Number.isFinite(record.totalTokens) &&
+              Number.isFinite(record.inputTokens) &&
+              Number.isFinite(record.outputTokens)
+          );
+          
+          // Only update state if we filtered out invalid records
+          if (validRecords.length !== state.records.length) {
+            state.records = validRecords;
+          }
+        }
+      },
     }
   )
 );
