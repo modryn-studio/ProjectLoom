@@ -152,6 +152,7 @@ export function MessageThread({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
   const prevIsStreamingRef = useRef(isStreaming);
+  const prevDisplayLengthRef = useRef(0);
   const [hoveredMessageIndex, setHoveredMessageIndex] = useState<number | null>(null);
   const [isTouchDevice] = useState(() => (
     typeof window !== 'undefined'
@@ -247,9 +248,15 @@ export function MessageThread({
   useEffect(() => {
     const wasStreaming = prevIsStreamingRef.current;
     const isNowStreaming = isStreaming;
+    const prevLength = prevDisplayLengthRef.current;
+    const currentLength = displayMessages.length;
     
-    // Update ref for next render
+    // Update refs for next render
     prevIsStreamingRef.current = isStreaming;
+    prevDisplayLengthRef.current = currentLength;
+    
+    // Detect if a new message was added (user sent a message, or AI response was persisted)
+    const messageWasAdded = currentLength > prevLength;
     
     // Don't auto-scroll when streaming just finished OR just after it finished.
     // The lastStreamingContent dependency changes from content→'' when streaming
@@ -258,11 +265,13 @@ export function MessageThread({
     if (wasStreaming && !isNowStreaming) {
       return; // Streaming just ended this render
     }
-    if (!wasStreaming && !isNowStreaming && lastStreamingContent === '') {
-      return; // Streaming ended in a previous render, don't scroll on content→'' change
+    if (!wasStreaming && !isNowStreaming && lastStreamingContent === '' && !messageWasAdded) {
+      return; // Streaming ended previously, no new message, don't scroll on stale triggers
     }
     
-    if (scrollContainerRef.current && isPinnedToBottomRef.current) {
+    // Auto-scroll if pinned to bottom OR if a new message was just added
+    // (new messages should always scroll into view so user sees the response)
+    if (scrollContainerRef.current && (isPinnedToBottomRef.current || messageWasAdded)) {
       // Use requestAnimationFrame to ensure DOM has updated before scrolling
       requestAnimationFrame(() => {
         if (scrollContainerRef.current) {
