@@ -278,11 +278,11 @@ export async function POST(req: Request): Promise<Response> {
       ? { maxCompletionTokens: modelConfig.maxTokens }
       : { maxTokens: modelConfig.maxTokens };
 
-    // GPT-5 Mini/Nano only support temperature: 1. Omit parameter entirely to prevent
-    // SDK from overriding with temperature: 0 when tools are present.
+    // GPT-5 Mini/Nano only support temperature: 1. MUST explicitly set it (not omit)
+    // because Vercel AI SDK defaults to temperature: 0 when tools are present.
     const temperatureConfig = (providerType === 'openai' && 
                                ['gpt-5-mini', 'gpt-5-nano'].includes(model))
-      ? {} // Must omit - these models reject any temperature except default (1)
+      ? { temperature: 1 } // Explicitly set to 1 - SDK would override omission with 0
       : { temperature: modelConfig.temperature };
 
     // Build tools object — only include tavily_search when key is available

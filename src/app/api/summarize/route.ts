@@ -196,10 +196,11 @@ export async function POST(req: Request): Promise<Response> {
     // Get per-model temperature
     const modelConfig = getModelConfig(model);
 
-    // GPT-5 Mini/Nano only support temperature: 1. Omit parameter entirely for consistency.
+    // GPT-5 Mini/Nano only support temperature: 1. MUST explicitly set it (not omit)
+    // even though no tools used here, for consistency with chat route.
     const temperatureConfig = (providerType === 'openai' && 
                                ['gpt-5-mini', 'gpt-5-nano'].includes(model))
-      ? {} // Must omit - these models reject any temperature except default (1)
+      ? { temperature: 1 } // Explicitly set to 1 for consistency
       : { temperature: modelConfig.temperature };
 
     // Generate summary (non-streaming)
