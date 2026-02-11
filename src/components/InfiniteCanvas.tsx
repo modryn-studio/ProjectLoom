@@ -897,7 +897,7 @@ export function InfiniteCanvas() {
   return (
     <div style={containerStyles}>
       {/* Unified Sidebar with Activity Bar */}
-      {isPrefsLoaded && uiPrefs.showCanvasTree && (
+      {isPrefsLoaded && (
         <CanvasTreeSidebar 
           onOpenSettings={openSettings}
           onOpenAgents={openAgents}

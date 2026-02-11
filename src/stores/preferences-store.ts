@@ -26,10 +26,6 @@ export interface UserPreferences {
   branching: BranchingPreferences;
   /** UI preferences */
   ui: {
-    /** Show canvas tree sidebar */
-    showCanvasTree: boolean;
-    /** Show inherited context panel */
-    showInheritedContext: boolean;
     /** Confirm before deleting */
     confirmOnDelete: boolean;
     /** Chat panel width (persisted, min: 400, max: 800) */
@@ -71,8 +67,6 @@ const DEFAULT_BRANCHING_PREFERENCES: BranchingPreferences = {
 };
 
 const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
-  showCanvasTree: true,
-  showInheritedContext: true,
   confirmOnDelete: true,
   chatPanelWidth: 480, // Default 30% of 1600px viewport
   theme: 'system', // Follow system preference by default

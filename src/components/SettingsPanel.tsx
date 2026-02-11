@@ -407,54 +407,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   Interface
                 </div>
 
-                {/* Show Canvas Tree */}
-                <label style={checkboxLabelStyles}>
-                  <input
-                    type="checkbox"
-                    checked={uiPrefs.showCanvasTree}
-                    onChange={(e) => setUIPreferences({ showCanvasTree: e.target.checked })}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      accentColor: colors.accent.primary,
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <div>
-                    <span style={{
-                      fontSize: typography.sizes.sm,
-                      color: colors.fg.primary,
-                      fontFamily: typography.fonts.body,
-                    }}>
-                      Show canvas tree sidebar
-                    </span>
-                  </div>
-                </label>
-
-                {/* Show Inherited Context Panel */}
-                <label style={checkboxLabelStyles}>
-                  <input
-                    type="checkbox"
-                    checked={uiPrefs.showInheritedContext}
-                    onChange={(e) => setUIPreferences({ showInheritedContext: e.target.checked })}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      accentColor: colors.accent.primary,
-                      cursor: 'pointer',
-                    }}
-                  />
-                  <div>
-                    <span style={{
-                      fontSize: typography.sizes.sm,
-                      color: colors.fg.primary,
-                      fontFamily: typography.fonts.body,
-                    }}>
-                      Show inherited context panel
-                    </span>
-                  </div>
-                </label>
-
                 {/* Confirm on Delete */}
                 <label style={checkboxLabelStyles}>
                   <input
