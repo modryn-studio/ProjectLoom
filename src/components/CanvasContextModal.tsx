@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { colors, spacing, effects, typography, animation, components } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { useToast } from '@/stores/toast-store';
 import type { KnowledgeBaseFileMeta, WorkspaceContext } from '@/types';
 import {
   deleteKnowledgeBaseFile,
@@ -173,6 +174,12 @@ const fileRowStyles: React.CSSProperties = {
   backgroundColor: colors.bg.inset,
 };
 
+const statusStyles: React.CSSProperties = {
+  fontSize: typography.sizes.xs,
+  color: colors.fg.tertiary,
+  fontFamily: typography.fonts.body,
+};
+
 interface CanvasContextModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -208,6 +215,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const overlayMouseDownRef = useRef(false);
+  const saveStatusTimerRef = useRef<number | null>(null);
 
   const { activeWorkspaceId } = useCanvasStore(
     useShallow((s) => ({
@@ -215,6 +223,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     }))
   );
   const updateWorkspace = useCanvasStore((s) => s.updateWorkspace);
+  const toast = useToast();
 
   const [instructions, setInstructions] = useState('');
   const [files, setFiles] = useState<KnowledgeBaseFileMeta[]>([]);
@@ -223,6 +232,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
 
   const instructionCount = instructions.length;
   const fileCount = files.length;
@@ -231,8 +241,22 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     ? Math.min(100, Math.round((totalFileSize / MAX_TOTAL_SIZE) * 100))
     : 0;
 
-  const updateContext = useCallback((updates: Partial<WorkspaceContext>) => {
+  const markSaving = useCallback(() => {
+    setSaveStatus('saving');
+    if (saveStatusTimerRef.current) {
+      window.clearTimeout(saveStatusTimerRef.current);
+    }
+    saveStatusTimerRef.current = window.setTimeout(() => {
+      setSaveStatus('saved');
+    }, 450);
+  }, []);
+
+  const updateContext = useCallback((updates: Partial<WorkspaceContext>, options?: { silent?: boolean }) => {
     if (!activeWorkspaceId) return;
+
+    if (!options?.silent) {
+      markSaving();
+    }
 
     const currentWorkspace = useCanvasStore.getState().workspaces
       .find((w) => w.id === activeWorkspaceId);
@@ -249,7 +273,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     };
 
     updateWorkspace(activeWorkspaceId, { context: next });
-  }, [activeWorkspaceId, updateWorkspace]);
+  }, [activeWorkspaceId, updateWorkspace, markSaving]);
 
   const refreshFilesFromDb = useCallback(async () => {
     if (!activeWorkspaceId) return;
@@ -264,7 +288,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
       const currentIds = (currentContext?.knowledgeBaseFiles || []).map((f) => f.id).join('|');
       const nextIds = sorted.map((f) => f.id).join('|');
       if (currentIds !== nextIds) {
-        updateContext({ knowledgeBaseFiles: sorted });
+        updateContext({ knowledgeBaseFiles: sorted }, { silent: true });
       }
     } catch (err) {
       console.error('[CanvasContextModal] Failed to load KB files', err);
@@ -282,8 +306,17 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     setInstructions(currentContext?.instructions || '');
     setFiles(currentContext?.knowledgeBaseFiles || []);
     setError(null);
+    setSaveStatus('saved');
     refreshFilesFromDb();
   }, [isOpen, activeWorkspaceId, refreshFilesFromDb]);
+
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimerRef.current) {
+        window.clearTimeout(saveStatusTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleClose = useCallback(() => {
     updateContext({ instructions: instructions.trim() });
@@ -360,31 +393,41 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
     setError(null);
 
+    const uploadToastId = toast.info('Uploading knowledge base files...', { duration: 0 });
     const newFiles: KnowledgeBaseFileMeta[] = [];
 
-    for (const file of incoming) {
-      const content = await file.text();
-      const meta: KnowledgeBaseFileMeta = {
-        id: `kb-${nanoid()}`,
-        name: file.name,
-        type: file.type || 'text/plain',
-        size: file.size,
-        lastModified: file.lastModified,
-      };
+    try {
+      for (const file of incoming) {
+        const content = await file.text();
+        const meta: KnowledgeBaseFileMeta = {
+          id: `kb-${nanoid()}`,
+          name: file.name,
+          type: file.type || 'text/plain',
+          size: file.size,
+          lastModified: file.lastModified,
+        };
 
-      await saveKnowledgeBaseFile({
-        workspaceId: activeWorkspaceId,
-        content,
-        ...meta,
-      });
+        await saveKnowledgeBaseFile({
+          workspaceId: activeWorkspaceId,
+          content,
+          ...meta,
+        });
 
-      newFiles.push(meta);
+        newFiles.push(meta);
+      }
+
+      const updatedFiles = [...files, ...newFiles];
+      setFiles(updatedFiles);
+      updateContext({ knowledgeBaseFiles: updatedFiles });
+      toast.success('Knowledge base files uploaded.');
+    } catch (err) {
+      console.error('[CanvasContextModal] Failed to upload KB files', err);
+      setError('Could not upload knowledge base files.');
+      toast.error('Knowledge base upload failed.');
+    } finally {
+      toast.dismiss(uploadToastId);
     }
-
-    const updatedFiles = [...files, ...newFiles];
-    setFiles(updatedFiles);
-    updateContext({ knowledgeBaseFiles: updatedFiles });
-  }, [activeWorkspaceId, files, updateContext, validateFiles]);
+  }, [activeWorkspaceId, files, updateContext, validateFiles, toast]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const incoming = Array.from(e.target.files || []);
@@ -418,6 +461,8 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
     if (!activeWorkspaceId) return;
 
+    const uploadToastId = toast.info('Uploading knowledge base file...', { duration: 0 });
+
     try {
       const content = await file.text();
       const meta: KnowledgeBaseFileMeta = {
@@ -433,15 +478,25 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
         content,
         ...meta,
       });
+      const updatedFiles = files.map((entry) =>
+        entry.id === targetId
+          ? { ...entry, name: meta.name, type: meta.type, size: meta.size, lastModified: meta.lastModified }
+          : entry
+      );
+      setFiles(updatedFiles);
+      updateContext({ knowledgeBaseFiles: updatedFiles });
       setError(null);
+      toast.success('Knowledge base file replaced.');
     } catch (err) {
       console.error('[CanvasContextModal] Failed to replace KB file', err);
       setError('Could not replace file.');
+      toast.error('Knowledge base file replace failed.');
     } finally {
+      toast.dismiss(uploadToastId);
       setReplaceTargetId(null);
       e.target.value = '';
     }
-  }, [replaceTargetId, files, totalFileSize, activeWorkspaceId]);
+  }, [replaceTargetId, files, totalFileSize, activeWorkspaceId, toast]);
 
   const handleRenameStart = useCallback((fileId: string, name: string) => {
     setRenamingId(fileId);
@@ -608,7 +663,8 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                   placeholder="Add instructions..."
                   style={textareaStyles}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={statusStyles}>{saveStatus === 'saving' ? 'Saving...' : 'Saved'}</span>
                   <p style={descriptionStyles}>{instructionCount}/{MAX_INSTRUCTIONS}</p>
                 </div>
               </div>
