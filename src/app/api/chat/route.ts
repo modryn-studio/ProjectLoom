@@ -278,9 +278,11 @@ export async function POST(req: Request): Promise<Response> {
       ? { maxCompletionTokens: modelConfig.maxTokens }
       : { maxTokens: modelConfig.maxTokens };
 
-    // Some models only support default temperature (1.0), omit parameter for those
-    const temperatureConfig = modelConfig.temperature === 1.0 && providerType === 'openai'
-      ? {} // Omit temperature to use default
+    // GPT-5 Mini/Nano only support temperature: 1. Omit parameter entirely to prevent
+    // SDK from overriding with temperature: 0 when tools are present.
+    const temperatureConfig = (providerType === 'openai' && 
+                               ['gpt-5-mini', 'gpt-5-nano'].includes(model))
+      ? {} // Must omit - these models reject any temperature except default (1)
       : { temperature: modelConfig.temperature };
 
     // Build tools object — only include tavily_search when key is available

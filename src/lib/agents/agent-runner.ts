@@ -18,7 +18,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { nanoid } from 'nanoid';
 
-import { estimateCost } from '@/lib/vercel-ai-integration';
+import { estimateCost, detectProvider } from '@/lib/vercel-ai-integration';
 import { getModelConfig } from '@/lib/model-configs';
 import type {
   AgentRunnerConfig,
@@ -118,6 +118,14 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
   try {
     const model = createModel(config.modelId, config.apiKey);
     const modelConfig = getModelConfig(config.modelId);
+    const providerType = detectProvider(config.modelId);
+
+    // GPT-5 Mini/Nano only support temperature: 1. Omit parameter entirely to prevent
+    // SDK from overriding with temperature: 0 when tools are present.
+    const temperatureConfig = (providerType === 'openai' && 
+                               ['gpt-5-mini', 'gpt-5-nano'].includes(config.modelId))
+      ? {} // Must omit - these models reject any temperature except default (1)
+      : { temperature: modelConfig.temperature };
 
     // Create a timeout promise
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -129,7 +137,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
       model,
       system: systemPrompt,
       prompt: userPrompt,
-      temperature: modelConfig.temperature,
+      ...temperatureConfig,
       maxTokens: modelConfig.maxTokens,
       tools,
       maxSteps: config.maxSteps,

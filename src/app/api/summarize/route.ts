@@ -196,11 +196,17 @@ export async function POST(req: Request): Promise<Response> {
     // Get per-model temperature
     const modelConfig = getModelConfig(model);
 
+    // GPT-5 Mini/Nano only support temperature: 1. Omit parameter entirely for consistency.
+    const temperatureConfig = (providerType === 'openai' && 
+                               ['gpt-5-mini', 'gpt-5-nano'].includes(model))
+      ? {} // Must omit - these models reject any temperature except default (1)
+      : { temperature: modelConfig.temperature };
+
     // Generate summary (non-streaming)
     const result = await generateText({
       model: aiModel,
       prompt: buildSummaryPrompt(messages, parentTitle),
-      temperature: modelConfig.temperature,
+      ...temperatureConfig,
       maxTokens: 1000, // Summaries should be concise
     });
 
