@@ -137,7 +137,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
 
   const handleFinishRename = useCallback((conversation: Conversation) => {
     const trimmed = renamingValue.trim();
-    const limitedTitle = enforceTitleWordLimit(trimmed, 2);
+    const limitedTitle = enforceTitleWordLimit(trimmed, 5);
 
     if (limitedTitle && limitedTitle !== conversation.metadata.title) {
       updateConversation(conversation.id, {

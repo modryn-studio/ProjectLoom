@@ -84,7 +84,7 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
 
   const handleFinishRename = useCallback(() => {
     const trimmed = draftTitle.trim();
-    const limitedTitle = enforceTitleWordLimit(trimmed, 2);
+    const limitedTitle = enforceTitleWordLimit(trimmed, 5);
     if (!limitedTitle) {
       setDraftTitle(conversation.metadata.title);
       setIsRenaming(false);
