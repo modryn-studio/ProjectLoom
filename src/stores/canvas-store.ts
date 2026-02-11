@@ -1428,6 +1428,7 @@ export const useCanvasStore = create<WorkspaceState>()(
           });
           workspaceStorage.save({ workspaces: updatedWorkspaces, activeWorkspaceId });
         }
+
       }, SAVE_DEBOUNCE_MS);
     },
 

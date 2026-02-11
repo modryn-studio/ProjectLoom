@@ -8,7 +8,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { colors, spacing, effects, typography, animation, components } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { useToast } from '@/stores/toast-store';
 import type { KnowledgeBaseFileMeta, WorkspaceContext } from '@/types';
 import {
   deleteKnowledgeBaseFile,
@@ -136,6 +135,22 @@ const usagePercentStyles: React.CSSProperties = {
   fontFamily: typography.fonts.body,
 };
 
+const uploadBarTrackStyles: React.CSSProperties = {
+  width: '100%',
+  height: components.progressBar.height,
+  borderRadius: 999,
+  backgroundColor: colors.bg.secondary,
+  border: `1px solid ${colors.border.muted}`,
+  overflow: 'hidden',
+  marginTop: spacing[1],
+};
+
+const uploadBarFillStyles: React.CSSProperties = {
+  height: '100%',
+  backgroundColor: colors.accent.primary,
+  transition: 'width 0.1s linear',
+};
+
 const textareaStyles: React.CSSProperties = {
   width: '100%',
   minHeight: 120,
@@ -174,15 +189,18 @@ const fileRowStyles: React.CSSProperties = {
   backgroundColor: colors.bg.inset,
 };
 
-const statusStyles: React.CSSProperties = {
-  fontSize: typography.sizes.xs,
-  color: colors.fg.tertiary,
-  fontFamily: typography.fonts.body,
-};
-
 interface CanvasContextModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface UploadingFile {
+  id: string;
+  name: string;
+  size: number;
+  loaded: number;
+  total: number;
+  status: 'reading' | 'saving' | 'error';
 }
 
 function formatBytes(size: number): string {
@@ -211,11 +229,40 @@ function isSupportedFile(file: File): boolean {
   return SUPPORTED_EXTENSIONS.includes(getFileExtension(file.name));
 }
 
+function readFileAsTextWithProgress(
+  file: File,
+  onProgress: (loaded: number, total: number) => void
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(event.loaded, event.total);
+      }
+    };
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        resolve(result);
+        return;
+      }
+      if (result instanceof ArrayBuffer) {
+        resolve(new TextDecoder().decode(result));
+        return;
+      }
+      resolve('');
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error('Failed to read file.'));
+    };
+    reader.readAsText(file);
+  });
+}
+
 export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const overlayMouseDownRef = useRef(false);
-  const saveStatusTimerRef = useRef<number | null>(null);
 
   const { activeWorkspaceId } = useCanvasStore(
     useShallow((s) => ({
@@ -223,7 +270,6 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     }))
   );
   const updateWorkspace = useCanvasStore((s) => s.updateWorkspace);
-  const toast = useToast();
 
   const [instructions, setInstructions] = useState('');
   const [files, setFiles] = useState<KnowledgeBaseFileMeta[]>([]);
@@ -232,7 +278,8 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [replaceProgress, setReplaceProgress] = useState<Record<string, UploadingFile>>({});
 
   const instructionCount = instructions.length;
   const fileCount = files.length;
@@ -241,22 +288,8 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     ? Math.min(100, Math.round((totalFileSize / MAX_TOTAL_SIZE) * 100))
     : 0;
 
-  const markSaving = useCallback(() => {
-    setSaveStatus('saving');
-    if (saveStatusTimerRef.current) {
-      window.clearTimeout(saveStatusTimerRef.current);
-    }
-    saveStatusTimerRef.current = window.setTimeout(() => {
-      setSaveStatus('saved');
-    }, 450);
-  }, []);
-
-  const updateContext = useCallback((updates: Partial<WorkspaceContext>, options?: { silent?: boolean }) => {
+  const updateContext = useCallback((updates: Partial<WorkspaceContext>) => {
     if (!activeWorkspaceId) return;
-
-    if (!options?.silent) {
-      markSaving();
-    }
 
     const currentWorkspace = useCanvasStore.getState().workspaces
       .find((w) => w.id === activeWorkspaceId);
@@ -273,7 +306,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     };
 
     updateWorkspace(activeWorkspaceId, { context: next });
-  }, [activeWorkspaceId, updateWorkspace, markSaving]);
+  }, [activeWorkspaceId, updateWorkspace]);
 
   const refreshFilesFromDb = useCallback(async () => {
     if (!activeWorkspaceId) return;
@@ -288,7 +321,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
       const currentIds = (currentContext?.knowledgeBaseFiles || []).map((f) => f.id).join('|');
       const nextIds = sorted.map((f) => f.id).join('|');
       if (currentIds !== nextIds) {
-        updateContext({ knowledgeBaseFiles: sorted }, { silent: true });
+        updateContext({ knowledgeBaseFiles: sorted });
       }
     } catch (err) {
       console.error('[CanvasContextModal] Failed to load KB files', err);
@@ -306,17 +339,10 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
     setInstructions(currentContext?.instructions || '');
     setFiles(currentContext?.knowledgeBaseFiles || []);
     setError(null);
-    setSaveStatus('saved');
+    setUploadingFiles([]);
+    setReplaceProgress({});
     refreshFilesFromDb();
   }, [isOpen, activeWorkspaceId, refreshFilesFromDb]);
-
-  useEffect(() => {
-    return () => {
-      if (saveStatusTimerRef.current) {
-        window.clearTimeout(saveStatusTimerRef.current);
-      }
-    };
-  }, []);
 
   const handleClose = useCallback(() => {
     updateContext({ instructions: instructions.trim() });
@@ -325,8 +351,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
   const handleInstructionsBlur = useCallback(() => {
     updateContext({ instructions: instructions.trim() });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instructions]);
+  }, [instructions, updateContext]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -393,12 +418,9 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
     setError(null);
 
-    const uploadToastId = toast.info('Uploading knowledge base files...', { duration: 0 });
-    const newFiles: KnowledgeBaseFileMeta[] = [];
-
     try {
       for (const file of incoming) {
-        const content = await file.text();
+        const uploadId = `upload-${nanoid()}`;
         const meta: KnowledgeBaseFileMeta = {
           id: `kb-${nanoid()}`,
           name: file.name,
@@ -407,27 +429,46 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
           lastModified: file.lastModified,
         };
 
+        setUploadingFiles((prev) => ([
+          ...prev,
+          {
+            id: uploadId,
+            name: meta.name,
+            size: meta.size,
+            loaded: 0,
+            total: meta.size,
+            status: 'reading',
+          },
+        ]));
+
+        const content = await readFileAsTextWithProgress(file, (loaded, total) => {
+          setUploadingFiles((prev) => prev.map((entry) =>
+            entry.id === uploadId ? { ...entry, loaded, total } : entry
+          ));
+        });
+
+        setUploadingFiles((prev) => prev.map((entry) =>
+          entry.id === uploadId ? { ...entry, status: 'saving', loaded: entry.total } : entry
+        ));
         await saveKnowledgeBaseFile({
           workspaceId: activeWorkspaceId,
           content,
           ...meta,
         });
 
-        newFiles.push(meta);
+        setUploadingFiles((prev) => prev.filter((entry) => entry.id !== uploadId));
+        setFiles((prev) => {
+          const updatedFiles = [...prev, meta];
+          updateContext({ knowledgeBaseFiles: updatedFiles });
+          return updatedFiles;
+        });
       }
-
-      const updatedFiles = [...files, ...newFiles];
-      setFiles(updatedFiles);
-      updateContext({ knowledgeBaseFiles: updatedFiles });
-      toast.success('Knowledge base files uploaded.');
     } catch (err) {
       console.error('[CanvasContextModal] Failed to upload KB files', err);
       setError('Could not upload knowledge base files.');
-      toast.error('Knowledge base upload failed.');
-    } finally {
-      toast.dismiss(uploadToastId);
+      setUploadingFiles([]);
     }
-  }, [activeWorkspaceId, files, updateContext, validateFiles, toast]);
+  }, [activeWorkspaceId, updateContext, validateFiles]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const incoming = Array.from(e.target.files || []);
@@ -461,10 +502,34 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
 
     if (!activeWorkspaceId) return;
 
-    const uploadToastId = toast.info('Uploading knowledge base file...', { duration: 0 });
+    setReplaceProgress((prev) => ({
+      ...prev,
+      [targetId]: {
+        id: targetId,
+        name: file.name,
+        size: file.size,
+        loaded: 0,
+        total: file.size,
+        status: 'reading',
+      },
+    }));
 
     try {
-      const content = await file.text();
+      const content = await readFileAsTextWithProgress(file, (loaded, total) => {
+        setReplaceProgress((prev) => ({
+          ...prev,
+          [targetId]: {
+            ...(prev[targetId] || {
+              id: targetId,
+              name: file.name,
+              size: file.size,
+              status: 'reading',
+            }),
+            loaded,
+            total,
+          },
+        }));
+      });
       const meta: KnowledgeBaseFileMeta = {
         id: targetId,
         name: file.name,
@@ -472,6 +537,22 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
         size: file.size,
         lastModified: file.lastModified,
       };
+
+      setReplaceProgress((prev) => ({
+        ...prev,
+        [targetId]: {
+          ...(prev[targetId] || {
+            id: targetId,
+            name: file.name,
+            size: file.size,
+            loaded: file.size,
+            total: file.size,
+          }),
+          status: 'saving',
+          loaded: file.size,
+          total: file.size,
+        },
+      }));
 
       await saveKnowledgeBaseFile({
         workspaceId: activeWorkspaceId,
@@ -485,18 +566,25 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
       );
       setFiles(updatedFiles);
       updateContext({ knowledgeBaseFiles: updatedFiles });
+      setReplaceProgress((prev) => {
+        const next = { ...prev };
+        delete next[targetId];
+        return next;
+      });
       setError(null);
-      toast.success('Knowledge base file replaced.');
     } catch (err) {
       console.error('[CanvasContextModal] Failed to replace KB file', err);
       setError('Could not replace file.');
-      toast.error('Knowledge base file replace failed.');
+      setReplaceProgress((prev) => {
+        const next = { ...prev };
+        delete next[targetId];
+        return next;
+      });
     } finally {
-      toast.dismiss(uploadToastId);
       setReplaceTargetId(null);
       e.target.value = '';
     }
-  }, [replaceTargetId, files, totalFileSize, activeWorkspaceId, toast]);
+  }, [replaceTargetId, files, totalFileSize, activeWorkspaceId, updateContext]);
 
   const handleRenameStart = useCallback((fileId: string, name: string) => {
     setRenamingId(fileId);
@@ -663,8 +751,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                   placeholder="Add instructions..."
                   style={textareaStyles}
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={statusStyles}>{saveStatus === 'saving' ? 'Saving...' : 'Saved'}</span>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <p style={descriptionStyles}>{instructionCount}/{MAX_INSTRUCTIONS}</p>
                 </div>
               </div>
@@ -727,6 +814,34 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                 />
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2], marginTop: spacing[3] }}>
+                  {uploadingFiles.map((file) => {
+                    const percent = file.total > 0 ? Math.min(100, Math.round((file.loaded / file.total) * 100)) : 0;
+                    return (
+                      <div key={file.id} style={fileRowStyles}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+                          <span
+                            style={{
+                              fontSize: typography.sizes.sm,
+                              color: colors.fg.primary,
+                              fontFamily: typography.fonts.body,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={file.name}
+                          >
+                            {file.name}
+                          </span>
+                          <span style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary }}>
+                            {formatBytes(file.size)} • {file.status === 'saving' ? 'Saving' : 'Uploading'} {percent}%
+                          </span>
+                          <div style={uploadBarTrackStyles} aria-hidden="true">
+                            <div style={{ ...uploadBarFillStyles, width: `${percent}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {files.map((file) => (
                     <div key={file.id} style={fileRowStyles}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -771,6 +886,22 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                         <span style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary }}>
                           {formatBytes(file.size)} • Updated {formatDate(file.lastModified)}
                         </span>
+                        {replaceProgress[file.id] && (() => {
+                          const progress = replaceProgress[file.id];
+                          const percent = progress.total > 0
+                            ? Math.min(100, Math.round((progress.loaded / progress.total) * 100))
+                            : 0;
+                          return (
+                            <>
+                              <span style={{ fontSize: typography.sizes.xs, color: colors.fg.quaternary }}>
+                                {progress.status === 'saving' ? 'Saving' : 'Uploading'} {percent}%
+                              </span>
+                              <div style={uploadBarTrackStyles} aria-hidden="true">
+                                <div style={{ ...uploadBarFillStyles, width: `${percent}%` }} />
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
                         {renamingId === file.id ? (
