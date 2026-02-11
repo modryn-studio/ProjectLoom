@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
+/* Override React Flow cursor defaults for grab/grabbing immediately */
+.react-flow,
+.react-flow__renderer,
+.react-flow__viewport,
+.react-flow__pane,
+.react-flow__pane.draggable,
+.react-flow__node.draggable,
+.react-flow svg {
+  cursor: grab !important;
+  touch-action: manipulation !important;
+}
+
+.react-flow__pane.dragging,
+.react-flow__node.draggable.dragging,
+.react-flow__pane.dragging svg {
+  cursor: grabbing !important;
+}
+
 /* =============================================================================
    DESIGN TOKENS - Professional Neutral Theme System
    Inspired by VSCode, Linear, GitHub, Notion - Easy on eyes for long sessions
@@ -272,24 +290,6 @@ body {
 }
 
 /* React Flow customizations - uses theme variables */
-
-/* Canvas panning cursor - ensures visibility in both light and dark modes */
-.react-flow__pane {
-  cursor: grab !important;
-}
-
-.react-flow__pane:active {
-  cursor: grabbing !important;
-}
-
-.react-flow.pannable {
-  cursor: grab !important;
-}
-
-/* Ensure cursor is always visible on the canvas */
-.react-flow__renderer {
-  cursor: inherit !important;
-}
 
 .react-flow__minimap {
   background-color: var(--bg-secondary) !important;

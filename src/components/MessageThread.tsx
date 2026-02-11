@@ -719,6 +719,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: spacing[2],
+    flex: 1,
   } as React.CSSProperties,
 
   normalContent: {
@@ -726,6 +727,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: spacing[2],
+    flex: 1,
   } as React.CSSProperties,
 
   emptyState: {

@@ -894,6 +894,38 @@ export function InfiniteCanvas() {
     }
   }, [focusNodeId, focusOnNode, clearFocusNode]);
 
+  // Enforce grab cursor on pane element to prevent white hand flash on init
+  useEffect(() => {
+    const paneElement = document.querySelector('.react-flow__pane') as HTMLElement | null;
+    if (paneElement) {
+      paneElement.style.cursor = 'grab';
+      paneElement.style.touchAction = 'manipulation';
+    }
+
+    // Monitor for dragging state and update cursor accordingly
+    const handlePaneClassChange = () => {
+      const pane = document.querySelector('.react-flow__pane') as HTMLElement | null;
+      if (!pane) return;
+
+      if (pane.classList.contains('dragging')) {
+        pane.style.cursor = 'grabbing';
+      } else {
+        pane.style.cursor = 'grab';
+      }
+    };
+
+    // Check for class change using a MutationObserver
+    const observer = new MutationObserver(handlePaneClassChange);
+    const pane = document.querySelector('.react-flow__pane');
+    if (pane) {
+      observer.observe(pane, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
     <div style={containerStyles}>
       {/* Unified Sidebar with Activity Bar */}
