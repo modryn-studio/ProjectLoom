@@ -376,7 +376,7 @@ export function InfiniteCanvas() {
       hasFitInitialView.current = true;
       setTimeout(() => {
         reactFlowInstance.current?.fitView({
-          padding: 0.2,
+          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
           duration: 800,
         });
       }, 300);
@@ -396,7 +396,7 @@ export function InfiniteCanvas() {
       if (reactFlowInstance.current) {
         const selectedId = Array.from(currentSelectedIds)[0];
         reactFlowInstance.current.fitView({
-          padding: 0.2,
+          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
           duration: 600,
           nodes: [{ id: selectedId }],
         });
@@ -418,7 +418,7 @@ export function InfiniteCanvas() {
       if (reactFlowInstance.current) {
         const selectedId = Array.from(currentSelectedIds)[0];
         reactFlowInstance.current.fitView({
-          padding: 0.2,
+          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
           duration: 600,
           nodes: [{ id: selectedId }],
         });
@@ -701,7 +701,7 @@ export function InfiniteCanvas() {
     // Fit view on mount with padding and animation
     setTimeout(() => {
       instance.fitView({
-        padding: canvasConfig.viewport.fitViewPadding,
+        padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
         duration: animation.duration.slow,
       });
     }, 100);
@@ -826,7 +826,7 @@ export function InfiniteCanvas() {
       },
       onFitView: () => {
         reactFlowInstance.current?.fitView({
-          padding: canvasConfig.viewport.fitViewPadding,
+          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
           duration: 400,
         });
       },
@@ -881,7 +881,7 @@ export function InfiniteCanvas() {
   const focusOnNode = useCallback((nodeId: string) => {
     if (reactFlowInstance.current) {
       reactFlowInstance.current.fitView({
-        padding: 0.2,
+        padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
         duration: 800,
         nodes: [{ id: nodeId }],
       });
