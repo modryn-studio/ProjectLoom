@@ -984,7 +984,7 @@ export function CanvasTreeSidebar({
           padding: `${spacing[2]} 0`,
           gap: spacing[1],
           flexShrink: 0,
-          borderRight: isOpen ? `1px solid ${colors.border.muted}` : 'none',
+          borderRight: `1px solid ${colors.border.muted}`,
         }}
       >
         {/* Workspaces Toggle */}
