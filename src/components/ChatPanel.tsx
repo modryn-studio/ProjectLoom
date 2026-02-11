@@ -35,6 +35,14 @@ export function ChatPanel() {
   const panelRef = useRef<HTMLElement>(null);
   const panelWidthRef = useRef<number>(480); // Track current width for mouseup handler
   
+  // Track conversation metadata for the active streaming request to prevent race conditions
+  // when user switches cards during streaming
+  const streamingRequestMetadataRef = useRef<{
+    conversationId: string;
+    model: string;
+    timestamp: number;
+  } | null>(null);
+  
   // State from stores — use targeted selector to only re-render when active conversation changes
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
   const activeConversationId = useCanvasStore(selectActiveConversationId);
@@ -254,6 +262,24 @@ export function ChatPanel() {
     id: activeConversationId || undefined,
     body: chatBody,
     onFinish: (message, options) => {
+      // Get captured metadata from request start time (prevents race condition when switching cards)
+      const metadata = streamingRequestMetadataRef.current;
+      
+      if (!metadata) {
+        console.warn('[ChatPanel] onFinish: No request metadata found');
+        setPendingAttachments([]);
+        return;
+      }
+      
+      // Verify conversation still exists (user might have deleted it during streaming)
+      const conversations = useCanvasStore.getState().conversations;
+      if (!conversations.get(metadata.conversationId)) {
+        console.warn(`[ChatPanel] onFinish: Target conversation ${metadata.conversationId} no longer exists`);
+        streamingRequestMetadataRef.current = null;
+        setPendingAttachments([]);
+        return;
+      }
+      
       // Extract web search metadata from tool calls in the message parts
       const searchSources: Array<{ title: string; url: string }> = [];
       for (const part of message.parts ?? []) {
@@ -275,26 +301,31 @@ export function ChatPanel() {
         },
       } : undefined;
 
-      // Persist AI message to store when streaming finishes
-      if (activeConversationId && currentModel) {
-        addAIMessage(activeConversationId, message.content, currentModel, webSearchMetadata);
-      }
+      // Persist AI message to store using CAPTURED conversationId and model
+      addAIMessage(metadata.conversationId, message.content, metadata.model, webSearchMetadata);
 
-      if (activeConversationId && currentModel && options?.usage) {
+      // Track usage if available
+      if (options?.usage) {
         addUsage({
-          provider: detectProvider(currentModel),
-          model: currentModel,
+          provider: detectProvider(metadata.model),
+          model: metadata.model,
           inputTokens: options.usage.promptTokens,
           outputTokens: options.usage.completionTokens,
-          conversationId: activeConversationId,
+          conversationId: metadata.conversationId,
           source: 'chat',
         });
       }
+      
+      // Clean up metadata ref
+      streamingRequestMetadataRef.current = null;
+      
       // Clear attachments after send
       setPendingAttachments([]);
     },
     onError: (error: Error) => {
       console.error('[ChatPanel] AI Error:', error);
+      // Clear metadata ref on error to prevent stale data
+      streamingRequestMetadataRef.current = null;
     },
   });
 
@@ -378,8 +409,27 @@ export function ChatPanel() {
     const userMessage = input.trim();
     if (!userMessage) return;
     
+    // Prevent concurrent requests
+    if (isStreaming) {
+      console.warn('[ChatPanel] Cannot start new request while streaming is in progress');
+      return;
+    }
+    
     // Clear input immediately so user sees instant feedback
     setInput('');
+
+    // Capture conversation metadata BEFORE starting the request to prevent race conditions
+    // when user switches cards during streaming
+    if (!activeConversationId || !currentModel) {
+      console.warn('[ChatPanel] Cannot start request: missing conversationId or model');
+      return;
+    }
+    
+    streamingRequestMetadataRef.current = {
+      conversationId: activeConversationId,
+      model: currentModel,
+      timestamp: Date.now(),
+    };
 
     // Build canvas context (pass explicit message since input is now cleared)
     const canvasContextPayload = await buildCanvasContextPayload(userMessage);
@@ -401,7 +451,7 @@ export function ChatPanel() {
         body,
       }
     );
-  }, [input, setInput, buildCanvasContextPayload, chatBody, setData, append]);
+  }, [input, setInput, buildCanvasContextPayload, chatBody, setData, append, isStreaming, activeConversationId, currentModel]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
@@ -431,38 +481,59 @@ export function ChatPanel() {
       
       // Check if it's an assistant message with content
       if (lastMessage?.role === 'assistant' && lastMessage.content.trim()) {
-        const storeMessages = activeConversationId ? getConversationMessages(activeConversationId) : [];
+        // Get captured metadata from request start time (prevents race condition)
+        const metadata = streamingRequestMetadataRef.current;
+        
+        if (!metadata) {
+          console.warn('[ChatPanel] Partial save: No request metadata found');
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setPendingAttachments([]);
+          return;
+        }
+        
+        const storeMessages = getConversationMessages(metadata.conversationId);
         const lastStoreMessage = storeMessages[storeMessages.length - 1];
         
         // Only save if this message isn't already in the store (avoid duplicate saves)
         // Compare content to detect if it's a new/partial message
         if (!lastStoreMessage || lastStoreMessage.content !== lastMessage.content) {
-          if (activeConversationId && currentModel) {
-            // For partial saves (user clicked stop), extract web search metadata
-            // from tool invocations in message parts if available
-            const partialSearchSources: Array<{ title: string; url: string }> = [];
-            for (const part of lastMessage.parts ?? []) {
-              if (part.type !== 'tool-invocation') continue;
-              const invocation = part.toolInvocation as { toolName?: string; result?: { sources?: Array<{ title: string; url: string }> } };
-              if (invocation.toolName !== 'tavily_search') continue;
-              const sources = invocation.result?.sources;
-              if (Array.isArray(sources)) {
-                partialSearchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
-              }
-            }
-
-            const partialWebSearchMetadata = partialSearchSources.length > 0 ? {
-              custom: {
-                webSearch: {
-                  used: true,
-                  sources: partialSearchSources,
-                },
-              },
-            } : undefined;
-            addAIMessage(activeConversationId, lastMessage.content, currentModel, partialWebSearchMetadata);
+          // Verify conversation still exists
+          const conversations = useCanvasStore.getState().conversations;
+          if (!conversations.get(metadata.conversationId)) {
+            console.warn(`[ChatPanel] Partial save: Target conversation ${metadata.conversationId} no longer exists`);
+            streamingRequestMetadataRef.current = null;
+            setPendingAttachments([]);
+            return;
           }
-          // Clear attachments after partial save (intentional effect-based cleanup)
-          // eslint-disable-next-line react-hooks/set-state-in-effect
+          
+          // For partial saves (user clicked stop), extract web search metadata
+          // from tool invocations in message parts if available
+          const partialSearchSources: Array<{ title: string; url: string }> = [];
+          for (const part of lastMessage.parts ?? []) {
+            if (part.type !== 'tool-invocation') continue;
+            const invocation = part.toolInvocation as { toolName?: string; result?: { sources?: Array<{ title: string; url: string }> } };
+            if (invocation.toolName !== 'tavily_search') continue;
+            const sources = invocation.result?.sources;
+            if (Array.isArray(sources)) {
+              partialSearchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
+            }
+          }
+
+          const partialWebSearchMetadata = partialSearchSources.length > 0 ? {
+            custom: {
+              webSearch: {
+                used: true,
+                sources: partialSearchSources,
+              },
+            },
+          } : undefined;
+          
+          // Save partial message using CAPTURED values
+          addAIMessage(metadata.conversationId, lastMessage.content, metadata.model, partialWebSearchMetadata);
+          
+          // Clean up metadata ref
+          streamingRequestMetadataRef.current = null;
+          
           setPendingAttachments([]);
         }
       }
