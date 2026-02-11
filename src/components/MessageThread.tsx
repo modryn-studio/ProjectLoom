@@ -197,6 +197,13 @@ export function MessageThread({
     }
     return conversation.content;
   }, [streamingMessages, conversation.content, isStreaming]);
+
+  const showPendingResponse = useMemo(() => {
+    if (!isStreaming) return false;
+    if (streamingMessages.length > 0) return false;
+    if (displayMessages.length === 0) return false;
+    return displayMessages[displayMessages.length - 1]?.role === 'user';
+  }, [isStreaming, streamingMessages.length, displayMessages]);
   
   // Branch actions
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
@@ -337,6 +344,16 @@ export function MessageThread({
         >
           <Loader size={14} className="animate-spin" />
           <span>Searching web...</span>
+        </div>
+      )}
+
+      {/* Pending response indicator - shown before streaming starts */}
+      {showPendingResponse && (
+        <div style={bubbleStyles.pendingWrapper}>
+          <div style={bubbleStyles.pendingBubble}>
+            <Loader size={14} className="animate-spin" />
+            <span style={bubbleStyles.pendingText}>Thinking...</span>
+          </div>
         </div>
       )}
       
@@ -767,6 +784,29 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     width: '100%',
     position: 'relative',
+  } as React.CSSProperties,
+
+  pendingWrapper: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    width: '100%',
+  } as React.CSSProperties,
+
+  pendingBubble: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[1]} ${spacing[3]}`,
+    backgroundColor: colors.bg.tertiary,
+    borderRadius: effects.border.radius.default,
+    border: `1px solid ${colors.border.muted}`,
+    color: colors.fg.secondary,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fonts.body,
+  } as React.CSSProperties,
+
+  pendingText: {
+    lineHeight: 1.2,
   } as React.CSSProperties,
 
   message: {
