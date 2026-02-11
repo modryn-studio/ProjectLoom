@@ -139,13 +139,31 @@ Examples:
 
     const data = await response.json();
     
-    // Extract title from response based on provider
+    // Extract title and usage from response based on provider
     let title: string;
+    let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined;
+    
     if (provider === 'anthropic') {
       title = data.content?.[0]?.text?.trim() || '';
+      // Extract Anthropic usage data
+      if (data.usage) {
+        usage = {
+          promptTokens: data.usage.input_tokens || 0,
+          completionTokens: data.usage.output_tokens || 0,
+          totalTokens: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0),
+        };
+      }
     } else {
       // OpenAI
       title = data.choices?.[0]?.message?.content?.trim() || '';
+      // Extract OpenAI usage data
+      if (data.usage) {
+        usage = {
+          promptTokens: data.usage.prompt_tokens || 0,
+          completionTokens: data.usage.completion_tokens || 0,
+          totalTokens: data.usage.total_tokens || 0,
+        };
+      }
     }
 
     // Clean up title
@@ -167,7 +185,14 @@ Examples:
       title = fallbackWords.charAt(0).toUpperCase() + fallbackWords.slice(1);
     }
 
-    return NextResponse.json({ title });
+    // Log usage data for diagnostics
+    if (usage) {
+      console.log('[Generate Title API] Usage tracked:', { provider, model, usage });
+    } else {
+      console.warn('[Generate Title API] No usage data from provider:', { provider, model });
+    }
+
+    return NextResponse.json({ title, usage });
   } catch (error) {
     console.error('Error generating title:', error);
     return NextResponse.json(

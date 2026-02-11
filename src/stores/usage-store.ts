@@ -21,7 +21,7 @@ import { calculateCost } from '@/lib/vercel-ai-integration';
 // =============================================================================
 
 export type UsageProvider = 'anthropic' | 'openai';
-export type UsageSource = 'chat' | 'agent' | 'summarize' | 'embeddings';
+export type UsageSource = 'chat' | 'agent' | 'summarize' | 'embeddings' | 'title-generation';
 
 export type UsageRange = 'this_month' | 'last_month' | 'year_to_date' | 'all_time';
 
@@ -153,7 +153,17 @@ export const useUsageStore = create<UsageState>()(
         const outputTokens = Number(input.outputTokens) || 0;
         const totalTokens = inputTokens + outputTokens;
         
-        if (totalTokens <= 0 || !Number.isFinite(totalTokens)) return;
+        if (totalTokens <= 0 || !Number.isFinite(totalTokens)) {
+          console.warn('[UsageStore] Rejecting invalid usage record:', {
+            provider: input.provider,
+            model: input.model,
+            inputTokens: input.inputTokens,
+            outputTokens: input.outputTokens,
+            totalTokens,
+            source: input.source,
+          });
+          return;
+        }
 
         const record: UsageRecord = {
           id: nanoid(10),

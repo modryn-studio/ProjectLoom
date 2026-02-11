@@ -255,12 +255,23 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
       setIsRunning(false);
 
       if (agentResult.usage?.totalTokens > 0) {
+        console.log('[AgentDialog] Tracking usage:', {
+          model: modelId,
+          provider: detectProvider(modelId),
+          promptTokens: agentResult.usage.promptTokens,
+          completionTokens: agentResult.usage.completionTokens,
+        });
         addUsage({
           provider: detectProvider(modelId),
           model: modelId,
           inputTokens: agentResult.usage.promptTokens,
           outputTokens: agentResult.usage.completionTokens,
           source: 'agent',
+        });
+      } else {
+        console.warn('[AgentDialog] Agent usage data missing or zero:', {
+          model: modelId,
+          usage: agentResult.usage,
         });
       }
 
