@@ -157,63 +157,89 @@ export function MessageThread({
     typeof window !== 'undefined'
     && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   ));
-  
-  // Use streaming messages when actively streaming, otherwise use store messages
-  // Store messages (conversation.content) preserve attachments and metadata;
-  // useChat messages are only needed during active streaming for real-time display.
+
+  // Always use conversation.content as the display source of truth.
+  // During streaming, append ONLY the actively-streaming assistant response.
+  //
+  // Why: streamingMessages (from useChat) includes inherited parent messages
+  // loaded for LLM context. Displaying them causes parent messages to flash
+  // in branched cards. Using conversation.content keeps IDs stable (nanoid)
+  // across streaming/non-streaming transitions, preventing AnimatePresence
+  // from tearing down and rebuilding the entire message list (which caused
+  // scroll position to reset to top).
   const displayMessages = useMemo(() => {
     if (isStreaming && streamingMessages.length > 0) {
-      // During active streaming, convert useChat messages to our format
-      // Pre-index store messages by ID for O(1) lookups instead of O(n) find per message
-      const storeMessages = conversation.content;
-      const storeIndex = new Map<string, Message>();
-      for (const sm of storeMessages) {
-        storeIndex.set(sm.id, sm);
-      }
-      
-      // Stable fallback timestamp to avoid creating new Date objects per render
-      const firstTimestamp = storeMessages[0]?.timestamp;
-      const fallbackTimestamp = (firstTimestamp && !isNaN(new Date(firstTimestamp).getTime()))
-        ? firstTimestamp
-        : new Date();
-      
-      return streamingMessages.map((msg, idx) => {
-        // O(1) lookup by ID
-        const storeMsg = storeIndex.get(msg.id);
-        return {
-          id: msg.id ?? `streaming-${idx}`,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-          timestamp: storeMsg?.timestamp || fallbackTimestamp,
-          metadata: {
-            ...storeMsg?.metadata,
-            // Mark streaming message
-            isStreaming: idx === streamingMessages.length - 1 && msg.role === 'assistant',
+      const lastStreaming = streamingMessages[streamingMessages.length - 1];
+
+      // AI has started responding — append the streaming assistant message
+      if (lastStreaming?.role === 'assistant') {
+        const lastContent = conversation.content[conversation.content.length - 1];
+
+        // If the store already has this exact response (onFinish fired but
+        // isStreaming hasn't flipped yet), just use conversation.content as-is
+        if (
+          lastContent?.role === 'assistant' &&
+          lastContent.content === lastStreaming.content
+        ) {
+          return conversation.content;
+        }
+
+        // Graft the in-flight assistant message onto the persisted messages
+        return [
+          ...conversation.content,
+          {
+            id: lastStreaming.id ?? `streaming-${conversation.id}`,
+            role: 'assistant' as const,
+            content: lastStreaming.content,
+            timestamp: new Date(),
+            metadata: { isStreaming: true },
           },
-          // Preserve attachments from store message
-          attachments: storeMsg?.attachments,
-        };
-      });
+        ];
+      }
+
+      // Last streaming message is user → AI hasn't started responding yet.
+      // User message is already in conversation.content (added by sendMessage
+      // before append), so just show persisted messages.
     }
+
     return conversation.content;
-  }, [streamingMessages, conversation.content, isStreaming]);
+  }, [streamingMessages, conversation.content, conversation.id, isStreaming]);
 
   const showPendingResponse = useMemo(() => {
     if (!isStreaming) return false;
-    if (streamingMessages.length > 0) return false;
+    // Check whether the AI has begun streaming an assistant message.
+    // Don't use streamingMessages.length — it includes inherited parent
+    // messages loaded for LLM context and is never truly empty.
+    const hasStreamingAssistant =
+      streamingMessages.length > 0 &&
+      streamingMessages[streamingMessages.length - 1]?.role === 'assistant';
+    if (hasStreamingAssistant) return false;
     if (displayMessages.length === 0) return false;
     return displayMessages[displayMessages.length - 1]?.role === 'user';
-  }, [isStreaming, streamingMessages.length, displayMessages]);
+  }, [isStreaming, streamingMessages, displayMessages]);
   
   // Branch actions
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
 
-  // Auto-scroll to bottom when new messages arrive or streaming content updates
-  // Use displayMessages.length for new messages and streamingMessages.length for
-  // "new streaming message added" (not content changes within existing messages).
-  // The last streaming message content triggers scroll during active streaming.
+  // Reset scroll state when switching to a different conversation.
+  // Without this, isPinnedToBottomRef retains the previous card's scroll
+  // position, causing auto-scroll to not work in the new card.
+  useEffect(() => {
+    isPinnedToBottomRef.current = true;
+    if (scrollContainerRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [conversation.id]);
+
+  // Auto-scroll to bottom when new messages arrive or streaming content updates.
+  // Only track streaming content when actively streaming — when streaming ends,
+  // lastStreamingContent changes to '', which should NOT trigger auto-scroll.
   const lastStreamingContent = isStreaming && streamingMessages.length > 0
     ? streamingMessages[streamingMessages.length - 1]?.content ?? ''
     : '';
@@ -225,9 +251,15 @@ export function MessageThread({
     // Update ref for next render
     prevIsStreamingRef.current = isStreaming;
     
-    // Don't auto-scroll when streaming just finished (user may be reading above)
+    // Don't auto-scroll when streaming just finished OR just after it finished.
+    // The lastStreamingContent dependency changes from content→'' when streaming
+    // ends, triggering this effect again. We must block scrolling for that second
+    // trigger too, otherwise users reading the message get auto-scrolled to bottom.
     if (wasStreaming && !isNowStreaming) {
-      return;
+      return; // Streaming just ended this render
+    }
+    if (!wasStreaming && !isNowStreaming && lastStreamingContent === '') {
+      return; // Streaming ended in a previous render, don't scroll on content→'' change
     }
     
     if (scrollContainerRef.current && isPinnedToBottomRef.current) {
