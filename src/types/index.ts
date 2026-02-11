@@ -675,6 +675,8 @@ export interface StorageData {
   connections: EdgeConnection[];
   /** Last used AI model (remembered across sessions) */
   lastUsedModel?: string | null;
+  /** Draft messages by conversation ID (persist across page refreshes) */
+  draftMessages?: Record<string, string>;
   /** Canvas settings */
   settings: {
     theme: 'dark';

@@ -1324,6 +1324,14 @@ export const useCanvasStore = create<WorkspaceState>()(
         conversations.set(conv.id, conv);
       });
 
+      // Restore draft messages
+      const draftMessages = new Map<string, string>();
+      if (storedData.draftMessages) {
+        Object.entries(storedData.draftMessages).forEach(([id, draft]) => {
+          if (draft) draftMessages.set(id, draft);
+        });
+      }
+
       // Create nodes from stored positions
       const nodes: ConversationNode[] = storedData.conversations.map((conv: Conversation) => {
         const position = storedData.positions[conv.id] ?? { x: 0, y: 0 };
@@ -1360,6 +1368,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         activeWorkspaceId,
         expandedNodeIds,
         selectedNodeIds,
+        draftMessages,
         lastUsedModel: storedData.lastUsedModel ?? null,
         isInitialized: true,
         // Initialize history with the initial state
@@ -1377,7 +1386,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       if (saveTimeout) clearTimeout(saveTimeout);
       
       saveTimeout = setTimeout(() => {
-        const { nodes, edges, conversations, workspaces, activeWorkspaceId } = get();
+        const { nodes, edges, conversations, workspaces, activeWorkspaceId, draftMessages } = get();
 
         // Build positions map
         const positions: Record<string, Position> = {};
@@ -1398,12 +1407,19 @@ export const useCanvasStore = create<WorkspaceState>()(
           animated: edge.animated ?? false,
         }));
 
+        // Convert draft messages Map to plain object for storage
+        const draftMessagesObj: Record<string, string> = {};
+        draftMessages.forEach((draft, id) => {
+          draftMessagesObj[id] = draft;
+        });
+
         const data: StorageData = {
           schemaVersion: CURRENT_SCHEMA_VERSION,
           conversations: Array.from(conversations.values()),
           positions,
           connections,
           lastUsedModel: get().lastUsedModel,
+          draftMessages: draftMessagesObj,
           settings: {
             theme: 'dark',
             showMinimap: true,
@@ -2083,6 +2099,9 @@ export const useCanvasStore = create<WorkspaceState>()(
       }
       
       set({ draftMessages: newDrafts });
+      
+      // Persist draft to storage so it survives page refreshes
+      get().saveToStorage();
     },
 
     getDraftMessage: (conversationId: string) => {
