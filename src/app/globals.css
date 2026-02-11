@@ -1,21 +1,12 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
-/* Override React Flow cursor defaults for grab/grabbing immediately */
-.react-flow,
-.react-flow__renderer,
-.react-flow__viewport,
-.react-flow__pane,
-.react-flow__pane.draggable,
-.react-flow__node.draggable,
-.react-flow svg {
+/* Override React Flow cursor defaults */
+.react-flow__pane.draggable {
   cursor: grab !important;
-  touch-action: manipulation !important;
 }
 
-.react-flow__pane.dragging,
-.react-flow__node.draggable.dragging,
-.react-flow__pane.dragging svg {
+.react-flow__pane.dragging {
   cursor: grabbing !important;
 }
 
