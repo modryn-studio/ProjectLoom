@@ -51,6 +51,7 @@ export function ChatPanel() {
   );
   const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
   const addAIMessage = useCanvasStore((s) => s.addAIMessage);
+  const updateConversation = useCanvasStore((s) => s.updateConversation);
   const addUsage = useUsageStore((s) => s.addUsage);
   const getConversationMessages = useCanvasStore((s) => s.getConversationMessages);
   const conversationModel = useCanvasStore(
@@ -280,17 +281,17 @@ export function ChatPanel() {
         return;
       }
       
-      // Extract web search metadata from tool calls in the message parts
-      const searchSources: Array<{ title: string; url: string }> = [];
-      for (const part of message.parts ?? []) {
-        if (part.type !== 'tool-invocation') continue;
-        const invocation = part.toolInvocation as { toolName?: string; result?: { sources?: Array<{ title: string; url: string }> } };
-        if (invocation.toolName !== 'tavily_search') continue;
-        const sources = invocation.result?.sources;
-        if (Array.isArray(sources)) {
-          searchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
-        }
-      }
+      // Extract web search metadata from message annotations
+      // (sent by the API route via createDataStreamResponse + writeMessageAnnotation)
+      type WebSearchAnnotation = {
+        webSearch?: {
+          used?: boolean;
+          sources?: Array<{ title: string; url: string; snippet?: string }>;
+        };
+      };
+      const annotations = (message.annotations ?? []) as WebSearchAnnotation[];
+      const searchAnnotation = annotations.find((a) => a.webSearch?.used);
+      const searchSources = searchAnnotation?.webSearch?.sources ?? [];
 
       const webSearchMetadata = searchSources.length > 0 ? {
         custom: {
@@ -306,6 +307,13 @@ export function ChatPanel() {
 
       // Track usage if available
       if (options?.usage) {
+        console.log('[ChatPanel] Tracking usage:', {
+          model: metadata.model,
+          provider: detectProvider(metadata.model),
+          promptTokens: options.usage.promptTokens,
+          completionTokens: options.usage.completionTokens,
+          conversationId: metadata.conversationId,
+        });
         addUsage({
           provider: detectProvider(metadata.model),
           model: metadata.model,
@@ -313,6 +321,13 @@ export function ChatPanel() {
           outputTokens: options.usage.completionTokens,
           conversationId: metadata.conversationId,
           source: 'chat',
+        });
+      } else {
+        console.warn('[ChatPanel] Usage data missing from AI response:', {
+          model: metadata.model,
+          provider: detectProvider(metadata.model),
+          conversationId: metadata.conversationId,
+          messageLength: message.content?.length || 0,
         });
       }
       
@@ -452,6 +467,89 @@ export function ChatPanel() {
       }
     );
   }, [input, setInput, buildCanvasContextPayload, chatBody, setData, append, isStreaming, activeConversationId, currentModel]);
+
+  // Handle retry: remove all messages after the target user message and re-send it
+  const handleRetry = useCallback(async (messageIndex: number) => {
+    if (!activeConversation) return;
+    
+    const messages = activeConversation.content || [];
+    const targetMessage = messages[messageIndex];
+    
+    // Verify it's a user message
+    if (!targetMessage || targetMessage.role !== 'user') {
+      console.warn('[ChatPanel] Cannot retry non-user message');
+      return;
+    }
+    
+    // Stop any ongoing streaming
+    if (isStreaming) {
+      stop();
+    }
+    
+    // Truncate conversation in store - keep messages up to and including target
+    const truncatedMessages = messages.slice(0, messageIndex + 1);
+    updateConversation(activeConversation.id, {
+      content: truncatedMessages,
+    });
+    
+    // Truncate useChat messages to sync state
+    const chatMessagesUpToTarget = chatMessages.slice(0, messageIndex + 1);
+    setMessages(chatMessagesUpToTarget);
+    
+    // Capture conversation metadata for the retry request
+    if (!activeConversationId || !currentModel) {
+      console.warn('[ChatPanel] Cannot retry: missing conversationId or model');
+      return;
+    }
+    
+    streamingRequestMetadataRef.current = {
+      conversationId: activeConversationId,
+      model: currentModel,
+      timestamp: Date.now(),
+    };
+    
+    // Build canvas context for retry
+    const canvasContextPayload = await buildCanvasContextPayload(targetMessage.content);
+    
+    // Re-send the user message
+    const messageContent = targetMessage.content;
+    const messageAttachments = targetMessage.attachments || [];
+    
+    // Build body with attachments for retry (don't rely on pendingAttachments state timing)
+    const body = {
+      model: currentModel,
+      apiKey: currentApiKey,
+      ...(tavilyKey ? { tavilyKey } : {}),
+      ...(messageAttachments.length > 0 ? {
+        attachments: messageAttachments.map(a => ({
+          contentType: a.contentType,
+          name: a.name,
+          url: a.url,
+        })),
+      } : {}),
+      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
+    };
+    
+    setData([]);
+    
+    // Update pendingAttachments state for UI consistency (but body already has them)
+    if (messageAttachments.length > 0) {
+      setPendingAttachments(messageAttachments);
+    }
+    
+    // Use append to re-send (this will trigger onFinish and add AI response)
+    await append(
+      {
+        role: 'user',
+        content: messageContent,
+      },
+      {
+        body,
+      }
+    );
+    
+    console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
+  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, tavilyKey, buildCanvasContextPayload, setData, append, setPendingAttachments]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
@@ -674,6 +772,7 @@ export function ChatPanel() {
             isStreaming={isStreaming}
             onHeightChange={setMessageListHeight}
             isMaximized={isMaximized}
+            onRetry={handleRetry}
           />
 
           {/* Message Input */}

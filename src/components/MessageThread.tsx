@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight, FileText, RefreshCcw } from 'lucide-react';
 import { SimpleChatMarkdown } from './SimpleChatMarkdown';
 import type { Message as ChatMessage } from 'ai';
 
@@ -137,6 +137,8 @@ interface MessageThreadProps {
   onHeightChange?: (height: number) => void;
   /** Whether chat panel is maximized (fullscreen) */
   isMaximized?: boolean;
+  /** Callback to retry a user message (removes subsequent messages and re-sends) */
+  onRetry?: (messageIndex: number) => void;
 }
 
 export function MessageThread({
@@ -145,6 +147,7 @@ export function MessageThread({
   isStreaming = false,
   onHeightChange,
   isMaximized = false,
+  onRetry,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
@@ -322,6 +325,14 @@ export function MessageThread({
     }
   }, [conversation.id, branchFromMessage, openChatPanel, requestFocusNode]);
 
+  // Handle retry from specific message
+  const handleRetryClick = useCallback((messageIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRetry) {
+      onRetry(messageIndex);
+    }
+  }, [onRetry]);
+
   // Memoized handlers to prevent child re-renders
   const handleMouseEnter = useCallback((index: number) => {
     setHoveredMessageIndex(index);
@@ -330,22 +341,6 @@ export function MessageThread({
   const handleMouseLeave = useCallback(() => {
     setHoveredMessageIndex(null);
   }, []);
-
-  // Detect if AI is currently executing a tool call (e.g. web search)
-  // by checking streaming message parts for in-flight tool invocations.
-  const isToolCallActive = useMemo(() => {
-    if (!isStreaming || streamingMessages.length === 0) return false;
-    const lastMsg = streamingMessages[streamingMessages.length - 1];
-    if (lastMsg?.role !== 'assistant') return false;
-    // Check parts for tool invocations that haven't completed yet
-    const parts = (lastMsg as { parts?: Array<{ type: string; toolInvocation?: { state?: string; toolName?: string } }> }).parts;
-    if (!parts) return false;
-    return parts.some(
-      (p) => p.type === 'tool-invocation' &&
-             p.toolInvocation?.toolName === 'tavily_search' &&
-             p.toolInvocation?.state !== 'result'
-    );
-  }, [isStreaming, streamingMessages]);
 
   return (
     <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
@@ -378,29 +373,12 @@ export function MessageThread({
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 onBranchClick={handleBranchClick}
+                onRetryClick={handleRetryClick}
               />
             );
           })}
       </AnimatePresence>
       
-      {/* Searching indicator - shown when AI calls web search tool */}
-      {isToolCallActive && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: spacing[2],
-            padding: `${spacing[3]} ${spacing[4]}`,
-            marginBottom: spacing[3],
-            color: colors.fg.secondary,
-            fontSize: typography.sizes.sm,
-          }}
-        >
-          <Loader size={14} className="animate-spin" />
-          <span>Searching web...</span>
-        </div>
-      )}
-
       {/* Pending response indicator - shown before streaming starts */}
       {showPendingResponse && (
         <div style={bubbleStyles.pendingWrapper}>
@@ -436,6 +414,7 @@ interface MessageBubbleProps {
   onMouseEnter: (index: number) => void;
   onMouseLeave: () => void;
   onBranchClick: (index: number, e: React.MouseEvent) => void;
+  onRetryClick: (index: number, e: React.MouseEvent) => void;
 }
 
 const MessageBubble = memo(function MessageBubble({
@@ -447,6 +426,7 @@ const MessageBubble = memo(function MessageBubble({
   onMouseEnter,
   onMouseLeave,
   onBranchClick,
+  onRetryClick,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -535,6 +515,10 @@ const MessageBubble = memo(function MessageBubble({
     e.stopPropagation();
     toast.info('Edit feature coming soon');
   }, [toast]);
+
+  const handleRetryClickLocal = useCallback((e: React.MouseEvent) => {
+    onRetryClick(index, e);
+  }, [onRetryClick, index]);
 
   return (
     <motion.div
@@ -631,24 +615,39 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
-        {/* Image attachments */}
+        {/* Attachments */}
         {message.attachments && message.attachments.length > 0 && (
           <div style={bubbleStyles.attachmentRow}>
-            {message.attachments.map((att: MessageAttachment) => (
-              <div key={att.id} style={bubbleStyles.attachmentContainer}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={att.url}
-                  alt={att.name}
-                  style={bubbleStyles.attachmentImage}
-                  onClick={() => window.open(att.url, '_blank')}
-                />
-                <span style={bubbleStyles.attachmentLabel}>
-                  <ImageIcon size={10} style={{ flexShrink: 0 }} />
-                  {att.name}
-                </span>
-              </div>
-            ))}
+            {message.attachments.map((att: MessageAttachment) => {
+              const isImage = att.contentType.startsWith('image/');
+              
+              if (isImage) {
+                // Image attachment
+                return (
+                  <div key={att.id} style={bubbleStyles.attachmentContainer}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={att.url}
+                      alt={att.name}
+                      style={bubbleStyles.attachmentImage}
+                      onClick={() => window.open(att.url, '_blank')}
+                    />
+                    <span style={bubbleStyles.attachmentLabel}>
+                      <ImageIcon size={10} style={{ flexShrink: 0 }} />
+                      {att.name}
+                    </span>
+                  </div>
+                );
+              } else {
+                // Text file attachment
+                return (
+                  <div key={att.id} style={bubbleStyles.attachmentTextBadge}>
+                    <FileText size={14} style={{ flexShrink: 0, color: colors.accent.primary }} />
+                    <span style={bubbleStyles.attachmentTextName}>{att.name}</span>
+                  </div>
+                );
+              }
+            })}
           </div>
         )}
       </div>
@@ -680,6 +679,7 @@ const MessageBubble = memo(function MessageBubble({
               onCopyClick={handleCopyClickLocal}
               onEditClick={handleEditClickLocal}
               onBranchClick={handleBranchClickLocal}
+              onRetryClick={handleRetryClickLocal}
             />
           </div>
         </div>
@@ -699,6 +699,7 @@ interface MessageActionButtonsProps {
   onCopyClick: (e: React.MouseEvent) => void;
   onEditClick: (e: React.MouseEvent) => void;
   onBranchClick: (e: React.MouseEvent) => void;
+  onRetryClick: (e: React.MouseEvent) => void;
 }
 
 const MessageActionButtons = memo(function MessageActionButtons({
@@ -708,11 +709,27 @@ const MessageActionButtons = memo(function MessageActionButtons({
   onCopyClick,
   onEditClick,
   onBranchClick,
+  onRetryClick,
 }: MessageActionButtonsProps) {
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
   return (
     <div style={actionButtonGroupStyles.container}>
+      {isUserMessage && (
+        <button
+          onClick={onRetryClick}
+          onMouseEnter={() => setHoveredButton('retry')}
+          onMouseLeave={() => setHoveredButton(null)}
+          style={{
+            ...actionButtonGroupStyles.button,
+            color: hoveredButton === 'retry' ? colors.fg.secondary : colors.fg.tertiary,
+          }}
+          title="Retry this prompt"
+          aria-label="Retry this prompt"
+        >
+          <RefreshCcw size={12} />
+        </button>
+      )}
       <button
         onClick={onCopyClick}
         onMouseEnter={() => setHoveredButton('copy')}
@@ -1110,6 +1127,26 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  } as React.CSSProperties,
+
+  attachmentTextBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[1]} ${spacing[2]}`,
+    backgroundColor: colors.bg.inset,
+    border: `1px solid ${colors.border.default}`,
+    borderRadius: effects.border.radius.default,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fonts.body,
+  } as React.CSSProperties,
+
+  attachmentTextName: {
+    color: colors.fg.secondary,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: 200,
   } as React.CSSProperties,
 
   citations: {

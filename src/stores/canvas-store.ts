@@ -290,11 +290,34 @@ async function generateAITitle(
       return;
     }
 
-    const { title } = await response.json();
+    const { title, usage } = await response.json() as { title: string; usage?: { promptTokens: number; completionTokens: number; totalTokens: number } };
     
     if (!title) {
       logger.warn('AI title generation returned empty title');
       return;
+    }
+
+    // Track usage if available
+    if (usage && usage.totalTokens > 0) {
+      const { useUsageStore } = await import('./usage-store');
+      const { detectProvider } = await import('@/lib/vercel-ai-integration');
+      
+      console.log('[Canvas Store] Tracking title generation usage:', {
+        model,
+        provider: detectProvider(model),
+        usage,
+      });
+      
+      useUsageStore.getState().addUsage({
+        provider: detectProvider(model),
+        model,
+        inputTokens: usage.promptTokens,
+        outputTokens: usage.completionTokens,
+        conversationId,
+        source: 'title-generation' as const,
+      });
+    } else {
+      logger.warn('Title generation usage data missing or zero:', { model, usage });
     }
 
     // Update the conversation with the generated title

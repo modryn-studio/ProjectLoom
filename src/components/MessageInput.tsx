@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { Send, Square, AlertCircle, Settings, Paperclip, X } from 'lucide-react';
+import { Send, Square, AlertCircle, Settings, Paperclip, X, FileText } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -51,10 +51,14 @@ interface MessageInputProps {
   isMaximized?: boolean;
 }
 
-// Vision support constants
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+// Attachment support constants
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images
+const MAX_TEXT_SIZE = 500 * 1024; // 500KB for text files
 const MAX_ATTACHMENTS = 3;
-const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const ACCEPTED_TYPES = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/gif',  // Images
+  'text/plain', 'text/markdown'  // Text files
+];
 
 export function MessageInput({ 
   conversationId,
@@ -147,37 +151,65 @@ export function MessageInput({
     const remaining = MAX_ATTACHMENTS - currentCount;
     
     if (files.length > remaining) {
-      setAttachmentError(`Maximum ${MAX_ATTACHMENTS} images per message.`);
+      setAttachmentError(`Maximum ${MAX_ATTACHMENTS} attachments per message.`);
       return;
     }
     
+    // Validate file types and sizes
     for (const file of files) {
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        setAttachmentError(`Unsupported format: ${file.name}. Use PNG, JPEG, WebP, or GIF.`);
+        setAttachmentError(`Unsupported format: ${file.name}. Use images (PNG, JPEG, WebP, GIF) or text files (.txt, .md).`);
         return;
       }
-      if (file.size > MAX_FILE_SIZE) {
-        setAttachmentError(`${file.name} exceeds 5MB limit.`);
+      
+      const isImage = file.type.startsWith('image/');
+      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_TEXT_SIZE;
+      const sizeLabel = isImage ? '5MB' : '500KB';
+      
+      if (file.size > maxSize) {
+        setAttachmentError(`${file.name} exceeds ${sizeLabel} limit for ${isImage ? 'images' : 'text files'}.`);
         return;
       }
     }
     
-    // Convert files to base64 data URLs
+    // Convert files to attachments (different handling for images vs text)
     const readers = files.map(file => {
       return new Promise<MessageAttachment>((resolve, reject) => {
+        const isImage = file.type.startsWith('image/');
         const reader = new FileReader();
+        
         reader.onload = () => {
-          resolve({
-            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            contentType: file.type,
-            name: file.name,
-            url: reader.result as string,
-          });
+          if (isImage) {
+            // Images: use data URL for display
+            resolve({
+              id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              contentType: file.type,
+              name: file.name,
+              url: reader.result as string,
+            });
+          } else {
+            // Text files: encode as base64 data URL
+            const textContent = reader.result as string;
+            const base64Content = btoa(unescape(encodeURIComponent(textContent)));
+            resolve({
+              id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              contentType: file.type,
+              name: file.name,
+              url: `data:${file.type};base64,${base64Content}`,
+            });
+          }
         };
+        
         reader.onerror = () => {
           reject(new Error(`Failed to read file: ${file.name}`));
         };
-        reader.readAsDataURL(file);
+        
+        // Read as appropriate format
+        if (isImage) {
+          reader.readAsDataURL(file);
+        } else {
+          reader.readAsText(file);
+        }
       });
     });
     
@@ -187,7 +219,7 @@ export function MessageInput({
       })
       .catch((error) => {
         console.error('[MessageInput] Failed to read file:', error);
-        // Notify user of error (optional: could use toast)
+        setAttachmentError('Failed to read file. Please try again.');
       });
     
     // Reset input so re-selecting same file works
@@ -280,23 +312,47 @@ export function MessageInput({
       {/* Attachment preview */}
       {attachments.length > 0 && (
         <div style={inputStyles.attachmentPreview}>
-          {attachments.map(att => (
-            <div key={att.id} style={inputStyles.attachmentThumb}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={att.url}
-                alt={att.name}
-                style={inputStyles.attachmentImg}
-              />
-              <button
-                onClick={() => handleRemoveAttachment(att.id)}
-                style={inputStyles.attachmentRemove}
-                title="Remove"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ))}
+          {attachments.map(att => {
+            const isImage = att.contentType.startsWith('image/');
+            
+            if (isImage) {
+              // Image thumbnail
+              return (
+                <div key={att.id} style={inputStyles.attachmentThumb}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={att.url}
+                    alt={att.name}
+                    style={inputStyles.attachmentImg}
+                  />
+                  <button
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    style={inputStyles.attachmentRemove}
+                    title="Remove"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              );
+            } else {
+              // Text file badge
+              return (
+                <div key={att.id} style={inputStyles.attachmentTextBadge}>
+                  <FileText size={16} style={{ flexShrink: 0, color: colors.accent.primary }} />
+                  <div style={inputStyles.attachmentTextInfo}>
+                    <span style={inputStyles.attachmentTextName}>{att.name}</span>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    style={inputStyles.attachmentTextRemove}
+                    title="Remove"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              );
+            }
+          })}
         </div>
       )}
 
@@ -588,6 +644,48 @@ const inputStyles: Record<string, React.CSSProperties> = {
     color: colors.fg.primary,
     cursor: 'pointer',
     transition: 'background 0.15s',
+  } as React.CSSProperties,
+
+  attachmentTextBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: colors.bg.inset,
+    border: `1px solid ${colors.border.default}`,
+    borderRadius: effects.border.radius.default,
+    maxWidth: 250,
+  } as React.CSSProperties,
+
+  attachmentTextInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 0,
+    flex: 1,
+  } as React.CSSProperties,
+
+  attachmentTextName: {
+    fontSize: typography.sizes.sm,
+    color: colors.fg.primary,
+    fontFamily: typography.fonts.body,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  } as React.CSSProperties,
+
+  attachmentTextRemove: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+    height: 20,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: effects.border.radius.sm,
+    color: colors.fg.tertiary,
+    cursor: 'pointer',
+    transition: 'color 0.15s, background 0.15s',
+    flexShrink: 0,
   } as React.CSSProperties,
 };
 

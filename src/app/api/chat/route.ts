@@ -7,11 +7,13 @@
  * @version 1.0.0
  */
 
-import { streamText, tool } from 'ai';
+export const runtime = 'edge';
+
+import { streamText, createDataStreamResponse } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
-import { z } from 'zod';
 import { getModelConfig } from '@/lib/model-configs';
+import { orchestrateSearch } from '@/lib/search-orchestration';
 
 // =============================================================================
 // TYPES
@@ -191,18 +193,44 @@ export async function POST(req: Request): Promise<Response> {
       aiModel = openai(model);
     }
 
-    // Build messages for AI SDK, injecting image attachments into the last user message
+    // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
     const lastUserMessageIdx = messages.reduce((lastIdx, msg, idx) => 
       msg.role === 'user' ? idx : lastIdx, -1
     );
     if (attachments && attachments.length > 0 && lastUserMessageIdx === -1) {
       return createErrorResponse(
-        'Image attachments require at least one user message.',
+        'Attachments require at least one user message.',
         'INVALID_REQUEST',
         400,
         { recoverable: false }
       );
+    }
+    
+    // Separate attachments by type
+    const textAttachments = attachments?.filter(att => att.contentType.startsWith('text/')) ?? [];
+    const imageAttachments = attachments?.filter(att => att.contentType.startsWith('image/')) ?? [];
+    
+    // Process text attachments - extract content to prepend
+    let textAttachmentContent = '';
+    if (textAttachments.length > 0) {
+      const textParts: string[] = [];
+      for (const att of textAttachments) {
+        try {
+          if (att.url.startsWith('data:')) {
+            const base64Data = att.url.split(',')[1];
+            if (base64Data) {
+              const textContent = decodeURIComponent(escape(atob(base64Data)));
+              textParts.push(`[Attached file: ${att.name}]\n\n${textContent}`);
+            }
+          }
+        } catch (error) {
+          console.error(`[chat/route] Failed to decode text attachment: ${att.name}`, error);
+        }
+      }
+      if (textParts.length > 0) {
+        textAttachmentContent = textParts.join('\n\n---\n\n') + '\n\n---\n\n';
+      }
     }
     
     // Collect ALL system messages and combine them into ONE system prompt
@@ -230,30 +258,41 @@ export async function POST(req: Request): Promise<Response> {
         }
         
         if (isLastUserMessage && attachments && attachments.length > 0) {
-          // Convert to multimodal content parts
-          const parts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType?: string }> = [
-            { type: 'text' as const, text: msg.content },
-          ];
+          // Prepend text attachment content to message
+          const messageWithAttachments = textAttachmentContent + msg.content;
           
-          for (const att of attachments) {
-            if (att.url.startsWith('data:')) {
-              // Extract base64 data from data URL
-              const base64Data = att.url.split(',')[1];
-              if (base64Data) {
-                parts.push({
-                  type: 'image' as const,
-                  image: base64Data,
-                  mimeType: att.contentType,
-                });
-              } else {
-                console.warn(`[chat/route] Skipping malformed attachment: ${att.name || 'unknown'}`);
+          // If there are image attachments, create multimodal content
+          if (imageAttachments.length > 0) {
+            const parts: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType?: string }> = [
+              { type: 'text' as const, text: messageWithAttachments },
+            ];
+            
+            for (const att of imageAttachments) {
+              if (att.url.startsWith('data:')) {
+                // Extract base64 data from data URL
+                const base64Data = att.url.split(',')[1];
+                if (base64Data) {
+                  parts.push({
+                    type: 'image' as const,
+                    image: base64Data,
+                    mimeType: att.contentType,
+                  });
+                } else {
+                  console.warn(`[chat/route] Skipping malformed image attachment: ${att.name || 'unknown'}`);
+                }
               }
             }
+            
+            return {
+              role: msg.role as 'user',
+              content: parts,
+            };
           }
           
+          // Only text attachments - return as simple string
           return {
             role: msg.role as 'user',
-            content: parts,
+            content: messageWithAttachments,
           };
         }
         
@@ -279,96 +318,83 @@ export async function POST(req: Request): Promise<Response> {
       : { maxTokens: modelConfig.maxTokens };
 
     // GPT-5 Mini/Nano only support temperature: 1. MUST explicitly set it (not omit)
-    // because Vercel AI SDK defaults to temperature: 0 when tools are present.
-    const temperatureConfig = (providerType === 'openai' && 
+    const temperatureConfig = (providerType === 'openai' &&
                                ['gpt-5-mini', 'gpt-5-nano'].includes(model))
-      ? { temperature: 1 } // Explicitly set to 1 - SDK would override omission with 0
+      ? { temperature: 1 }
       : { temperature: modelConfig.temperature };
 
-    // Build tools object — only include tavily_search when key is available
-    const tools = tavilyKey?.trim()
-      ? {
-          tavily_search: tool({
-            description: 'Search the web for current, up-to-date information. Use this when the user asks about recent events, latest versions, current prices, news, or anything that may have changed after your training data cutoff.',
-            parameters: z.object({
-              query: z.string().describe('The search query to find relevant information'),
-            }),
-            execute: async ({ query }) => {
-              console.log('[Chat API] Tool call: tavily_search, query:', query);
-              try {
-                const searchResponse = await fetch('https://api.tavily.com/search', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    api_key: tavilyKey,
-                    query,
-                    max_results: 5,
-                    search_depth: 'advanced',
-                    include_answer: true,
-                    include_raw_content: false,
-                  }),
-                  signal: AbortSignal.timeout(15000),
-                });
+    // =========================================================================
+    // WEB SEARCH ORCHESTRATION
+    // =========================================================================
+    // Search runs BEFORE the LLM call. Results are injected into the system
+    // prompt so the model can cite them naturally — no tool-calling needed.
+    // =========================================================================
 
-                if (!searchResponse.ok) {
-                  const errText = await searchResponse.text().catch(() => '');
-                  console.error('[Chat API] Tavily error:', searchResponse.status, errText);
-                  return { error: `Search failed (${searchResponse.status})`, results: [] };
-                }
+    // Extract the last user message text for search intent detection
+    const lastUserMessage = messages[messages.length - 1];
+    const lastUserText = typeof lastUserMessage?.content === 'string'
+      ? lastUserMessage.content
+      : '';
 
-                const data = await searchResponse.json() as {
-                  answer?: string;
-                  results?: Array<{ title?: string; url: string; content?: string }>;
-                };
+    // Run search orchestration with error handling to prevent route crashes
+    let searchResult = null;
+    if (tavilyKey?.trim() && lastUserText.trim()) {
+      try {
+        searchResult = await orchestrateSearch(lastUserText, tavilyKey);
+      } catch (searchError) {
+        console.error('[Chat API] Search orchestration failed:', searchError);
+        // Continue without search results rather than crashing the entire request
+      }
+    }
 
-                const sources = (data.results ?? [])
-                  .filter((r) => r.url)
-                  .slice(0, 5)
-                  .map((r) => ({
-                    title: r.title || r.url,
-                    url: r.url,
-                    snippet: r.content?.slice(0, 200) || '',
-                  }));
+    // If search returned results, append context to system prompt
+    const finalSystemPrompt = searchResult
+      ? (combinedSystemPrompt ? combinedSystemPrompt + '\n\n---\n\n' : '') + searchResult.searchContext
+      : combinedSystemPrompt;
 
-                return {
-                  answer: data.answer || 'No summary available.',
-                  sources,
-                };
-              } catch (err) {
-                console.error('[Chat API] Tavily search error:', err);
-                return {
-                  error: err instanceof Error ? err.message : 'Search failed',
-                  results: [],
-                };
-              }
+    // Stream the response with error handling, wrapped in a data stream
+    // so we can send search source metadata alongside the LLM output.
+    return createDataStreamResponse({
+      execute: (dataStream) => {
+        // Write search sources as a message annotation BEFORE the LLM stream
+        // starts, so they arrive in onFinish's message.annotations on the client.
+        if (searchResult && searchResult.sources.length > 0) {
+          dataStream.writeMessageAnnotation({
+            webSearch: {
+              used: true,
+              sources: searchResult.sources.map((s) => ({
+                title: s.title,
+                url: s.url,
+                snippet: s.snippet || '',
+              })),
             },
-          }),
+          });
         }
-      : undefined;
 
-    // Stream the response with error handling
-    const result = streamText({
-      model: aiModel,
-      system: combinedSystemPrompt,
-      ...temperatureConfig,
-      ...tokenConfig,
-      messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
-      ...(tools ? { tools, maxSteps: 3 } : {}),
-      onError: (error) => {
-        // Log streaming errors for debugging
-        console.error('[Chat API Streaming Error]', {
-          provider: providerType,
-          model,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          // Include error details if available
-          ...(typeof error === 'object' && error !== null ? error : {}),
+        const result = streamText({
+          model: aiModel,
+          system: finalSystemPrompt,
+          ...temperatureConfig,
+          ...tokenConfig,
+          messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
+          onError: (error) => {
+            console.error('[Chat API Streaming Error]', {
+              provider: providerType,
+              model,
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              ...(typeof error === 'object' && error !== null ? error : {}),
+            });
+          },
         });
+
+        result.mergeIntoDataStream(dataStream);
+      },
+      onError: (error) => {
+        console.error('[Chat API DataStream Error]', error);
+        return error instanceof Error ? error.message : 'An error occurred';
       },
     });
-
-    // Return streaming response
-    return result.toDataStreamResponse();
   } catch (error) {
     // Log the full error object for debugging
     console.error('[Chat API Error]', {
