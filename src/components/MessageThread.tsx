@@ -135,8 +135,6 @@ interface MessageThreadProps {
   isStreaming?: boolean;
   /** Notify parent of scroll container height changes */
   onHeightChange?: (height: number) => void;
-  /** Web search state for showing searching indicator */
-  webSearchState?: { isSearching: boolean };
   /** Whether chat panel is maximized (fullscreen) */
   isMaximized?: boolean;
 }
@@ -146,7 +144,6 @@ export function MessageThread({
   streamingMessages = [],
   isStreaming = false,
   onHeightChange,
-  webSearchState,
   isMaximized = false,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -334,6 +331,22 @@ export function MessageThread({
     setHoveredMessageIndex(null);
   }, []);
 
+  // Detect if AI is currently executing a tool call (e.g. web search)
+  // by checking streaming message parts for in-flight tool invocations.
+  const isToolCallActive = useMemo(() => {
+    if (!isStreaming || streamingMessages.length === 0) return false;
+    const lastMsg = streamingMessages[streamingMessages.length - 1];
+    if (lastMsg?.role !== 'assistant') return false;
+    // Check parts for tool invocations that haven't completed yet
+    const parts = (lastMsg as { parts?: Array<{ type: string; toolInvocation?: { state?: string; toolName?: string } }> }).parts;
+    if (!parts) return false;
+    return parts.some(
+      (p) => p.type === 'tool-invocation' &&
+             p.toolInvocation?.toolName === 'tavily_search' &&
+             p.toolInvocation?.state !== 'result'
+    );
+  }, [isStreaming, streamingMessages]);
+
   return (
     <div ref={scrollContainerRef} style={threadStyles.container} onScroll={handleScroll}>
       <div style={isMaximized ? threadStyles.maximizedContent : threadStyles.normalContent}>
@@ -370,8 +383,8 @@ export function MessageThread({
           })}
       </AnimatePresence>
       
-      {/* Searching indicator - shown after last user message */}
-      {webSearchState?.isSearching && displayMessages.length > 0 && displayMessages[displayMessages.length - 1]?.role === 'user' && (
+      {/* Searching indicator - shown when AI calls web search tool */}
+      {isToolCallActive && (
         <div
           style={{
             display: 'flex',

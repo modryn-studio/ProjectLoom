@@ -27,55 +27,6 @@ const MAX_PANEL_WIDTH = 800;
 const KB_CONTEXT_MAX_CHARS = 5000;
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 
-interface WebSearchSource {
-  title: string;
-  url: string;
-}
-
-interface WebSearchResult {
-  summary: string;
-  sources: WebSearchSource[];
-}
-
-// =============================================================================
-// SEARCH INTENT DETECTION
-// =============================================================================
-
-/**
- * Detect if user message requires web search
- * Uses more precise pattern matching to avoid false positives
- */
-function detectSearchIntent(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  
-  // Explicit search command keywords (stronger signals)
-  const strongKeywords = [
-    'search for', 'look up', 'find out', 'research',
-    'latest news', 'recent news', 'today\'s news',
-    'what is the latest', 'what are the latest',
-    'current news', 'news about', 'update on',
-  ];
-  
-  if (strongKeywords.some(keyword => lowerMessage.includes(keyword))) {
-    return true;
-  }
-  
-  // Question patterns that often need current info
-  const questionPatterns = [
-    /^what is (?:the )?(?:latest|current|recent)/,
-    /^what are (?:the )?(?:latest|current|recent)/,
-    /^who is (?:the )?(?:current|latest)/,
-    /^when did .+ happen/,
-    /^when was .+ released/,
-  ];
-  
-  if (questionPatterns.some(pattern => pattern.test(lowerMessage))) {
-    return true;
-  }
-  
-  return false;
-}
-
 // =============================================================================
 // CHAT PANEL COMPONENT
 // =============================================================================
@@ -116,21 +67,6 @@ export function ChatPanel() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [messageListHeight, setMessageListHeight] = useState(0);
 
-  // Web search state
-  const [webSearchState, setWebSearchState] = useState<{
-    isSearching: boolean;
-    result: WebSearchResult | null;
-  }>({
-    isSearching: false,
-    result: null,
-  });
-
-  // Ref to avoid stale closure in onFinish callback
-  const webSearchResultRef = useRef<WebSearchResult | null>(null);
-  useEffect(() => {
-    webSearchResultRef.current = webSearchState.result;
-  }, [webSearchState.result]);
-  
   const effectivePanelWidth = !isResizing && uiPrefs.chatPanelWidth
     ? uiPrefs.chatPanelWidth
     : panelWidth;
@@ -291,6 +227,8 @@ export function ChatPanel() {
   const chatBody = useMemo(() => ({
     model: currentModel,
     apiKey: currentApiKey,
+    // Pass Tavily key so the AI can use web search tool
+    ...(tavilyKey ? { tavilyKey } : {}),
     // Pass image attachments for vision
     ...(pendingAttachments.length > 0 ? {
       attachments: pendingAttachments.map(a => ({
@@ -299,7 +237,7 @@ export function ChatPanel() {
         url: a.url,
       })),
     } : {}),
-  }), [currentModel, currentApiKey, pendingAttachments]);
+  }), [currentModel, currentApiKey, tavilyKey, pendingAttachments]);
 
   const {
     messages: chatMessages,
@@ -315,18 +253,24 @@ export function ChatPanel() {
     api: '/api/chat',
     id: activeConversationId || undefined,
     body: chatBody,
-    onResponse: () => {
-      // Clear searching indicator when AI starts responding
-      setWebSearchState(prev => ({ ...prev, isSearching: false }));
-    },
     onFinish: (message, options) => {
-      // Read from ref to avoid stale closure (webSearchState would be stale here)
-      const searchResult = webSearchResultRef.current;
-      const webSearchMetadata = searchResult ? {
+      // Extract web search metadata from tool calls in the message parts
+      const searchSources: Array<{ title: string; url: string }> = [];
+      for (const part of message.parts ?? []) {
+        if (part.type !== 'tool-invocation') continue;
+        const invocation = part.toolInvocation as { toolName?: string; result?: { sources?: Array<{ title: string; url: string }> } };
+        if (invocation.toolName !== 'tavily_search') continue;
+        const sources = invocation.result?.sources;
+        if (Array.isArray(sources)) {
+          searchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
+        }
+      }
+
+      const webSearchMetadata = searchSources.length > 0 ? {
         custom: {
           webSearch: {
             used: true,
-            sources: searchResult.sources,
+            sources: searchSources.map((s) => ({ title: s.title, url: s.url })),
           },
         },
       } : undefined;
@@ -346,10 +290,8 @@ export function ChatPanel() {
           source: 'chat',
         });
       }
-      // Clear attachments and search state after send
+      // Clear attachments after send
       setPendingAttachments([]);
-      webSearchResultRef.current = null;
-      setWebSearchState({ isSearching: false, result: null });
     },
     onError: (error: Error) => {
       console.error('[ChatPanel] AI Error:', error);
@@ -428,68 +370,7 @@ export function ChatPanel() {
     };
   }, [activeWorkspace, ragIndex, getRagQuery, addUsage]);
 
-  // Execute web search before chat
-  const executeWebSearch = useCallback(async (query: string): Promise<WebSearchResult | null> => {
-    // Double-check Tavily key is valid before making API call
-    if (!tavilyKey || !tavilyKey.trim()) {
-      console.log('[Web Search] No valid Tavily API key configured');
-      return null;
-    }
-
-    console.log('[Web Search] Executing search with query:', query);
-    console.log('[Web Search] Tavily key present:', !!tavilyKey, 'Length:', tavilyKey.length);
-
-    setWebSearchState({ isSearching: true, result: null });
-
-    try {
-      const response = await fetch('/api/web-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          maxResults: 5,
-          tavilyKey,
-        }),
-      });
-
-      if (!response.ok) {
-        // Parse error details if available
-        let errorMessage = `Status ${response.status}`;
-        let errorCode = 'UNKNOWN';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-          errorCode = errorData.code || errorCode;
-          console.error('[Web Search] API error details:', {
-            status: response.status,
-            code: errorCode,
-            message: errorMessage,
-            fullError: errorData,
-          });
-          if (errorData.code === 'MISSING_API_KEY') {
-            console.log('[Web Search] Tavily API key not configured. Add one in Settings to enable web search.');
-          }
-        } catch {
-          // Response not JSON, use status code
-          console.error('[Web Search] Non-JSON error response:', response.status);
-        }
-        console.warn('[Web Search] Search failed:', errorMessage);
-        setWebSearchState({ isSearching: false, result: null });
-        return null;
-      }
-
-      const result = await response.json() as WebSearchResult;
-      // Keep isSearching: true, will be cleared when AI starts responding
-      setWebSearchState({ isSearching: true, result });
-      return result;
-    } catch (error) {
-      console.error('[Web Search] Failed:', error);
-      setWebSearchState({ isSearching: false, result: null });
-      return null;
-    }
-  }, [tavilyKey]);
-
-  // Wrap handleSubmit to check for search intent and execute search first
+  // Handle message submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -500,41 +381,12 @@ export function ChatPanel() {
     // Clear input immediately so user sees instant feedback
     setInput('');
 
-    // Check if we should search first (only if Tavily key is configured)
-    const needsSearch = detectSearchIntent(userMessage);
-
-    let searchResult: WebSearchResult | null = null;
-    if (needsSearch && tavilyKey) {
-      searchResult = await executeWebSearch(userMessage);
-    } else if (needsSearch && !tavilyKey) {
-      // User's message looks like it needs search, but no Tavily key configured
-      console.log('[Web Search] Search intent detected but Tavily API key not configured. Proceeding without search.');
-    }
-
     // Build canvas context (pass explicit message since input is now cleared)
     const canvasContextPayload = await buildCanvasContextPayload(userMessage);
 
-    // If we have search results, inject them into the system prompt
-    let enhancedContext = canvasContextPayload;
-    if (searchResult) {
-      const searchContext = `
-
-The following information was retrieved to help answer the question:
-
-${searchResult.summary}
-
-Sources:
-${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
-      
-      enhancedContext = {
-        ...canvasContextPayload,
-        instructions: (canvasContextPayload?.instructions || '') + searchContext,
-      };
-    }
-
     const body = {
       ...chatBody,
-      ...(enhancedContext ? { canvasContext: enhancedContext } : {}),
+      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
 
     setData([]);
@@ -549,7 +401,7 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
         body,
       }
     );
-  }, [input, setInput, tavilyKey, executeWebSearch, buildCanvasContextPayload, chatBody, setData, append]);
+  }, [input, setInput, buildCanvasContextPayload, chatBody, setData, append]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
@@ -586,15 +438,28 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
         // Compare content to detect if it's a new/partial message
         if (!lastStoreMessage || lastStoreMessage.content !== lastMessage.content) {
           if (activeConversationId && currentModel) {
-            const webSearchMetadata = webSearchState.result ? {
+            // For partial saves (user clicked stop), extract web search metadata
+            // from tool invocations in message parts if available
+            const partialSearchSources: Array<{ title: string; url: string }> = [];
+            for (const part of lastMessage.parts ?? []) {
+              if (part.type !== 'tool-invocation') continue;
+              const invocation = part.toolInvocation as { toolName?: string; result?: { sources?: Array<{ title: string; url: string }> } };
+              if (invocation.toolName !== 'tavily_search') continue;
+              const sources = invocation.result?.sources;
+              if (Array.isArray(sources)) {
+                partialSearchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
+              }
+            }
+
+            const partialWebSearchMetadata = partialSearchSources.length > 0 ? {
               custom: {
                 webSearch: {
                   used: true,
-                  sources: webSearchState.result.sources,
+                  sources: partialSearchSources,
                 },
               },
             } : undefined;
-            addAIMessage(activeConversationId, lastMessage.content, currentModel, webSearchMetadata);
+            addAIMessage(activeConversationId, lastMessage.content, currentModel, partialWebSearchMetadata);
           }
           // Clear attachments after partial save (intentional effect-based cleanup)
           // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -602,7 +467,7 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
         }
       }
     }
-  }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages, webSearchState]);
+  }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages]);
 
   // Resize handlers (IDENTICAL to CanvasTreeSidebar)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -737,7 +602,6 @@ ${searchResult.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
             streamingMessages={chatMessages}
             isStreaming={isStreaming}
             onHeightChange={setMessageListHeight}
-            webSearchState={{ isSearching: webSearchState.isSearching }}
             isMaximized={isMaximized}
           />
 

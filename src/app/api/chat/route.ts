@@ -7,9 +7,10 @@
  * @version 1.0.0
  */
 
-import { streamText } from 'ai';
+import { streamText, tool } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { z } from 'zod';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -37,6 +38,8 @@ interface ChatRequestBody {
     name: string;
     url: string; // base64 data URL
   }>;
+  /** Optional Tavily API key for web search tool */
+  tavilyKey?: string;
 }
 
 interface APIError {
@@ -145,7 +148,7 @@ function handleProviderError(error: unknown): Response {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, apiKey, attachments, canvasContext } = body;
+    const { messages, model, apiKey, attachments, canvasContext, tavilyKey } = body;
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -280,6 +283,67 @@ export async function POST(req: Request): Promise<Response> {
       ? {} // Omit temperature to use default
       : { temperature: modelConfig.temperature };
 
+    // Build tools object — only include tavily_search when key is available
+    const tools = tavilyKey?.trim()
+      ? {
+          tavily_search: tool({
+            description: 'Search the web for current, up-to-date information. Use this when the user asks about recent events, latest versions, current prices, news, or anything that may have changed after your training data cutoff.',
+            parameters: z.object({
+              query: z.string().describe('The search query to find relevant information'),
+            }),
+            execute: async ({ query }) => {
+              console.log('[Chat API] Tool call: tavily_search, query:', query);
+              try {
+                const searchResponse = await fetch('https://api.tavily.com/search', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    api_key: tavilyKey,
+                    query,
+                    max_results: 5,
+                    search_depth: 'advanced',
+                    include_answer: true,
+                    include_raw_content: false,
+                  }),
+                  signal: AbortSignal.timeout(15000),
+                });
+
+                if (!searchResponse.ok) {
+                  const errText = await searchResponse.text().catch(() => '');
+                  console.error('[Chat API] Tavily error:', searchResponse.status, errText);
+                  return { error: `Search failed (${searchResponse.status})`, results: [] };
+                }
+
+                const data = await searchResponse.json() as {
+                  answer?: string;
+                  results?: Array<{ title?: string; url: string; content?: string }>;
+                };
+
+                const sources = (data.results ?? [])
+                  .filter((r) => r.url)
+                  .slice(0, 5)
+                  .map((r) => ({
+                    title: r.title || r.url,
+                    url: r.url,
+                    snippet: r.content?.slice(0, 200) || '',
+                  }));
+
+                return {
+                  answer: data.answer || 'No summary available.',
+                  sources,
+                };
+              } catch (err) {
+                console.error('[Chat API] Tavily search error:', err);
+                return {
+                  error: err instanceof Error ? err.message : 'Search failed',
+                  results: [],
+                };
+              }
+            },
+          }),
+        }
+      : undefined;
+
     // Stream the response with error handling
     const result = streamText({
       model: aiModel,
@@ -287,6 +351,7 @@ export async function POST(req: Request): Promise<Response> {
       ...temperatureConfig,
       ...tokenConfig,
       messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
+      ...(tools ? { tools, maxSteps: 3 } : {}),
       onError: (error) => {
         // Log streaming errors for debugging
         console.error('[Chat API Streaming Error]', {

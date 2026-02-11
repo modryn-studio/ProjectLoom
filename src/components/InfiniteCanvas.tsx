@@ -307,7 +307,6 @@ export function InfiniteCanvas() {
   }, [deleteWorkspaceModal, pendingDeleteConversationIds.length, confirmDeleteWorkspace, confirmDeleteConversation]);
 
   // UI Preferences
-  const uiPrefs = usePreferencesStore(selectUIPreferences);
   const isPrefsLoaded = usePreferencesStore((s) => s.isLoaded);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
