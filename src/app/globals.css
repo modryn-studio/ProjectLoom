@@ -272,6 +272,25 @@ body {
 }
 
 /* React Flow customizations - uses theme variables */
+
+/* Canvas panning cursor - ensures visibility in both light and dark modes */
+.react-flow__pane {
+  cursor: grab !important;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing !important;
+}
+
+.react-flow.pannable {
+  cursor: grab !important;
+}
+
+/* Ensure cursor is always visible on the canvas */
+.react-flow__renderer {
+  cursor: inherit !important;
+}
+
 .react-flow__minimap {
   background-color: var(--bg-secondary) !important;
   border-radius: 8px;

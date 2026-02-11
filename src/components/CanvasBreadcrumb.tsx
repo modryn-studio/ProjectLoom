@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
-import { ChevronRight, PanelLeft, FileText } from 'lucide-react';
+import { ChevronRight, FileText } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, spacing, effects, typography, layout } from '@/lib/design-tokens';
+import { colors, spacing, effects, typography } from '@/lib/design-tokens';
 import type { Conversation } from '@/types';
 
 // =============================================================================
@@ -53,24 +53,6 @@ const chevronStyles: React.CSSProperties = {
   flexShrink: 0,
 };
 
-
-
-const sidebarToggleButtonStyles: React.CSSProperties = {
-  padding: spacing[2],
-  backgroundColor: colors.bg.inset,
-  border: `1px solid var(--border-primary)`,
-  borderRadius: effects.border.radius.default,
-  color: colors.fg.quaternary,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'all 0.15s ease',
-  flexShrink: 0,
-  minWidth: layout.iconButton.minSize,
-  minHeight: layout.iconButton.minSize,
-};
-
 const contextButtonStyles: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -89,22 +71,15 @@ const contextButtonStyles: React.CSSProperties = {
 const headerControlsStyles: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-end',
   gap: spacing[2],
   width: '100%',
-};
-
-const headerControlsLeftStyles: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: spacing[2],
 };
 
 const headerControlsRightStyles: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: spacing[2],
-  marginLeft: 'auto',
 };
 
 // =============================================================================
@@ -112,45 +87,18 @@ const headerControlsRightStyles: React.CSSProperties = {
 // =============================================================================
 
 interface CanvasBreadcrumbProps {
-  showSidebarToggle?: boolean;
-  onToggleSidebar?: () => void;
-  onOpenCanvasContext?: () => void;
   onFocusNode?: (nodeId: string) => void;
 }
 
 interface CanvasHeaderControlsProps {
-  showSidebarToggle?: boolean;
-  onToggleSidebar?: () => void;
   onOpenCanvasContext?: () => void;
 }
 
 export function CanvasHeaderControls({
-  showSidebarToggle = false,
-  onToggleSidebar,
   onOpenCanvasContext,
 }: CanvasHeaderControlsProps) {
   return (
     <div style={headerControlsStyles}>
-      <div style={headerControlsLeftStyles}>
-        {showSidebarToggle && (
-          <button
-            onClick={onToggleSidebar}
-            style={sidebarToggleButtonStyles}
-            title="Open workspace list"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = colors.accent.muted;
-              e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = colors.bg.inset;
-              e.currentTarget.style.border = '1px solid var(--border-primary)';
-            }}
-          >
-            <PanelLeft size={16} />
-          </button>
-        )}
-      </div>
-
       <div style={headerControlsRightStyles}>
         {onOpenCanvasContext && (
           <button
@@ -184,8 +132,6 @@ export function CanvasHeaderControls({
  * For merge nodes, displays primary path + badge for additional parents.
  */
 export function CanvasBreadcrumb({
-  showSidebarToggle = false,
-  onToggleSidebar,
   onFocusNode,
 }: CanvasBreadcrumbProps) {
   const conversations = useCanvasStore((s) => s.conversations);
@@ -263,32 +209,12 @@ export function CanvasBreadcrumb({
       aria-label="Conversation ancestry"
       onWheel={handleWheel}
     >
-      {/* Sidebar toggle button (when sidebar is hidden) */}
-      {showSidebarToggle && (
-        <button
-          onClick={onToggleSidebar}
-          style={sidebarToggleButtonStyles}
-          title="Open workspace list"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = colors.accent.muted;
-            e.currentTarget.style.border = `1px solid ${colors.accent.primary}`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = colors.bg.inset;
-            e.currentTarget.style.border = '1px solid var(--border-primary)';
-          }}
-        >
-          <PanelLeft size={16} />
-        </button>
-      )}
-      
       {/* Workspace name + stats (only when no cards selected) */}
       {selectedNodeIds.size === 0 && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: spacing[3],
-          marginLeft: showSidebarToggle ? spacing[1] : 0,
         }}>
           <span
             style={{
@@ -331,7 +257,6 @@ export function CanvasBreadcrumb({
           borderRadius: effects.border.radius.default,
           fontSize: typography.sizes.xs,
           fontWeight: typography.weights.semibold,
-          marginLeft: showSidebarToggle ? spacing[1] : 0,
         }}>
           {selectedNodeIds.size} selected
         </span>

@@ -233,7 +233,6 @@ export function InfiniteCanvas() {
 
   // Usage panel state
   const usagePanelOpen = useCanvasStore(selectUsagePanelOpen);
-  const toggleUsagePanel = useCanvasStore((s) => s.toggleUsagePanel);
   const closeUsagePanel = useCanvasStore((s) => s.closeUsagePanel);
 
   const hierarchicalMergeDialogOpen = useCanvasStore((s) => s.hierarchicalMergeDialogOpen);
@@ -897,13 +896,11 @@ export function InfiniteCanvas() {
 
   return (
     <div style={containerStyles}>
-      {/* Canvas Tree Sidebar (conditionally shown after prefs loaded) */}
+      {/* Unified Sidebar with Activity Bar */}
       {isPrefsLoaded && uiPrefs.showCanvasTree && (
         <CanvasTreeSidebar 
           onOpenSettings={openSettings}
           onOpenAgents={openAgents}
-          onToggleUsagePanel={toggleUsagePanel}
-          isUsagePanelOpen={usagePanelOpen}
           onRequestDeleteWorkspace={requestDeleteWorkspace}
           onRequestCreateWorkspace={openWorkspaceNameModal}
           isOpen={isSidebarOpen}
@@ -965,8 +962,6 @@ export function InfiniteCanvas() {
             <div style={topOverlayStyles}>
               <div style={pointerEventsAutoStyle}>
                 <CanvasBreadcrumb 
-                  showSidebarToggle={!isSidebarOpen}
-                  onToggleSidebar={() => setIsSidebarOpen(true)}
                   onFocusNode={focusOnNode}
                 />
               </div>
@@ -1014,6 +1009,7 @@ export function InfiniteCanvas() {
                 snapToGrid={false}
                 deleteKeyCode={null}
                 multiSelectionKeyCode="Shift"
+                proOptions={{ hideAttribution: true }}
               >
                 {/* Dot grid background */}
                 <Background

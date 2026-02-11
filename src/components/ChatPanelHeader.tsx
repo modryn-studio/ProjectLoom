@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useCallback, memo, useEffect, useRef, useState } from 'react';
-import { X, GitBranch, Zap, Maximize2 } from 'lucide-react';
+import { X, GitBranch, Zap, Maximize2, BarChart3 } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
-import { useCanvasStore } from '@/stores/canvas-store';
+import { useCanvasStore, selectUsagePanelOpen } from '@/stores/canvas-store';
 import { enforceTitleWordLimit } from '@/utils/formatters';
 import type { Conversation } from '@/types';
 
@@ -27,6 +27,8 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   const updateConversation = useCanvasStore((s) => s.updateConversation);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
+  const toggleUsagePanel = useCanvasStore((s) => s.toggleUsagePanel);
+  const usagePanelOpen = useCanvasStore(selectUsagePanelOpen);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(conversation.metadata.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +169,31 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
 
         {/* Right side: Actions */}
         <div style={headerStyles.actions}>
+          {/* Branch button */}
+          <button
+            onClick={handleBranch}
+            style={headerStyles.actionButton}
+            title="Branch from this conversation (Ctrl+B)"
+            aria-label="Branch from this conversation"
+          >
+            <GitBranch size={16} />
+          </button>
+
+          {/* Usage button */}
+          <button
+            onClick={toggleUsagePanel}
+            style={{
+              ...headerStyles.actionButton,
+              backgroundColor: usagePanelOpen ? colors.accent.muted : 'transparent',
+              borderColor: usagePanelOpen ? colors.accent.primary : 'var(--border-primary)',
+              color: usagePanelOpen ? colors.accent.primary : colors.fg.secondary,
+            }}
+            title="Usage"
+            aria-label="Toggle usage panel"
+          >
+            <BarChart3 size={16} />
+          </button>
+
           {/* Maximize button */}
           {onMaximize && (
             <button
@@ -178,16 +205,6 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
               <Maximize2 size={16} />
             </button>
           )}
-
-          {/* Branch button */}
-          <button
-            onClick={handleBranch}
-            style={headerStyles.actionButton}
-            title="Branch from this conversation (Ctrl+B)"
-            aria-label="Branch from this conversation"
-          >
-            <GitBranch size={16} />
-          </button>
 
           {/* Close button */}
           <button

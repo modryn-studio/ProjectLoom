@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
   Trash2, 
-  PanelLeftClose, 
   Folder,
   Edit2,
   ChevronRight,
@@ -13,10 +12,9 @@ import {
   MessageSquare,
   GitBranch,
   Zap,
-  Settings,
   MoreHorizontal,
+  Settings,
   Bot,
-  BarChart3,
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
@@ -24,13 +22,13 @@ import { useCanvasTreeStore, buildWorkspaceTree, type ConversationTreeNode } fro
 import { colors, spacing, effects, typography, layout, components } from '@/lib/design-tokens';
 import { enforceTitleWordLimit } from '@/utils/formatters';
 import type { Conversation, Workspace } from '@/types';
-import { SidePanel } from './SidePanel';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-const MIN_SIDEBAR_WIDTH = layout.sidebar.width;
+const ACTIVITY_BAR_WIDTH = 48;
+const MIN_SIDEBAR_WIDTH = layout.sidebar.width; // Content area width when expanded
 const MAX_SIDEBAR_WIDTH = 600;
 
 // =============================================================================
@@ -830,8 +828,6 @@ function WorkspaceItem({
 interface CanvasTreeSidebarProps {
   onOpenSettings: () => void;
   onOpenAgents?: () => void;
-  onToggleUsagePanel?: () => void;
-  isUsagePanelOpen?: boolean;
   onRequestDeleteWorkspace: (workspaceId: string) => void;
   onRequestCreateWorkspace: (suggestedName: string) => void;
   isOpen: boolean;
@@ -842,8 +838,6 @@ interface CanvasTreeSidebarProps {
 export function CanvasTreeSidebar({
   onOpenSettings,
   onOpenAgents,
-  onToggleUsagePanel,
-  isUsagePanelOpen = false,
   onRequestDeleteWorkspace,
   onRequestCreateWorkspace,
   isOpen: externalIsOpen,
@@ -854,7 +848,7 @@ export function CanvasTreeSidebar({
   const [isResizing, setIsResizing] = useState(false);
   const [isResizeHovered, setIsResizeHovered] = useState(false);
   const [triggerF2Rename, setTriggerF2Rename] = useState(false);
-  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   
   // Use external state for open/close
   const isOpen = externalIsOpen;
@@ -938,24 +932,6 @@ export function CanvasTreeSidebar({
     setTriggerF2Rename(false);
   }, []);
 
-  // Dynamic sidebar styles
-  const sidebarStyles: React.CSSProperties = {
-    width: isOpen ? sidebarWidth : 0,
-    minWidth: isOpen ? MIN_SIDEBAR_WIDTH : 0,
-    maxWidth: isOpen ? MAX_SIDEBAR_WIDTH : 0,
-    flexShrink: 0,
-    backgroundColor: colors.bg.secondary,
-    borderRight: isOpen ? '1px solid var(--border-secondary)' : 'none',
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100vh',
-    maxHeight: '100vh',
-    overflow: 'hidden',
-    position: 'relative',
-    userSelect: isResizing ? 'none' : 'auto',
-    pointerEvents: isOpen ? 'auto' : 'none',
-  };
-
   // Resize handle styles
   const resizeHandleStyles: React.CSSProperties = {
     position: 'absolute',
@@ -979,12 +955,144 @@ export function CanvasTreeSidebar({
   };
 
   return (
-    <SidePanel
+    <div
       ref={sidebarRef}
-      isOpen={isOpen}
-      width={sidebarWidth}
-      style={sidebarStyles}
+      style={{
+        position: 'relative',
+        width: isOpen ? sidebarWidth + ACTIVITY_BAR_WIDTH : ACTIVITY_BAR_WIDTH,
+        backgroundColor: colors.bg.secondary,
+        borderRight: `1px solid ${colors.border.default}`,
+        display: 'flex',
+        flexDirection: 'row',
+        height: '100%',
+        overflow: 'hidden',
+        zIndex: 2,
+        flexShrink: 0,
+        transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        userSelect: isResizing ? 'none' : 'auto',
+      }}
     >
+      {/* Activity Bar - Always Visible */}
+      <div
+        style={{
+          width: ACTIVITY_BAR_WIDTH,
+          height: '100%',
+          backgroundColor: colors.bg.secondary,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: `${spacing[2]} 0`,
+          gap: spacing[1],
+          flexShrink: 0,
+          borderRight: isOpen ? `1px solid ${colors.border.muted}` : 'none',
+        }}
+      >
+        {/* Workspaces Toggle */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          style={{
+            width: `${ACTIVITY_BAR_WIDTH - 8}px`,
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isOpen ? colors.accent.muted : 'transparent',
+            border: 'none',
+            borderLeft: isOpen ? `2px solid ${colors.accent.primary}` : '2px solid transparent',
+            borderRadius: 0,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+          }}
+          title="Workspaces"
+          onMouseEnter={(e) => {
+            if (!isOpen) {
+              e.currentTarget.style.backgroundColor = colors.bg.tertiary;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isOpen) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }
+          }}
+        >
+          <Folder size={20} color={isOpen ? colors.accent.primary : colors.fg.tertiary} />
+        </button>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Agents Button */}
+        {onOpenAgents && (
+          <button
+            onClick={onOpenAgents}
+            style={{
+              width: `${ACTIVITY_BAR_WIDTH - 8}px`,
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderLeft: '2px solid transparent',
+              borderRadius: 0,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
+            title="AI Agents"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colors.bg.tertiary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <Bot size={20} color={colors.fg.tertiary} />
+          </button>
+        )}
+
+        {/* Settings Button */}
+        <button
+          onClick={onOpenSettings}
+          style={{
+            width: `${ACTIVITY_BAR_WIDTH - 8}px`,
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent',
+            border: 'none',
+            borderLeft: '2px solid transparent',
+            borderRadius: 0,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            flexShrink: 0,
+          }}
+          title="Settings"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.bg.tertiary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          <Settings size={20} color={colors.fg.tertiary} />
+        </button>
+      </div>
+
+      {/* Sidebar Content - Only visible when expanded */}
+      {isOpen && (
+        <div
+          style={{
+            width: sidebarWidth,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
       {/* Resize handle */}
       <div
         style={resizeHandleStyles}
@@ -1004,43 +1112,25 @@ export function CanvasTreeSidebar({
         }}>
           Workspaces
         </span>
-        <div style={{ display: 'flex', gap: spacing[1] }}>
-          <button
-            onClick={() => {
-              handleCreateWorkspace(`New Workspace ${workspaces.length + 1}`);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: spacing[1],
-              cursor: 'pointer',
-              borderRadius: effects.border.radius.default,
-              color: colors.accent.contrast,
-              backgroundColor: colors.accent.primary,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-            title="Create new workspace"
-          >
-            <Plus size={16} />
-          </button>
-          <button
-            onClick={() => setIsOpen(false)}
-            style={{
-              background: 'none',
-              border: '1px solid var(--border-primary)',
-              padding: spacing[1],
-              cursor: 'pointer',
-              borderRadius: effects.border.radius.default,
-              color: colors.fg.quaternary,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-            title="Close sidebar"
-          >
-            <PanelLeftClose size={16} />
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            handleCreateWorkspace(`New Workspace ${workspaces.length + 1}`);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: spacing[1],
+            cursor: 'pointer',
+            borderRadius: effects.border.radius.default,
+            color: colors.accent.contrast,
+            backgroundColor: colors.accent.primary,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+          title="Create new workspace"
+        >
+          <Plus size={16} />
+        </button>
       </div>
 
       {/* Workspace list (flat, no tree hierarchy) */}
@@ -1093,106 +1183,23 @@ export function CanvasTreeSidebar({
         )}
       </div>
 
-      {/* Footer with stats and settings */}
-      <div style={{
-        padding: spacing[2],
-        borderTop: '1px solid var(--border-secondary)',
-        fontSize: typography.sizes.xs,
-        color: colors.fg.quaternary,
-        fontFamily: typography.fonts.body,
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <span>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
-        <div style={{ display: 'flex', gap: spacing[1] }}>
-          {onOpenAgents && (
-            <button
-              onClick={onOpenAgents}
-              title="Agent Workflows"
-              style={{
-                padding: spacing[2],
-                backgroundColor: 'transparent',
-                border: '1px solid var(--border-primary)',
-                borderRadius: effects.border.radius.default,
-                color: colors.fg.secondary,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.bg.inset;
-                e.currentTarget.style.color = colors.accent.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = colors.fg.secondary;
-              }}
-            >
-              <Bot size={14} />
-            </button>
-          )}
-          {onToggleUsagePanel && (
-            <button
-              onClick={onToggleUsagePanel}
-              title="Usage"
-              style={{
-                padding: spacing[2],
-                backgroundColor: isUsagePanelOpen ? colors.accent.muted : 'transparent',
-                border: `1px solid ${isUsagePanelOpen ? colors.accent.primary : 'var(--border-primary)'}`,
-                borderRadius: effects.border.radius.default,
-                color: isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = colors.bg.inset;
-                e.currentTarget.style.color = colors.accent.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = isUsagePanelOpen ? colors.accent.muted : 'transparent';
-                e.currentTarget.style.color = isUsagePanelOpen ? colors.accent.primary : colors.fg.secondary;
-              }}
-            >
-              <BarChart3 size={14} />
-            </button>
-          )}
-          <button
-          onClick={onOpenSettings}
-          title="Settings"
-          style={{
-            padding: spacing[2],
-            backgroundColor: 'transparent',
-            border: '1px solid var(--border-primary)',
-            borderRadius: effects.border.radius.default,
-            color: colors.fg.secondary,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = colors.bg.inset;
-            e.currentTarget.style.color = colors.accent.primary;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = colors.fg.secondary;
-          }}
-        >
-          <Settings size={14} />
-        </button>
+        {/* Footer with stats */}
+        <div style={{
+          padding: spacing[2],
+          borderTop: '1px solid var(--border-secondary)',
+          fontSize: typography.sizes.xs,
+          color: colors.fg.quaternary,
+          fontFamily: typography.fonts.body,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <span>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
-
-    </SidePanel>
+      )}
+    </div>
   );
 }
 
