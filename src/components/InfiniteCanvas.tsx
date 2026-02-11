@@ -485,13 +485,30 @@ export function InfiniteCanvas() {
     [onConnect]
   );
 
-  // Handle node selection - single click opens chat panel
+  // Handle node selection - single click opens chat panel, Ctrl/Shift+click toggles multi-select
   const handleNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
-      // Open chat panel with this conversation
-      openChatPanel(node.id);
+    (event: React.MouseEvent, node: Node) => {
+      // Check for modifier keys (Ctrl/Cmd or Shift)
+      const isMultiSelect = event.ctrlKey || event.metaKey || event.shiftKey;
+      
+      if (isMultiSelect) {
+        // Multi-select mode: toggle selection without opening chat panel
+        const currentSelected = Array.from(selectedNodeIds);
+        const isAlreadySelected = currentSelected.includes(node.id);
+        
+        if (isAlreadySelected) {
+          // Remove from selection
+          setSelected(currentSelected.filter(id => id !== node.id));
+        } else {
+          // Add to selection
+          setSelected([...currentSelected, node.id]);
+        }
+      } else {
+        // Normal click: open chat panel
+        openChatPanel(node.id);
+      }
     },
-    [openChatPanel]
+    [openChatPanel, selectedNodeIds, setSelected]
   );
 
   // Handle node double-click - no longer used for expansion, same as single click
