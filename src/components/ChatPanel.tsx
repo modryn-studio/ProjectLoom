@@ -538,7 +538,7 @@ export function ChatPanel() {
         }
       }
     }
-  }, [isStreaming, chatMessages, activeConversationId, currentModel, addAIMessage, getConversationMessages]);
+  }, [isStreaming, chatMessages, addAIMessage, getConversationMessages]);
 
   // Resize handlers (IDENTICAL to CanvasTreeSidebar)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
