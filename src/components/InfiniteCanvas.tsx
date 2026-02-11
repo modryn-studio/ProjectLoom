@@ -179,7 +179,9 @@ export function InfiniteCanvas() {
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
   
   // Sidebar state
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const setUIPreferences = usePreferencesStore((s) => s.setUIPreferences);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(uiPrefs.sidebarOpen);
 
   // Canvas context menu
   const canvasContextMenu = useContextMenu();
@@ -403,6 +405,12 @@ export function InfiniteCanvas() {
     
     return () => clearTimeout(timer);
   }, [chatPanelOpen]);
+
+  // Persist sidebar state to preferences when toggled
+  const handleSidebarToggle = useCallback((open: boolean) => {
+    setIsSidebarOpen(open);
+    setUIPreferences({ sidebarOpen: open });
+  }, [setUIPreferences]);
 
   // Adjust canvas view when sidebar is toggled
   useEffect(() => {
@@ -903,7 +911,7 @@ export function InfiniteCanvas() {
           onRequestDeleteWorkspace={requestDeleteWorkspace}
           onRequestCreateWorkspace={openWorkspaceNameModal}
           isOpen={isSidebarOpen}
-          onToggle={setIsSidebarOpen}
+          onToggle={handleSidebarToggle}
           onFocusNode={focusOnNode}
         />
       )}

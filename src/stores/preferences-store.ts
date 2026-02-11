@@ -30,6 +30,8 @@ export interface UserPreferences {
     confirmOnDelete: boolean;
     /** Chat panel width (persisted, min: 400, max: 800) */
     chatPanelWidth: number;
+    /** Whether the left sidebar is open/expanded */
+    sidebarOpen: boolean;
     /** Theme mode: light, dark, or system */
     theme: ThemeMode;
     /** Whether the canvas tip has been shown */
@@ -69,6 +71,7 @@ const DEFAULT_BRANCHING_PREFERENCES: BranchingPreferences = {
 const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
   confirmOnDelete: true,
   chatPanelWidth: 480, // Default 30% of 1600px viewport
+  sidebarOpen: true, // Left sidebar expanded by default
   theme: 'system', // Follow system preference by default
   hasSeenCanvasTip: false,
 };
