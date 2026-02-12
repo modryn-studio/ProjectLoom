@@ -2,25 +2,25 @@
 @import "@xyflow/react/dist/style.css";
 
 /* Override React Flow cursor defaults */
-/* Light mode: Use move cursor which has better contrast in Chrome */
+/* Light mode: Use custom cursor files with proper contrast */
 
-/* Explicit light mode - use move cursor as it has better visibility */
+/* Explicit light mode - use custom .cur file */
 [data-theme="light"] .react-flow__pane.draggable {
-  cursor: move !important;
+  cursor: url('/grab.cur'), grab !important;
 }
 
 [data-theme="light"] .react-flow__pane.dragging {
-  cursor: move !important;
+  cursor: url('/grab.cur'), grabbing !important;
 }
 
 /* System preference light mode */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) .react-flow__pane.draggable {
-    cursor: move !important;
+    cursor: url('/grab.cur'), grab !important;
   }
 
   :root:not([data-theme]) .react-flow__pane.dragging {
-    cursor: move !important;
+    cursor: url('/grab.cur'), grabbing !important;
   }
 }
 
