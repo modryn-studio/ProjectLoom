@@ -247,9 +247,11 @@ function ConversationCardComponent({
           scale: { duration: 0.2, ease: 'easeOut' },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
         }}
-        className="cursor-grab-theme"
         style={{
           ...cardStyles.container,
+          cursor: dragging 
+            ? 'url(/grabbing.cur), grabbing' 
+            : 'url(/grab.cur), grab',
           zIndex: cardZIndex,
           // v4: Visual indicators for active card, merge nodes, and branched cards
           borderColor: isActiveInChatPanel
