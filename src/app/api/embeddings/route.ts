@@ -59,10 +59,36 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const data = await response.json() as {
-      data: Array<{ embedding: number[] }>;
+      data?: Array<{ embedding?: number[] }>;
       usage?: { total_tokens?: number };
     };
-    const embeddings = data.data.map((item) => item.embedding);
+
+    if (!data.data || !Array.isArray(data.data)) {
+      return createErrorResponse(
+        'Unexpected response format from OpenAI embeddings API.',
+        'INVALID_RESPONSE',
+        502
+      );
+    }
+
+    // Safely extract embeddings with error handling
+    let embeddings: number[][];
+    try {
+      embeddings = data.data.map((item, index) => {
+        if (!item.embedding || !Array.isArray(item.embedding)) {
+          console.error(`[Embeddings API] Missing embedding at index ${index}:`, item);
+          throw new Error(`Missing embedding in response item at index ${index}`);
+        }
+        return item.embedding;
+      });
+    } catch (error) {
+      console.error('[Embeddings API] Failed to extract embeddings:', error);
+      return createErrorResponse(
+        'Malformed embeddings in OpenAI response.',
+        'INVALID_EMBEDDINGS',
+        502
+      );
+    }
 
     const payload: EmbeddingsResponseBody = {
       embeddings,

@@ -336,6 +336,17 @@ export function InfiniteCanvas() {
     const lastReminder = lastReminderRaw ? Date.parse(lastReminderRaw) : 0;
     const lastAuto = lastAutoRaw ? Date.parse(lastAutoRaw) : 0;
 
+    // Guard against invalid date strings from localStorage
+    if ((lastExportRaw && isNaN(lastExport)) || (lastReminderRaw && isNaN(lastReminder)) || (lastAutoRaw && isNaN(lastAuto))) {
+      console.warn('[InfiniteCanvas] Invalid date in localStorage, resetting backup timestamps');
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.BACKUP_LAST_EXPORT);
+        window.localStorage.removeItem(STORAGE_KEYS.BACKUP_REMINDER_LAST_SHOWN);
+        window.localStorage.removeItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT);
+      } catch { /* ignore */ }
+      return;
+    }
+
     const needsBackup = !lastExportRaw || now - lastExport > weekMs;
     const canRemind = !lastReminderRaw || now - lastReminder > dayMs;
     const needsAutoBackup = !lastAutoRaw || now - lastAuto > dayMs;

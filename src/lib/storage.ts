@@ -293,7 +293,18 @@ export class VersionedStorage<T> {
         };
       }
 
-      const schema: StorageSchema<T> = JSON.parse(raw);
+      let schema: StorageSchema<T>;
+      try {
+        schema = JSON.parse(raw);
+      } catch (parseError) {
+        this.log('Failed to parse stored data (corrupted JSON)', parseError);
+        return {
+          success: false,
+          data: this.defaultData,
+          migrated: false,
+          error: new Error('Stored data is not valid JSON'),
+        };
+      }
 
       // Verify checksum
       if (!this.verifyChecksum(schema)) {

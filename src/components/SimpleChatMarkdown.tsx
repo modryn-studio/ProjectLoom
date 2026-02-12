@@ -39,7 +39,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
             margin: `${spacing[3]} 0`,
             padding: spacing[3],
             backgroundColor: colors.bg.inset,
-            border: `1px solid ${colors.border.muted}`,
+            border: `1px solid ${colors.border.default}`,
             borderRadius: effects.border.radius.default,
             overflowX: 'auto',
             fontSize: typography.sizes.xs,
@@ -127,13 +127,101 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
         continue;
       }
 
+      // Tables (GFM-style)
+      if (line.trim().match(/^\|.+\|$/)) {
+        // Check if next line is a separator row
+        if (i + 1 < lines.length && lines[i + 1].trim().match(/^\|[\s:-]+\|$/)) {
+          const tableRows: string[][] = [];
+          
+          // Parse header row
+          const headerCells = line
+            .split('|')
+            .map(cell => cell.trim())
+            .filter(cell => cell !== '');
+          tableRows.push(headerCells);
+          const columnCount = headerCells.length;
+          
+          // Skip separator row
+          i += 2;
+          
+          // Parse data rows
+          while (i < lines.length && lines[i].trim().match(/^\|.+\|$/)) {
+            const cells = lines[i]
+              .split('|')
+              .map(cell => cell.trim())
+              .filter(cell => cell !== '');
+            // Normalize column count to match header
+            while (cells.length < columnCount) cells.push('');
+            if (cells.length > columnCount) cells.length = columnCount;
+            tableRows.push(cells);
+            i++;
+          }
+          
+          // Only render if we have at least a header row + 1 data row
+          if (tableRows.length < 2) {
+            // Not a valid table, let it fall through to text rendering
+            i = i - tableRows.length + 1; // reset to after header
+            // fall through to regular text
+          } else {
+          // Render table
+          elements.push(
+            <div key={`table-wrapper-${i}`} style={{
+              overflowX: 'auto',
+              margin: `${spacing[3]} 0`,
+            }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: typography.sizes.sm,
+              }}>
+                <thead style={{
+                  backgroundColor: colors.bg.inset,
+                  borderBottom: `2px solid ${colors.border.default}`,
+                }}>
+                  <tr>
+                    {tableRows[0].map((cell, idx) => (
+                      <th key={idx} style={{
+                        padding: `${spacing[2]} ${spacing[3]}`,
+                        textAlign: 'left',
+                        fontWeight: typography.weights.bold,
+                        color: colors.fg.primary,
+                      }}>
+                        {formatInline(cell)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableRows.slice(1).map((row, rowIdx) => (
+                    <tr key={rowIdx} style={{
+                      borderBottom: `1px solid ${colors.border.default}`,
+                    }}>
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} style={{
+                          padding: `${spacing[2]} ${spacing[3]}`,
+                          color: colors.fg.primary,
+                        }}>
+                          {formatInline(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+          continue;
+          }
+        }
+      }
+
       // Horizontal rule
       if (line.trim().match(/^[-*_]{3,}$/)) {
         elements.push(
           <hr key={`hr-${i}`} style={{
             margin: `${spacing[4]} 0`,
             border: 'none',
-            borderTop: `1px solid ${colors.border.muted}`,
+            borderTop: `1px solid ${colors.border.default}`,
           }} />
         );
         i++;
@@ -191,7 +279,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           <code key={key++} style={{
             fontFamily: typography.fonts.code,
             backgroundColor: colors.bg.inset,
-            border: `1px solid ${colors.border.muted}`,
+            border: `1px solid ${colors.border.default}`,
             borderRadius: effects.border.radius.sm,
             padding: `2px ${spacing[1]}`,
             fontSize: '0.9em',

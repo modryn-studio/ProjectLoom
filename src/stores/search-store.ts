@@ -85,13 +85,15 @@ export const useSearchStore = create<SearchStore>((set, get) => ({
   nextResult: () => {
     const { results, activeIndex } = get();
     if (results.length === 0) return;
-    set({ activeIndex: (activeIndex + 1) % results.length });
+    const nextIndex = (activeIndex + 1) % results.length;
+    set({ activeIndex: Math.min(nextIndex, results.length - 1) });
   },
   
   prevResult: () => {
     const { results, activeIndex } = get();
     if (results.length === 0) return;
-    set({ activeIndex: (activeIndex - 1 + results.length) % results.length });
+    const prevIndex = (activeIndex - 1 + results.length) % results.length;
+    set({ activeIndex: Math.min(prevIndex, results.length - 1) });
   },
   
   setActiveIndex: (index) => set({ activeIndex: index }),

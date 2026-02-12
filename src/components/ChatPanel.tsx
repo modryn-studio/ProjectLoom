@@ -36,11 +36,12 @@ export function ChatPanel() {
   const panelWidthRef = useRef<number>(480); // Track current width for mouseup handler
   
   // Track conversation metadata for the active streaming request to prevent race conditions
-  // when user switches cards during streaming
+  // when user switches cards during streaming. Uses a unique requestId to prevent stale callbacks.
   const streamingRequestMetadataRef = useRef<{
     conversationId: string;
     model: string;
     timestamp: number;
+    requestId: string;
   } | null>(null);
   
   // State from stores — use targeted selector to only re-render when active conversation changes
@@ -165,6 +166,7 @@ export function ChatPanel() {
     }
 
     let isCancelled = false;
+    const abortController = new AbortController();
 
     const safeSetRagIndex = (nextIndex: RagIndex | null) => {
       if (!isCancelled) {
@@ -203,6 +205,7 @@ export function ChatPanel() {
             texts: baseIndex.chunks.map((chunk) => chunk.content),
             model: EMBEDDING_MODEL,
           }),
+          signal: abortController.signal,
         });
 
         if (!response.ok) {
@@ -223,6 +226,7 @@ export function ChatPanel() {
           });
         }
       } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return; // Expected on cleanup
         console.error('[ChatPanel] Failed to build embedding index', err);
         safeSetRagIndex(baseIndex);
       }
@@ -235,6 +239,7 @@ export function ChatPanel() {
 
     return () => {
       isCancelled = true;
+      abortController.abort();
     };
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [contextLoadKey, activeWorkspaceId, addUsage]);
@@ -330,16 +335,34 @@ export function ChatPanel() {
           source: 'chat',
         });
       } else {
-        console.warn('[ChatPanel] Usage data missing from AI response:', {
+        // Fallback: estimate tokens when SDK doesn't provide usage data (common in production Edge runtime)
+        const CHARS_PER_TOKEN = 4; // Rough estimate
+        const estimatedInputTokens = Math.ceil((message.content?.length || 0) / CHARS_PER_TOKEN);
+        const estimatedOutputTokens = Math.ceil((message.content?.length || 0) / CHARS_PER_TOKEN);
+        
+        console.warn('[ChatPanel] Usage data missing, using estimation:', {
           model: metadata.model,
           provider: detectProvider(metadata.model),
           conversationId: metadata.conversationId,
           messageLength: message.content?.length || 0,
+          estimatedInputTokens,
+          estimatedOutputTokens,
+        });
+        
+        addUsage({
+          provider: detectProvider(metadata.model),
+          model: metadata.model,
+          inputTokens: estimatedInputTokens,
+          outputTokens: estimatedOutputTokens,
+          conversationId: metadata.conversationId,
+          source: 'chat',
         });
       }
       
-      // Clean up metadata ref
-      streamingRequestMetadataRef.current = null;
+      // Clean up metadata ref (primary cleanup location)
+      if (streamingRequestMetadataRef.current?.requestId === metadata.requestId) {
+        streamingRequestMetadataRef.current = null;
+      }
       
       // Clear attachments after send
       setPendingAttachments([]);
@@ -347,7 +370,9 @@ export function ChatPanel() {
     onError: (error: Error) => {
       console.error('[ChatPanel] AI Error:', error);
       // Clear metadata ref on error to prevent stale data
-      streamingRequestMetadataRef.current = null;
+      if (streamingRequestMetadataRef.current) {
+        streamingRequestMetadataRef.current = null;
+      }
     },
   });
 
@@ -451,6 +476,7 @@ export function ChatPanel() {
       conversationId: activeConversationId,
       model: currentModel,
       timestamp: Date.now(),
+      requestId: crypto.randomUUID(),
     };
 
     // Build canvas context (pass explicit message since input is now cleared)
@@ -513,6 +539,7 @@ export function ChatPanel() {
       conversationId: activeConversationId,
       model: currentModel,
       timestamp: Date.now(),
+      requestId: crypto.randomUUID(),
     };
     
     // Build canvas context for retry
@@ -636,8 +663,8 @@ export function ChatPanel() {
           // Save partial message using CAPTURED values
           addAIMessage(metadata.conversationId, lastMessage.content, metadata.model, partialWebSearchMetadata);
           
-          // Clean up metadata ref
-          streamingRequestMetadataRef.current = null;
+          // Don't clear metadata here - let onFinish/onError handle cleanup
+          // This prevents race condition where metadata is cleared before onFinish gets it
           
           setPendingAttachments([]);
         }

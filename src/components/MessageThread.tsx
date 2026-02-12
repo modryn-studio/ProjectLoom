@@ -937,7 +937,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   markdownInlineCode: {
     fontFamily: typography.fonts.code || 'monospace',
     backgroundColor: colors.bg.inset,
-    border: `1px solid ${colors.border.muted}`,
+    border: `1px solid ${colors.border.default}`,
     borderRadius: effects.border.radius.sm || '4px',
     padding: `0 ${spacing[1]}`,
   },
@@ -945,7 +945,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     margin: `${spacing[3]} 0`,
     padding: `${spacing[3]} ${spacing[3]}`,
     backgroundColor: colors.bg.inset,
-    border: `1px solid ${colors.border.muted}`,
+    border: `1px solid ${colors.border.default}`,
     borderRadius: effects.border.radius.default,
     overflowX: 'auto',
     lineHeight: 1.5,
@@ -1026,7 +1026,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   markdownHr: {
     margin: `${spacing[4]} 0`,
     border: 'none',
-    borderTop: `1px solid ${colors.border.muted}`,
+    borderTop: `1px solid ${colors.border.default}`,
   },
 
   // Tables (GFM feature)
@@ -1044,7 +1044,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     borderBottom: `2px solid ${colors.border.default}`,
   },
   markdownTr: {
-    borderBottom: `1px solid ${colors.border.muted}`,
+    borderBottom: `1px solid ${colors.border.default}`,
   },
   markdownTh: {
     padding: `${spacing[2]} ${spacing[3]}`,
@@ -1151,7 +1151,7 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
 
   citations: {
     marginTop: '6px',
-    borderTop: `1px solid ${colors.border.muted}`,
+    borderTop: `1px solid ${colors.border.default}`,
     paddingTop: '6px',
   },
 

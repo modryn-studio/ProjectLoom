@@ -45,6 +45,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as GenerateTitleRequest;
     const { userMessage, assistantMessage, model, apiKey } = body;
 
+    console.log('[Generate Title API] Request received:', {
+      model,
+      provider: detectProvider(model),
+      userMessageLength: userMessage?.length,
+      assistantMessageLength: assistantMessage?.length,
+    });
+
     if (!userMessage) {
       return NextResponse.json(
         { error: 'userMessage is required' },
@@ -84,12 +91,15 @@ Examples:
     // Build API request based on provider
     let apiEndpoint: string;
     let headers: Record<string, string>;
-    let requestBody: {
+    let requestBody: | {
       model: string;
       messages: Array<{ role: string; content: string }>;
       system?: string;
       temperature?: number;
       max_tokens: number;
+    } | {
+      contents: Array<{ role: string; parts: Array<{ text: string }> }>;
+      generationConfig: { maxOutputTokens: number };
     };
 
     if (provider === 'anthropic') {
@@ -107,17 +117,22 @@ Examples:
         max_tokens: 20,
       };
     } else if (provider === 'google') {
-      // Google Gemini
+      // Google Gemini - correct API structure
       apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       headers = {
         'Content-Type': 'application/json',
       };
+      // Note: Google Gemini uses a different request structure
       requestBody = {
-        model: model,
-        messages: [
-          { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
+          },
         ],
-        max_tokens: 20,
+        generationConfig: {
+          maxOutputTokens: 20,
+        },
       };
     } else {
       // OpenAI / OpenRouter
@@ -146,7 +161,12 @@ Examples:
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Title generation failed:', errorData);
+      console.error('[Generate Title API] Request failed:', {
+        provider,
+        model,
+        status: response.status,
+        error: errorData.substring(0, 500),
+      });
       return NextResponse.json(
         { error: 'Failed to generate title', details: errorData },
         { status: response.status }
@@ -154,6 +174,10 @@ Examples:
     }
 
     const data = await response.json();
+    console.log('[Generate Title API] Raw response:', {
+      provider,
+      hasContent: !!data.content || !!data.candidates || !!data.choices,
+    });
     
     // Extract title and usage from response based on provider
     let title: string;
@@ -212,12 +236,14 @@ Examples:
       title = fallbackWords.charAt(0).toUpperCase() + fallbackWords.slice(1);
     }
 
-    // Log usage data for diagnostics
-    if (usage) {
-      console.log('[Generate Title API] Usage tracked:', { provider, model, usage });
-    } else {
-      console.warn('[Generate Title API] No usage data from provider:', { provider, model });
-    }
+    // Log final result
+    console.log('[Generate Title API] ✅ Generated title:', {
+      provider,
+      model,
+      title,
+      titleLength: title.length,
+      usage,
+    });
 
     return NextResponse.json({ title, usage });
   } catch (error) {
