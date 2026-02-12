@@ -247,6 +247,7 @@ function ConversationCardComponent({
           scale: { duration: 0.2, ease: 'easeOut' },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
         }}
+        className={dragging ? 'cursor-grabbing-theme' : 'cursor-grab-theme'}
         style={{
           ...cardStyles.container,
           zIndex: cardZIndex,
@@ -406,7 +407,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
     borderRadius: effects.border.radius.md,
     border: `1px solid ${colors.border.default}`,
     padding: spacing.card.padding,
-    cursor: 'grab',
+    // cursor moved to className (cursor-grab-theme) for theme-aware rendering
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',

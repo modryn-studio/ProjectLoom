@@ -33,6 +33,35 @@
   cursor: grabbing !important;
 }
 
+/* Global cursor utilities for cards and draggable elements */
+/* Light mode: Custom cursors */
+[data-theme="light"] .cursor-grab-theme {
+  cursor: url('/grab.cur'), grab;
+}
+
+[data-theme="light"] .cursor-grabbing-theme {
+  cursor: url('/grabbing.cur'), grabbing;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .cursor-grab-theme {
+    cursor: url('/grab.cur'), grab;
+  }
+
+  :root:not([data-theme]) .cursor-grabbing-theme {
+    cursor: url('/grabbing.cur'), grabbing;
+  }
+}
+
+/* Dark mode: Default system cursors */
+[data-theme="dark"] .cursor-grab-theme {
+  cursor: grab;
+}
+
+[data-theme="dark"] .cursor-grabbing-theme {
+  cursor: grabbing;
+}
+
 /* =============================================================================
    DESIGN TOKENS - Professional Neutral Theme System
    Inspired by VSCode, Linear, GitHub, Notion - Easy on eyes for long sessions
