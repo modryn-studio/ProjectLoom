@@ -4,13 +4,13 @@
 /* Override React Flow cursor defaults */
 /* Light mode: Use custom cursor files with proper contrast */
 
-/* Explicit light mode - use custom .cur file */
+/* Explicit light mode - use custom .cur files */
 [data-theme="light"] .react-flow__pane.draggable {
   cursor: url('/grab.cur'), grab !important;
 }
 
 [data-theme="light"] .react-flow__pane.dragging {
-  cursor: url('/grab.cur'), grabbing !important;
+  cursor: url('/grabbing.cur'), grabbing !important;
 }
 
 /* System preference light mode */
@@ -20,7 +20,7 @@
   }
 
   :root:not([data-theme]) .react-flow__pane.dragging {
-    cursor: url('/grab.cur'), grabbing !important;
+    cursor: url('/grabbing.cur'), grabbing !important;
   }
 }
 
