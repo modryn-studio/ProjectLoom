@@ -2,31 +2,29 @@
 @import "@xyflow/react/dist/style.css";
 
 /* Override React Flow cursor defaults */
-/* Light mode: Use PNG data URI cursors with black outlines for Chrome rendering issue */
+/* Light mode: Use move cursor which has better contrast in Chrome */
 
-/* Base64 PNG cursors with black outlines - 24x24px @2x for crisp rendering */
-/* Open hand (grab) cursor */
+/* Explicit light mode - use move cursor as it has better visibility */
 [data-theme="light"] .react-flow__pane.draggable {
-  cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGcSURBVHgBxVXBbsIwDHUc+v9fWGl3mKa1oTvxNuAA4gISAgmJicdqF0KBTeuud0mr2sRO89x2A8APAB/wM/A7gDcA3wB+fvH+CYB3AN8BvAF4BfAC4PmD5ycAnwE8AfgE4BHAAwD3D+7vAbgD8ADgHsAdgFsAtwBuANwAuAZwDeDqg/dXAC4BXAC4AHD+wfMzgDMAZwBOAZwAOAZwBOAIwCGAAwAHAPYB7APYA7AHYA/ALoA9ADsAdgDsANgGsA1gG8AWgC0AmwA2AWwA2ACwDmAdwBqANQCrAFYBrABYAbAMYBnAEoAlAIsAFgEsAFgAsABgHsA8gHkAcwDmAMwCmAUwA2AGwDSAaQBTAKYATAKYBDABYALAOIBxAGMAxgCMfDF+BMDoH8aHAIa+GB4AGPxif+CLvQH0f7HXh14v9nrQ7cVuD7q92O2g04NOBx0ddDro6KCt0W4HbY12O2g1Wm3QauStBq0GrQatBq0GrQatBs0GzQbNBs0GzQbNBs1G3qrRbNRs1GzUbNRs1GjUaOS1Gv8d/gLqVxPgX8BxjAAAAABJRU5ErkJggg==') 12 12, grab !important;
+  cursor: move !important;
 }
 
-/* Closed hand (grabbing) cursor */
 [data-theme="light"] .react-flow__pane.dragging {
-  cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGdSURBVHgBxVXBTsJAEJ0u/f+PlKgJRo2JF28eOHDw4MWLR08e/QQvfoBfoBc+wA/wEzzxCX6BJ0/+gieP3jx68ODJk0dPHr158ujBoxePniwe4BV4AZ6BJ+AReADuP7i/A+6AW+AWuAFugGvgGrgCrr543wWugEvgAjgHzoAz4BQ4AU6AY+AYOAKOgEPgEDgADoB9YB/YA/aAPWAX2AN2gB1gG9gGtoEtYAvYBDaBDWADWAfWgTVgDVgFVoEVYBlYBpaAJWARWAQWgAVgHpgH5oA5YBaYBWaAGWAamAamgClgEpgEJoAJYBwYB8aAMWAUGPli9AAYfWN49I3h/jf2+9/Y633j++4WsOs7HA69oe+u77A7/Ma9O/za6fgOO77DQd9h33f4vrd1Fz0tdNdoeA==') 12 12, grabbing !important;
+  cursor: move !important;
 }
 
 /* System preference light mode */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) .react-flow__pane.draggable {
-    cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGcSURBVHgBxVXBbsIwDHUc+v9fWGl3mKa1oTvxNuAA4gISAgmJicdqF0KBTeuud0mr2sRO89x2A8APAB/wM/A7gDcA3wB+fvH+CYB3AN8BvAF4BfAC4PmD5ycAnwE8AfgE4BHAAwD3D+7vAbgD8ADgHsAdgFsAtwBuANwAuAZwDeDqg/dXAC4BXAC4AHD+wfMzgDMAZwBOAZwAOAZwBOAIwCGAAwAHAPYB7APYA7AHYA/ALoA9ADsAdgDsANgGsA1gG8AWgC0AmwA2AWwA2ACwDmAdwBqANQCrAFYBrABYAbAMYBnAEoAlAIsAFgEsAFgAsABgHsA8gHkAcwDmAMwCmAUwA2AGwDSAaQBTAKYATAKYBDABYALAOIBxAGMAxgCMfDF+BMDoH8aHAIa+GB4AGPxif+CLvQH0f7HXh14v9nrQ7cVuD7q92O2g04NOBx0ddDro6KCt0W4HbY12O2g1Wm3QauStBq0GrQatBq0GrQatBs0GzQbNBs0GzQbNBs1G3qrRbNRs1GzUbNRs1GjUaOS1Gv8d/gLqVxPgX8BxjAAAAABJRU5ErkJggg==') 12 12, grab !important;
+    cursor: move !important;
   }
 
   :root:not([data-theme]) .react-flow__pane.dragging {
-    cursor: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGdSURBVHgBxVXBTsJAEJ0u/f+PlKgJRo2JF28eOHDw4MWLR08e/QQvfoBfoBc+wA/wEzzxCX6BJ0/+gieP3jx68ODJk0dPHr158ujBoxePniwe4BV4AZ6BJ+AReADuP7i/A+6AW+AWuAFugGvgGrgCrr543wWugEvgAjgHzoAz4BQ4AU6AY+AYOAKOgEPgEDgADoB9YB/YA/aAPWAX2AN2gB1gG9gGtoEtYAvYBDaBDWADWAfWgTVgDVgFVoEVYBlYBpaAJWARWAQWgAVgHpgH5oA5YBaYBWaAGWAamAamgClgEpgEJoAJYBwYB8aAMWAUGPli9AAYfWN49I3h/jf2+9/Y633j++4WsOs7HA69oe+u77A7/Ma9O/za6fgOO77DQd9h33f4vrd1Fz0tdNdoeA==') 12 12, grabbing !important;
+    cursor: move !important;
   }
 }
 
-/* Dark mode: Use default cursors (no rendering issues) */
+/* Dark mode: Use default grab cursors */
 [data-theme="dark"] .react-flow__pane.draggable {
   cursor: grab !important;
 }
