@@ -491,39 +491,15 @@ export class OpenAIProvider implements AIProvider {
   async getModels(): Promise<ModelInfo[]> {
     return [
       {
-        id: 'gpt-5.2',
-        name: 'GPT-5.2',
-        maxTokens: 128000,
-        supportsStreaming: true,
-      },
-      {
         id: 'gpt-5-mini',
         name: 'GPT-5 Mini',
         maxTokens: 128000,
         supportsStreaming: true,
       },
       {
-        id: 'gpt-5-nano',
-        name: 'GPT-5 Nano',
+        id: 'gpt-5.2',
+        name: 'GPT-5.2',
         maxTokens: 128000,
-        supportsStreaming: true,
-      },
-      {
-        id: 'gpt-4.1',
-        name: 'GPT-4.1',
-        maxTokens: 1047576,
-        supportsStreaming: true,
-      },
-      {
-        id: 'gpt-4.1-mini',
-        name: 'GPT-4.1 Mini',
-        maxTokens: 1047576,
-        supportsStreaming: true,
-      },
-      {
-        id: 'gpt-4.1-nano',
-        name: 'GPT-4.1 Nano',
-        maxTokens: 1047576,
         supportsStreaming: true,
       },
     ];

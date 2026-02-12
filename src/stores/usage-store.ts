@@ -20,7 +20,7 @@ import { calculateCost } from '@/lib/vercel-ai-integration';
 // TYPES
 // =============================================================================
 
-export type UsageProvider = 'anthropic' | 'openai';
+export type UsageProvider = 'anthropic' | 'openai' | 'google';
 export type UsageSource = 'chat' | 'agent' | 'summarize' | 'embeddings' | 'title-generation';
 
 export type UsageRange = 'this_month' | 'last_month' | 'year_to_date' | 'all_time';
@@ -120,6 +120,7 @@ export function getUsageTotals(records: UsageRecord[], range: UsageRange, now = 
     byProvider: {
       anthropic: { costUsd: 0, totalTokens: 0, recordCount: 0 },
       openai: { costUsd: 0, totalTokens: 0, recordCount: 0 },
+      google: { costUsd: 0, totalTokens: 0, recordCount: 0 },
     },
   };
 

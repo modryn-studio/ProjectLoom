@@ -16,8 +16,8 @@ export interface ModelDefinition {
   id: string;
   /** Human-readable display name */
   name: string;
-  /** Provider (anthropic/openai) */
-  provider: 'anthropic' | 'openai';
+  /** Provider (anthropic/openai/google) */
+  provider: 'anthropic' | 'openai' | 'google';
   /** Maximum context tokens */
   maxTokens: number;
   /** Whether streaming is supported */
@@ -37,14 +37,14 @@ export interface ModelDefinition {
 export const AVAILABLE_MODELS: ModelDefinition[] = [
   // Anthropic Claude Models
   {
-    id: 'claude-opus-4-6',
-    name: 'Claude Opus 4.6',
+    id: 'claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
     supportsVision: true,
-    costTier: 'high',
-    description: 'Most capable model for complex reasoning, multi-step workflows, and advanced coding. Excels at research, analysis, and agentic tasks.',
+    costTier: 'low',
+    description: '200K context. Fastest and most affordable Claude. Great for quick tasks and early branches before context grows.',
   },
   {
     id: 'claude-sonnet-4-5',
@@ -54,79 +54,61 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Ideal balance of performance and cost. Fast responses with strong reasoning for everyday coding, writing, and conversation.',
+    description: '200K-1M context. Ideal balance of speed and intelligence. Handles 3-4 parent merges with moderate message history.',
   },
   {
-    id: 'claude-haiku-4-5',
-    name: 'Claude Haiku 4.5',
+    id: 'claude-opus-4-6',
+    name: 'Claude Opus 4.6',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
     supportsVision: true,
-    costTier: 'low',
-    description: 'Fastest and most affordable option with impressive intelligence. Great for quick tasks, simple coding, and high-volume use cases.',
+    costTier: 'high',
+    description: '200K-1M context. Most capable for complex reasoning and deep branch synthesis. Best for 5-parent merges with rich context.',
   },
 
   // OpenAI Models
   {
-    id: 'gpt-5.2',
-    name: 'GPT-5.2',
-    provider: 'openai',
-    maxTokens: 400000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'medium',
-    description: 'OpenAI flagship model for production use. Excellent at coding, creative tasks, and structured output.',
-  },
-  {
     id: 'gpt-5-mini',
     name: 'GPT-5 Mini',
     provider: 'openai',
-    maxTokens: 400000,
+    maxTokens: 128000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Affordable model for straightforward tasks like editing, summarization, and well-scoped coding. Fast and cost-effective.',
+    description: '128K context. Fast and affordable for straightforward tasks. Good for shallow branches with focused conversations.',
   },
   {
-    id: 'gpt-5-nano',
-    name: 'GPT-5 Nano',
+    id: 'gpt-5.2',
+    name: 'GPT-5.2',
     provider: 'openai',
-    maxTokens: 400000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'low',
-    description: 'Ultra-fast and economical for simple tasks like classification, data extraction, and basic Q&A. Ideal for high-volume API usage.',
-  },
-  {
-    id: 'gpt-4.1',
-    name: 'GPT-4.1',
-    provider: 'openai',
-    maxTokens: 1047576,
+    maxTokens: 128000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: 'Advanced model perfect for analyzing entire codebases, long documents, or maintaining extensive conversation history.',
+    description: '128K context. OpenAI flagship model. Balanced for 2-3 parent merges with 20-30 messages per branch.',
   },
+
+  // Google Gemini Models
   {
-    id: 'gpt-4.1-mini',
-    name: 'GPT-4.1 Mini',
-    provider: 'openai',
-    maxTokens: 1047576,
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    provider: 'google',
+    maxTokens: 1000000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: 'Cost-effective option with large context window. Great for long document tasks with budget constraints.',
+    description: '1M context. Excellent price-performance for deep branching. Handles 4-5 parent merges with 30+ messages each at low cost.',
   },
   {
-    id: 'gpt-4.1-nano',
-    name: 'GPT-4.1 Nano',
-    provider: 'openai',
-    maxTokens: 1047576,
+    id: 'gemini-3-flash',
+    name: 'Gemini 3 Flash',
+    provider: 'google',
+    maxTokens: 2000000,
     supportsStreaming: true,
     supportsVision: true,
-    costTier: 'low',
-    description: 'Most economical option with massive context. Perfect for processing large files at scale.',
+    costTier: 'medium',
+    description: '2M context. Largest context window available. Ideal for maximum branching depth—5 parents with 50+ messages each. FREE tier available.',
   },
 ];
 
@@ -135,11 +117,13 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
  */
 export function getAvailableModels(
   hasAnthropicKey: boolean,
-  hasOpenAIKey: boolean
+  hasOpenAIKey: boolean,
+  hasGoogleKey: boolean = false
 ): ModelDefinition[] {
   return AVAILABLE_MODELS.filter((model) => {
     if (model.provider === 'anthropic') return hasAnthropicKey;
     if (model.provider === 'openai') return hasOpenAIKey;
+    if (model.provider === 'google') return hasGoogleKey;
     return false;
   });
 }
@@ -154,7 +138,7 @@ export function getModelById(id: string): ModelDefinition | undefined {
 /**
  * Get the default model for a provider
  */
-export function getDefaultModel(provider: 'anthropic' | 'openai'): ModelDefinition {
+export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google'): ModelDefinition {
   const models = AVAILABLE_MODELS.filter((m) => m.provider === provider);
   if (models.length === 0) {
     if (AVAILABLE_MODELS.length === 0) {
@@ -170,12 +154,15 @@ export function getDefaultModel(provider: 'anthropic' | 'openai'): ModelDefiniti
 /**
  * Detect provider from model ID
  */
-export function detectProvider(modelId: string): 'anthropic' | 'openai' {
+export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'google' {
   if (modelId.startsWith('claude') || modelId.startsWith('anthropic')) {
     return 'anthropic';
   }
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) {
     return 'openai';
+  }
+  if (modelId.startsWith('gemini')) {
+    return 'google';
   }
   // Default to anthropic
   return 'anthropic';
@@ -268,15 +255,13 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
  * Used for both previews and usage tracking.
  */
 export const MODEL_PRICING = {
-  'claude-opus-4-6': { input: 5, output: 25 },
-  'claude-sonnet-4-5': { input: 3, output: 15 },
   'claude-haiku-4-5': { input: 1, output: 5 },
-  'gpt-5.2': { input: 1.75, output: 14 },
+  'claude-sonnet-4-5': { input: 3, output: 15 },
+  'claude-opus-4-6': { input: 5, output: 25 },
   'gpt-5-mini': { input: 0.25, output: 2 },
-  'gpt-5-nano': { input: 0.05, output: 0.4 },
-  'gpt-4.1': { input: 2, output: 8 },
-  'gpt-4.1-mini': { input: 0.5, output: 2 },
-  'gpt-4.1-nano': { input: 0.1, output: 0.4 },
+  'gpt-5.2': { input: 1.75, output: 14 },
+  'gemini-2.5-flash': { input: 0.30, output: 2.50 },
+  'gemini-3-flash': { input: 0.50, output: 3.00 },
   'text-embedding-3-small': { input: 0.02, output: 0 },
 } as const;
 

@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'edge';
 export const maxDuration = 30;
 
-type ProviderType = 'anthropic' | 'openai';
+type ProviderType = 'anthropic' | 'openai' | 'google';
 
 interface GenerateTitleRequest {
   userMessage: string;
@@ -28,6 +28,9 @@ function detectProvider(model: string): ProviderType {
   }
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) {
     return 'openai';
+  }
+  if (model.startsWith('gemini')) {
+    return 'google';
   }
   return 'anthropic'; // Default
 }
@@ -103,6 +106,19 @@ Examples:
         // Don't specify temperature - let model use its default
         max_tokens: 20,
       };
+    } else if (provider === 'google') {
+      // Google Gemini
+      apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      headers = {
+        'Content-Type': 'application/json',
+      };
+      requestBody = {
+        model: model,
+        messages: [
+          { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` },
+        ],
+        max_tokens: 20,
+      };
     } else {
       // OpenAI / OpenRouter
       apiEndpoint = 'https://api.openai.com/v1/chat/completions';
@@ -116,7 +132,7 @@ Examples:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        // Don't specify temperature - models like gpt-5-nano only support default (1.0)
+        // Don't specify temperature - some models like GPT-5 Mini only support default (1.0)
         max_tokens: 20,
       };
     }
@@ -151,6 +167,17 @@ Examples:
           promptTokens: data.usage.input_tokens || 0,
           completionTokens: data.usage.output_tokens || 0,
           totalTokens: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0),
+        };
+      }
+    } else if (provider === 'google') {
+      // Google Gemini
+      title = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+      // Extract Google usage data
+      if (data.usageMetadata) {
+        usage = {
+          promptTokens: data.usageMetadata.promptTokenCount || 0,
+          completionTokens: data.usageMetadata.candidatesTokenCount || 0,
+          totalTokens: data.usageMetadata.totalTokenCount || 0,
         };
       }
     } else {

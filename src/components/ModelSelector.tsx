@@ -39,13 +39,15 @@ export function ModelSelector({
 
   // Determine which models are available based on API keys
   // Re-check when dropdown opens in case keys were added during the session
-  const { hasAnthropicKey, hasOpenAIKey } = useMemo(() => {
+  const { hasAnthropicKey, hasOpenAIKey, hasGoogleKey } = useMemo(() => {
     const anthropicKey = !!apiKeyManager.getKey('anthropic');
     const openaiKey = !!apiKeyManager.getKey('openai');
+    const googleKey = !!apiKeyManager.getKey('google');
 
     return {
       hasAnthropicKey: anthropicKey,
       hasOpenAIKey: openaiKey,
+      hasGoogleKey: googleKey,
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -143,7 +145,7 @@ export function ModelSelector({
             )}
 
             {/* Divider between providers */}
-            {hasAnthropicKey && hasOpenAIKey && (
+            {hasAnthropicKey && (hasOpenAIKey || hasGoogleKey) && (
               <div style={styles.divider} />
             )}
 
@@ -163,8 +165,29 @@ export function ModelSelector({
               </>
             )}
 
+            {/* Divider between providers */}
+            {hasOpenAIKey && hasGoogleKey && (
+              <div style={styles.divider} />
+            )}
+
+            {/* Google Models */}
+            {hasGoogleKey && (
+              <>
+                {AVAILABLE_MODELS
+                  .filter(m => m.provider === 'google')
+                  .map(model => (
+                    <ModelOption
+                      key={model.id}
+                      model={model}
+                      isSelected={model.id === currentModel}
+                      onSelect={handleSelect}
+                    />
+                  ))}
+              </>
+            )}
+
             {/* No keys configured */}
-            {!hasAnthropicKey && !hasOpenAIKey && (
+            {!hasAnthropicKey && !hasOpenAIKey && !hasGoogleKey && (
               <div style={styles.noKeys}>
                 <Key size={16} />
                 <span>Configure API keys in Settings</span>

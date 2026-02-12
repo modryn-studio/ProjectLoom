@@ -130,9 +130,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   // API Keys state
   const [anthropicKey, setAnthropicKey] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
+  const [googleKey, setGoogleKey] = useState('');
   const [tavilyKey, setTavilyKey] = useState('');
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [showGoogleKey, setShowGoogleKey] = useState(false);
   const [showTavilyKey, setShowTavilyKey] = useState(false);
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
@@ -146,12 +148,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     if (isOpen && !keysLoaded) {
       const savedAnthropicKey = apiKeyManager.getKey('anthropic');
       const savedOpenAIKey = apiKeyManager.getKey('openai');
+      const savedGoogleKey = apiKeyManager.getKey('google');
       const savedTavilyKey = apiKeyManager.getKey('tavily');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
       if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
        
       if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
+      if (savedGoogleKey) setGoogleKey(savedGoogleKey);
       if (savedTavilyKey) setTavilyKey(savedTavilyKey);
        
       setStoragePreference(currentStoragePreference);
@@ -207,6 +211,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         setAnthropicKey('');
       } else if (provider === 'openai') {
         setOpenaiKey('');
+      } else if (provider === 'google') {
+        setGoogleKey('');
       } else {
         setTavilyKey('');
       }
@@ -552,6 +558,64 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         </span>
                         <button
                           onClick={() => handleDeleteKey('openai')}
+                          title="Delete key"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: colors.fg.quaternary,
+                            cursor: 'pointer',
+                            padding: spacing[1],
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Google Key */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>Google AI API Key</label>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type={showGoogleKey ? 'text' : 'password'}
+                        value={googleKey}
+                        onChange={(e) => setGoogleKey(e.target.value)}
+                        onBlur={() => handleSaveKey('google', googleKey)}
+                        placeholder="AIza..."
+                        style={{
+                          ...selectStyles,
+                          fontFamily: typography.fonts.code,
+                          paddingRight: '40px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGoogleKey(!showGoogleKey)}
+                        style={{
+                          position: 'absolute',
+                          right: spacing[2],
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: colors.fg.quaternary,
+                          cursor: 'pointer',
+                          padding: spacing[1],
+                        }}
+                      >
+                        {showGoogleKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    {googleKey && (
+                      <>
+                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
+                          <CheckCircle size={16} />
+                        </span>
+                        <button
+                          onClick={() => handleDeleteKey('google')}
                           title="Delete key"
                           style={{
                             background: 'none',

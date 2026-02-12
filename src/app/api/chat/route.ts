@@ -2,7 +2,7 @@
  * Chat API Route
  * 
  * Streaming chat endpoint using Vercel AI SDK.
- * Supports Claude (Anthropic) and OpenAI models with BYOK (Bring Your Own Key).
+ * Supports Claude (Anthropic), OpenAI, and Google Gemini models with BYOK (Bring Your Own Key).
  * 
  * @version 1.0.0
  */
@@ -10,8 +10,10 @@
 export const runtime = 'edge';
 
 import { streamText, createDataStreamResponse } from 'ai';
+import type { LanguageModelV1 } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { getModelConfig } from '@/lib/model-configs';
 import { orchestrateSearch } from '@/lib/search-orchestration';
 
@@ -56,7 +58,7 @@ interface APIError {
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai';
+type ProviderType = 'anthropic' | 'openai' | 'google';
 
 function detectProvider(model: string): ProviderType {
   if (model.startsWith('claude') || model.startsWith('anthropic')) {
@@ -64,6 +66,9 @@ function detectProvider(model: string): ProviderType {
   }
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) {
     return 'openai';
+  }
+  if (model.startsWith('gemini')) {
+    return 'google';
   }
   // Default to anthropic for unknown models
   return 'anthropic';
@@ -183,14 +188,17 @@ export async function POST(req: Request): Promise<Response> {
     // Detect provider and create model instance
     const providerType = detectProvider(model);
     
-    let aiModel;
+    let aiModel: LanguageModelV1;
     
     if (providerType === 'anthropic') {
       const anthropic = createAnthropic({ apiKey });
-      aiModel = anthropic(model);
+      aiModel = anthropic(model) as unknown as LanguageModelV1;
+    } else if (providerType === 'google') {
+      const google = createGoogleGenerativeAI({ apiKey });
+      aiModel = google(model) as unknown as LanguageModelV1;
     } else {
       const openai = createOpenAI({ apiKey });
-      aiModel = openai(model);
+      aiModel = openai(model) as unknown as LanguageModelV1;
     }
 
     // Build messages for AI SDK, handling both text and image attachments
@@ -317,9 +325,9 @@ export async function POST(req: Request): Promise<Response> {
       ? { maxCompletionTokens: modelConfig.maxTokens }
       : { maxTokens: modelConfig.maxTokens };
 
-    // GPT-5 Mini/Nano only support temperature: 1. MUST explicitly set it (not omit)
+    // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     const temperatureConfig = (providerType === 'openai' &&
-                               ['gpt-5-mini', 'gpt-5-nano'].includes(model))
+                               model === 'gpt-5-mini')
       ? { temperature: 1 }
       : { temperature: modelConfig.temperature };
 

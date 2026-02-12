@@ -37,6 +37,7 @@ const INITIAL_KEY_STATE: KeyState = {
 export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModalProps) {
   const [anthropicKey, setAnthropicKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [openaiKey, setOpenaiKey] = useState<KeyState>(INITIAL_KEY_STATE);
+  const [googleKey, setGoogleKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [tavilyKey, setTavilyKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [isSaving, setIsSaving] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
@@ -47,6 +48,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     if (isOpen) {
       const existingAnthropic = apiKeyManager.getKey('anthropic');
       const existingOpenai = apiKeyManager.getKey('openai');
+      const existingGoogle = apiKeyManager.getKey('google');
       const existingTavily = apiKeyManager.getKey('tavily');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
@@ -55,6 +57,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       }
       if (existingOpenai) {
         setOpenaiKey(prev => ({ ...prev, value: existingOpenai, isValid: true }));
+      }
+      if (existingGoogle) {
+        setGoogleKey(prev => ({ ...prev, value: existingGoogle, isValid: true }));
       }
       if (existingTavily) {
         setTavilyKey(prev => ({ ...prev, value: existingTavily, isValid: true }));
@@ -74,6 +79,10 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } else if (provider === 'openai') {
       if (!key.startsWith('sk-')) {
         return 'OpenAI keys start with "sk-"';
+      }
+    } else if (provider === 'google') {
+      if (!key.startsWith('AIza')) {
+        return 'Google keys start with "AIza"';
       }
     } else if (provider === 'tavily') {
       if (!key.startsWith('tvly-')) {
@@ -128,19 +137,20 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     setIsSaving(true);
 
     try {
-      // Validate both keys
+      // Validate all keys
       const anthropicValid = await validateKey('anthropic', anthropicKey.value, setAnthropicKey);
       const openaiValid = await validateKey('openai', openaiKey.value, setOpenaiKey);
+      const googleValid = await validateKey('google', googleKey.value, setGoogleKey);
       const tavilyValid = await validateKey('tavily', tavilyKey.value, setTavilyKey);
 
-      if (!anthropicValid || !openaiValid || !tavilyValid) {
+      if (!anthropicValid || !openaiValid || !googleValid || !tavilyValid) {
         setIsSaving(false);
         return;
       }
 
-      // Check at least one key is provided
-      if (!anthropicKey.value.trim() && !openaiKey.value.trim()) {
-        setAnthropicKey(prev => ({ ...prev, error: 'At least one API key is required' }));
+      // Check at least one AI provider key is provided
+      if (!anthropicKey.value.trim() && !openaiKey.value.trim() && !googleKey.value.trim()) {
+        setAnthropicKey(prev => ({ ...prev, error: 'At least one AI provider API key is required' }));
         setIsSaving(false);
         return;
       }
@@ -154,6 +164,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       }
       if (openaiKey.value.trim()) {
         apiKeyManager.saveKey('openai', openaiKey.value.trim());
+      }
+      if (googleKey.value.trim()) {
+        apiKeyManager.saveKey('google', googleKey.value.trim());
       }
       if (tavilyKey.value.trim()) {
         apiKeyManager.saveKey('tavily', tavilyKey.value.trim());
@@ -169,7 +182,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } finally {
       setIsSaving(false);
     }
-  }, [anthropicKey.value, openaiKey.value, tavilyKey.value, storagePreference, validateKey, onSuccess, onClose]);
+  }, [anthropicKey.value, openaiKey.value, googleKey.value, tavilyKey.value, storagePreference, validateKey, onSuccess, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -262,6 +275,14 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                   OpenAI Platform <ExternalLink size={12} />
                 </a>
                 <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.link}
+                >
+                  Google AI Studio <ExternalLink size={12} />
+                </a>
+                <a
                   href="https://tavily.com/"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -321,6 +342,17 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
               isValid={openaiKey.isValid}
               isValidating={openaiKey.isValidating}
               error={openaiKey.error}
+            />
+
+            {/* Google Key */}
+            <KeyInput
+              label="Google API Key"
+              placeholder="AIza..."
+              value={googleKey.value}
+              onChange={(v) => handleKeyChange('google', v, setGoogleKey)}
+              isValid={googleKey.isValid}
+              isValidating={googleKey.isValidating}
+              error={googleKey.error}
             />
 
             {/* Tavily Key */}

@@ -33,7 +33,7 @@ export interface ModelConfig {
 
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   // ── Anthropic Models ──────────────────────────────────────────────────────
-  'claude-opus-4-6': {
+  'claude-haiku-4-5': {
     temperature: 1.0,         // Anthropic's default
     maxTokens: 8192,
     systemPrompt: undefined,  // Let Claude be Claude
@@ -43,40 +43,32 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'claude-haiku-4-5': {
+  'claude-opus-4-6': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },
 
   // ── OpenAI Models ─────────────────────────────────────────────────────────
-  'gpt-5.2': {
-    temperature: 0.7,         // OpenAI's balanced default
-    maxTokens: 16384,
-    systemPrompt: undefined,
-  },
   'gpt-5-mini': {
     temperature: 1.0,         // Only temperature: 1 supported for this model
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'gpt-5-nano': {
-    temperature: 1.0,         // Only temperature: 1 supported for this model
-    maxTokens: 4096,
+  'gpt-5.2': {
+    temperature: 0.7,         // OpenAI's balanced default
+    maxTokens: 16384,
     systemPrompt: undefined,
   },
-  'gpt-4.1': {
-    temperature: 0.7,
+
+  // ── Google Gemini Models ──────────────────────────────────────────────────
+  'gemini-2.5-flash': {
+    temperature: 1.0,         // Google's default
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'gpt-4.1-mini': {
-    temperature: 0.7,
-    maxTokens: 8192,
-    systemPrompt: undefined,
-  },
-  'gpt-4.1-nano': {
-    temperature: 0.7,
+  'gemini-3-flash': {
+    temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },

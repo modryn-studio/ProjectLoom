@@ -8,8 +8,10 @@
  */
 
 import { generateText } from 'ai';
+import type { LanguageModelV1 } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -51,7 +53,7 @@ interface APIError {
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai';
+type ProviderType = 'anthropic' | 'openai' | 'google';
 
 function detectProvider(model: string): ProviderType {
   if (model.startsWith('claude') || model.startsWith('anthropic')) {
@@ -59,6 +61,9 @@ function detectProvider(model: string): ProviderType {
   }
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) {
     return 'openai';
+  }
+  if (model.startsWith('gemini')) {
+    return 'google';
   }
   return 'anthropic';
 }
@@ -183,23 +188,26 @@ export async function POST(req: Request): Promise<Response> {
 
     // Create provider model instance
     const providerType = detectProvider(model);
-    let aiModel;
+    let aiModel: LanguageModelV1;
 
     if (providerType === 'anthropic') {
       const anthropic = createAnthropic({ apiKey });
-      aiModel = anthropic(model);
+      aiModel = anthropic(model) as unknown as LanguageModelV1;
+    } else if (providerType === 'google') {
+      const google = createGoogleGenerativeAI({ apiKey });
+      aiModel = google(model) as unknown as LanguageModelV1;
     } else {
       const openai = createOpenAI({ apiKey });
-      aiModel = openai(model);
+      aiModel = openai(model) as unknown as LanguageModelV1;
     }
 
     // Get per-model temperature
     const modelConfig = getModelConfig(model);
 
-    // GPT-5 Mini/Nano only support temperature: 1. MUST explicitly set it (not omit)
+    // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     // even though no tools used here, for consistency with chat route.
     const temperatureConfig = (providerType === 'openai' && 
-                               ['gpt-5-mini', 'gpt-5-nano'].includes(model))
+                               model === 'gpt-5-mini')
       ? { temperature: 1 } // Explicitly set to 1 for consistency
       : { temperature: modelConfig.temperature };
 

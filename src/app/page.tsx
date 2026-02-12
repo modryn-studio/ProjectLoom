@@ -35,11 +35,12 @@ export default function CanvasPage() {
     const keysConfigured = localStorage.getItem('projectloom:keys-configured');
     const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
     const hasOpenAIKey = !!apiKeyManager.getKey('openai');
+    const hasGoogleKey = !!apiKeyManager.getKey('google');
 
     // Show modal if:
     // 1. Never configured keys before AND
     // 2. No keys currently available (no env vars, no localStorage)
-    if (!keysConfigured && !hasAnthropicKey && !hasOpenAIKey) {
+    if (!keysConfigured && !hasAnthropicKey && !hasOpenAIKey && !hasGoogleKey) {
       // Small delay to let the app initialize first
       const timer = setTimeout(() => setShowAPIKeySetup(true), 500);
       return () => clearTimeout(timer);

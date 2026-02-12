@@ -108,6 +108,11 @@ export function APIKeyWarningBanner({
                           OpenAI: {keyStatus.providers.openai.source === 'env' ? '✓ Environment variable' : '⚠ Browser storage'}
                         </li>
                       )}
+                      {keyStatus.providers.google.key && (
+                        <li>
+                          Google: {keyStatus.providers.google.source === 'env' ? '✓ Environment variable' : '⚠ Browser storage'}
+                        </li>
+                      )}
                     </ul>
                     <p style={styles.detailText}>
                       <strong>To secure your keys:</strong>
@@ -116,6 +121,7 @@ export function APIKeyWarningBanner({
                       <li>Create a <code style={styles.code}>.env.local</code> file in your project root</li>
                       <li>Add: <code style={styles.code}>ANTHROPIC_API_KEY=sk-ant-...</code></li>
                       <li>Add: <code style={styles.code}>OPENAI_API_KEY=sk-...</code></li>
+                      <li>Add: <code style={styles.code}>GOOGLE_API_KEY=AIza...</code></li>
                       <li>Restart your development server</li>
                     </ol>
                     <a

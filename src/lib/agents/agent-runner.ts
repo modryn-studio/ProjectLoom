@@ -14,8 +14,10 @@
  */
 
 import { generateText, type CoreTool, type GenerateTextResult } from 'ai';
+import type { LanguageModelV1 } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { nanoid } from 'nanoid';
 
 import { estimateCost, detectProvider } from '@/lib/vercel-ai-integration';
@@ -31,13 +33,17 @@ import type {
 // PROVIDER FACTORY
 // =============================================================================
 
-function createModel(modelId: string, apiKey: string) {
+function createModel(modelId: string, apiKey: string): LanguageModelV1 {
   if (modelId.startsWith('claude') || modelId.startsWith('anthropic')) {
     const provider = createAnthropic({ apiKey });
-    return provider(modelId);
+    return provider(modelId) as unknown as LanguageModelV1;
+  }
+  if (modelId.startsWith('gemini')) {
+    const provider = createGoogleGenerativeAI({ apiKey });
+    return provider(modelId) as unknown as LanguageModelV1;
   }
   const provider = createOpenAI({ apiKey });
-  return provider(modelId);
+  return provider(modelId) as unknown as LanguageModelV1;
 }
 
 // =============================================================================
@@ -120,10 +126,10 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
     const modelConfig = getModelConfig(config.modelId);
     const providerType = detectProvider(config.modelId);
 
-    // GPT-5 Mini/Nano only support temperature: 1. MUST explicitly set it (not omit)
+    // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     // because Vercel AI SDK defaults to temperature: 0 when tools are present.
     const temperatureConfig = (providerType === 'openai' && 
-                               ['gpt-5-mini', 'gpt-5-nano'].includes(config.modelId))
+                               config.modelId === 'gpt-5-mini')
       ? { temperature: 1 } // Explicitly set to 1 - SDK would override omission with 0
       : { temperature: modelConfig.temperature };
 

@@ -263,6 +263,8 @@ async function generateAITitle(
     let apiKey: string | null = null;
     if (model.startsWith('claude') || model.startsWith('anthropic')) {
       apiKey = apiKeyManager.getKey('anthropic');
+    } else if (model.startsWith('gemini')) {
+      apiKey = apiKeyManager.getKey('google');
     } else {
       apiKey = apiKeyManager.getKey('openai');
     }

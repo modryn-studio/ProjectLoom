@@ -95,12 +95,16 @@ export function ChatPanel() {
     // Otherwise, determine default based on available API keys
     const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
     const hasOpenAIKey = !!apiKeyManager.getKey('openai');
+    const hasGoogleKey = !!apiKeyManager.getKey('google');
 
     if (hasAnthropicKey) {
       return getDefaultModel('anthropic').id;
     }
     if (hasOpenAIKey) {
       return getDefaultModel('openai').id;
+    }
+    if (hasGoogleKey) {
+      return getDefaultModel('google').id;
     }
 
     return null;
@@ -113,6 +117,9 @@ export function ChatPanel() {
     if (currentModel.startsWith('claude') || currentModel.startsWith('anthropic')) {
       return apiKeyManager.getKey('anthropic');
     }
+    if (currentModel.startsWith('gemini')) {
+      return apiKeyManager.getKey('google');
+    }
     return apiKeyManager.getKey('openai');
   }, [currentModel]);
 
@@ -121,7 +128,7 @@ export function ChatPanel() {
   // Check if we have any API key configured
   // Note: apiKeyManager reads from localStorage; no reactive deps, but we re-check
   // on every render to pick up keys added mid-session. This is cheap (sync reads).
-  const hasAnyApiKey = !!apiKeyManager.getKey('anthropic') || !!apiKeyManager.getKey('openai');
+  const hasAnyApiKey = !!apiKeyManager.getKey('anthropic') || !!apiKeyManager.getKey('openai') || !!apiKeyManager.getKey('google');
 
   // Check if current model supports vision
   const supportsVision = useMemo(() => {

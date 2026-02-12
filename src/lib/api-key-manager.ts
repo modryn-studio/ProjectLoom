@@ -12,7 +12,7 @@
 // TYPES
 // =============================================================================
 
-export type ProviderType = 'anthropic' | 'openai' | 'tavily';
+export type ProviderType = 'anthropic' | 'openai' | 'google' | 'tavily';
 export type StorageType = 'localStorage' | 'sessionStorage';
 
 export interface APIKeyInfo {
@@ -39,6 +39,7 @@ const STORAGE_PREF_KEY = 'projectloom:storage-preference';
 const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI',
+  google: 'Google (Gemini)',
   tavily: 'Tavily (Web Search)',
 };
 
@@ -265,7 +266,7 @@ class APIKeyManager {
    * Check if user has any API keys configured
    */
   hasAnyKey(): boolean {
-    return this.getKey('anthropic') !== null || this.getKey('openai') !== null;
+    return this.getKey('anthropic') !== null || this.getKey('openai') !== null || this.getKey('google') !== null;
   }
 
   /**
@@ -277,6 +278,7 @@ class APIKeyManager {
       providers: {
         anthropic: this.getKeyInfo('anthropic'),
         openai: this.getKeyInfo('openai'),
+        google: this.getKeyInfo('google'),
         tavily: this.getKeyInfo('tavily'),
       },
     };
@@ -322,6 +324,11 @@ class APIKeyManager {
       case 'openai':
         if (!key.startsWith('sk-')) {
           return { valid: false, error: 'OpenAI API keys should start with "sk-"' };
+        }
+        break;
+      case 'google':
+        if (!key.startsWith('AIza')) {
+          return { valid: false, error: 'Google API keys should start with "AIza"' };
         }
         break;
       case 'tavily':
@@ -373,6 +380,7 @@ export function useAPIKeyStatus() {
     removeKey,
     hasDevModeKeys: status.providers.anthropic.isDevMode
       || status.providers.openai.isDevMode
+      || status.providers.google.isDevMode
       || status.providers.tavily.isDevMode,
   };
 }

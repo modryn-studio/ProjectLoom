@@ -186,8 +186,9 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     // Check API key
     const anthropicKey = apiKeyManager.getKey('anthropic');
     const openaiKey = apiKeyManager.getKey('openai');
-    const apiKey = anthropicKey || openaiKey;
-    const modelId = anthropicKey ? 'claude-sonnet-4-5' : 'gpt-5.2';
+    const googleKey = apiKeyManager.getKey('google');
+    const apiKey = anthropicKey || openaiKey || googleKey;
+    const modelId = anthropicKey ? 'claude-sonnet-4-5' : (openaiKey ? 'gpt-5.2' : 'gemini-2.5-flash');
 
     if (!apiKey) {
       setError('No API key configured. Add one in Settings.');

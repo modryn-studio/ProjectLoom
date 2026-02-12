@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "connect-src 'self' https://api.anthropic.com https://api.openai.com",
+              "connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
