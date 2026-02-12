@@ -263,32 +263,68 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                   target="_blank"
                   rel="noopener noreferrer"
                   style={styles.link}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
+                    e.currentTarget.style.borderColor = colors.accent.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.bg.inset;
+                    e.currentTarget.style.borderColor = 'var(--border-primary)';
+                  }}
                 >
-                  Anthropic Console <ExternalLink size={12} />
+                  <span style={styles.linkText}>Anthropic Console</span>
+                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
                 </a>
                 <a
                   href="https://platform.openai.com/api-keys"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={styles.link}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
+                    e.currentTarget.style.borderColor = colors.accent.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.bg.inset;
+                    e.currentTarget.style.borderColor = 'var(--border-primary)';
+                  }}
                 >
-                  OpenAI Platform <ExternalLink size={12} />
+                  <span style={styles.linkText}>OpenAI Platform</span>
+                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
                 </a>
                 <a
                   href="https://aistudio.google.com/apikey"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={styles.link}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
+                    e.currentTarget.style.borderColor = colors.accent.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.bg.inset;
+                    e.currentTarget.style.borderColor = 'var(--border-primary)';
+                  }}
                 >
-                  Google AI Studio <ExternalLink size={12} />
+                  <span style={styles.linkText}>Google AI Studio</span>
+                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
                 </a>
                 <a
                   href="https://tavily.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={styles.link}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
+                    e.currentTarget.style.borderColor = colors.accent.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.bg.inset;
+                    e.currentTarget.style.borderColor = 'var(--border-primary)';
+                  }}
                 >
-                  Tavily <ExternalLink size={12} />
+                  <span style={styles.linkText}>Tavily</span>
+                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
                 </a>
               </div>
             </div>
@@ -475,12 +511,15 @@ const styles: Record<string, React.CSSProperties> = {
   modal: {
     width: '100%',
     maxWidth: 480,
+    maxHeight: '90vh',
     backgroundColor: colors.bg.secondary,
     borderRadius: effects.border.radius.lg,
     border: '1px solid var(--border-primary)',
     boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4)',
     overflow: 'hidden',
-  },
+    display: 'flex',
+    flexDirection: 'column',
+  } as React.CSSProperties,
 
   header: {
     display: 'flex',
@@ -533,9 +572,12 @@ const styles: Record<string, React.CSSProperties> = {
 
   content: {
     padding: spacing[4],
+    paddingRight: spacing[3],
     display: 'flex',
     flexDirection: 'column',
     gap: spacing[4],
+    overflowY: 'auto',
+    flex: 1,
   } as React.CSSProperties,
 
   infoBanner: {
@@ -554,18 +596,32 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   links: {
-    display: 'flex',
-    gap: spacing[3],
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: spacing[2],
     marginTop: spacing[2],
   },
 
   link: {
-    display: 'inline-flex',
+    display: 'flex',
     alignItems: 'center',
-    gap: spacing[1],
+    justifyContent: 'space-between',
+    gap: spacing[2],
+    padding: `${spacing[2]} ${spacing[3]}`,
     fontSize: typography.sizes.sm,
-    color: colors.accent.secondary,
+    fontWeight: typography.weights.medium,
+    color: colors.fg.primary,
+    backgroundColor: colors.bg.inset,
+    border: '1px solid var(--border-primary)',
+    borderRadius: effects.border.radius.default,
     textDecoration: 'none',
+    transition: 'all 0.15s ease',
+    cursor: 'pointer',
+  } as React.CSSProperties,
+
+  linkText: {
+    flex: 1,
+    color: colors.accent.secondary,
   },
 
   inputGroup: {
@@ -632,6 +688,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: spacing[4],
     borderTop: '1px solid var(--border-primary)',
     backgroundColor: colors.bg.inset,
+    flexShrink: 0,
   },
 
   cancelButton: {
