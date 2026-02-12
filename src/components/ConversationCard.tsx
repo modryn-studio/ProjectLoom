@@ -8,7 +8,7 @@ import { colors, typography, spacing, effects, card } from '@/lib/design-tokens'
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore, selectIsAnyNodeDragging, selectActiveConversationId } from '@/stores/canvas-store';
-import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
+import { usePreferencesStore, selectUIPreferences, getResolvedTheme, selectTheme } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import { InlineBranchPanel } from './InlineBranchPanel';
 import type { ConversationNodeData, Message } from '@/types';
@@ -114,6 +114,8 @@ function ConversationCardComponent({
   const isActiveInChatPanel = activeConversationId === conversation.id;
   const isAnyNodeDragging = useCanvasStore(selectIsAnyNodeDragging);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const currentTheme = usePreferencesStore(selectTheme);
+  const resolvedTheme = getResolvedTheme(currentTheme);
 
   // Inline branch panel state (mouse workflow - triggered from context menu)
   const [pendingBranchMessageIndex, setPendingBranchMessageIndex] = useState<number | null>(null);
@@ -249,9 +251,9 @@ function ConversationCardComponent({
         }}
         style={{
           ...cardStyles.container,
-          cursor: dragging 
-            ? 'url(/grabbing.cur), grabbing' 
-            : 'url(/grab.cur), grab',
+          cursor: resolvedTheme === 'light'
+            ? (dragging ? 'url(/grabbing.cur), grabbing' : 'url(/grab.cur), grab')
+            : (dragging ? 'grabbing' : 'grab'),
           zIndex: cardZIndex,
           // v4: Visual indicators for active card, merge nodes, and branched cards
           borderColor: isActiveInChatPanel
