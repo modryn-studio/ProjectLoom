@@ -247,7 +247,7 @@ function ConversationCardComponent({
           scale: { duration: 0.2, ease: 'easeOut' },
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
         }}
-        className={dragging ? 'cursor-grabbing-theme' : 'cursor-grab-theme'}
+        className="cursor-grab-theme"
         style={{
           ...cardStyles.container,
           zIndex: cardZIndex,

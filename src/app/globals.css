@@ -39,7 +39,7 @@
   cursor: url('/grab.cur'), grab;
 }
 
-[data-theme="light"] .cursor-grabbing-theme {
+[data-theme="light"] .cursor-grab-theme:active {
   cursor: url('/grabbing.cur'), grabbing;
 }
 
@@ -48,7 +48,7 @@
     cursor: url('/grab.cur'), grab;
   }
 
-  :root:not([data-theme]) .cursor-grabbing-theme {
+  :root:not([data-theme]) .cursor-grab-theme:active {
     cursor: url('/grabbing.cur'), grabbing;
   }
 }
@@ -58,7 +58,7 @@
   cursor: grab;
 }
 
-[data-theme="dark"] .cursor-grabbing-theme {
+[data-theme="dark"] .cursor-grab-theme:active {
   cursor: grabbing;
 }
 
