@@ -85,6 +85,14 @@ export function UsageDisplay() {
             {formatUsd(usageTotals.byProvider.openai.costUsd)}
           </span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
+            Gemini (Google)
+          </span>
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
+            {formatUsd(usageTotals.byProvider.google.costUsd)}
+          </span>
+        </div>
         <div style={{ borderTop: `1px solid ${colors.border.default}`, paddingTop: spacing[2], display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.fg.primary, fontFamily: typography.fonts.body }}>
             Total
@@ -94,6 +102,26 @@ export function UsageDisplay() {
           </span>
         </div>
       </div>
+
+      {/* Free tier notice */}
+      {usageTotals.byProvider.google.recordCount > 0 && usageTotals.byProvider.google.costUsd === 0 && (
+        <div style={{
+          padding: spacing[2],
+          backgroundColor: colors.bg.inset,
+          borderRadius: effects.border.radius.default,
+          border: `1px solid ${colors.border.default}`,
+          marginBottom: spacing[3],
+        }}>
+          <p style={{
+            fontSize: typography.sizes.xs,
+            color: colors.fg.tertiary,
+            margin: 0,
+            fontFamily: typography.fonts.body,
+          }}>
+            💡 Gemini usage shows $0 because you&apos;re using the free tier. Paid tier offers higher rate limits.
+          </p>
+        </div>
+      )}
 
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogTrigger asChild>

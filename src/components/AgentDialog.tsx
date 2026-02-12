@@ -113,6 +113,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [usedModelId, setUsedModelId] = useState<string>('claude-sonnet-4-5');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const overlayMouseDownRef = useRef(false);
@@ -160,6 +161,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     setSteps([]);
     setError(null);
     setShowConfirmation(false);
+    setUsedModelId('claude-sonnet-4-5');
   }, []);
 
   // Handle close
@@ -199,6 +201,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     setError(null);
     setSteps([]);
     setResult(null);
+    setUsedModelId(modelId);
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -615,7 +618,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                     fontFamily: typography.fonts.body,
                   }}>
                     Tokens used: {result.usage.totalTokens.toLocaleString()} |
-                    Est. cost: {formatCost(estimateCost(result.usage.promptTokens, result.usage.completionTokens, 'claude-sonnet-4-5'))}
+                    Est. cost: {formatCost(estimateCost(result.usage.promptTokens, result.usage.completionTokens, usedModelId))}
                   </div>
                 )}
               </div>
