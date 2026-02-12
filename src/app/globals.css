@@ -2,50 +2,43 @@
 @import "@xyflow/react/dist/style.css";
 
 /* Override React Flow cursor defaults */
-/* Light mode: Use custom cursors with black outline to fix Chrome rendering issue */
+/* Light mode: Use -webkit-grab to force native cursor rendering with proper contrast */
 
 /* Explicit light mode */
 [data-theme="light"] .react-flow__pane.draggable {
-  cursor: url('/cursor-grab-light.svg') 12 12, grab !important;
+  cursor: -webkit-grab !important;
+  cursor: -moz-grab !important;
+  cursor: grab !important;
 }
 
 [data-theme="light"] .react-flow__pane.dragging {
-  cursor: url('/cursor-grabbing-light.svg') 12 12, grabbing !important;
+  cursor: -webkit-grabbing !important;
+  cursor: -moz-grabbing !important;
+  cursor: grabbing !important;
 }
 
 /* System preference light mode */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) .react-flow__pane.draggable {
-    cursor: url('/cursor-grab-light.svg') 12 12, grab !important;
+    cursor: -webkit-grab !important;
+    cursor: -moz-grab !important;
+    cursor: grab !important;
   }
 
   :root:not([data-theme]) .react-flow__pane.dragging {
-    cursor: url('/cursor-grabbing-light.svg') 12 12, grabbing !important;
+    cursor: -webkit-grabbing !important;
+    cursor: -moz-grabbing !important;
+    cursor: grabbing !important;
   }
 }
 
-/* Dark mode: Use default cursors (no Chrome rendering issues) */
+/* Dark mode: Use default cursors */
 [data-theme="dark"] .react-flow__pane.draggable {
   cursor: grab !important;
 }
 
 [data-theme="dark"] .react-flow__pane.dragging {
   cursor: grabbing !important;
-}
-
-/* Custom text cursor for light mode in input fields */
-[data-theme="light"] input[type="text"],
-[data-theme="light"] textarea,
-[data-theme="light"] [contenteditable="true"] {
-  cursor: url('/cursor-text-light.svg') 8 12, text !important;
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) input[type="text"],
-  :root:not([data-theme]) textarea,
-  :root:not([data-theme]) [contenteditable="true"] {
-    cursor: url('/cursor-text-light.svg') 8 12, text !important;
-  }
 }
 
 /* =============================================================================
