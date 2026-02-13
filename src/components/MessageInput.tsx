@@ -55,7 +55,9 @@ interface MessageInputProps {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB for images
 const MAX_TEXT_SIZE = 500 * 1024; // 500KB for text files
 const MAX_ATTACHMENTS = 3;
-const ACCEPTED_TYPES = [
+// Use file extensions for better Windows compatibility (MIME types show "Custom Files")
+const ACCEPTED_FILE_TYPES = '.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.markdown';
+const ACCEPTED_MIME_TYPES = [
   'image/png', 'image/jpeg', 'image/webp', 'image/gif',  // Images
   'text/plain', 'text/markdown'  // Text files
 ];
@@ -157,7 +159,7 @@ export function MessageInput({
     
     // Validate file types and sizes
     for (const file of files) {
-      if (!ACCEPTED_TYPES.includes(file.type)) {
+      if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
         setAttachmentError(`Unsupported format: ${file.name}. Use images (PNG, JPEG, WebP, GIF) or text files (.txt, .md).`);
         return;
       }
@@ -360,7 +362,7 @@ export function MessageInput({
       <input
         ref={fileInputRef}
         type="file"
-        accept={ACCEPTED_TYPES.join(',')}
+        accept={ACCEPTED_FILE_TYPES}
         multiple
         onChange={handleFileChange}
         style={{ display: 'none' }}
