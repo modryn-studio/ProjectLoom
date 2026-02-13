@@ -59,8 +59,26 @@ const MAX_ATTACHMENTS = 3;
 const ACCEPTED_FILE_TYPES = '.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.markdown';
 const ACCEPTED_MIME_TYPES = [
   'image/png', 'image/jpeg', 'image/webp', 'image/gif',  // Images
-  'text/plain', 'text/markdown'  // Text files
+  'text/plain', 'text/markdown', 'text/x-markdown'  // Text files
 ];
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+const TEXT_EXTENSIONS = ['.txt', '.md', '.markdown'];
+
+// Helper to validate file by extension and MIME type
+function isAcceptedFile(file: File): boolean {
+  const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+  const isValidExtension = ext && [...IMAGE_EXTENSIONS, ...TEXT_EXTENSIONS].includes(ext);
+  const isValidMimeType = ACCEPTED_MIME_TYPES.includes(file.type);
+  
+  // Accept if either extension or MIME type is valid (handles Windows MIME type issues)
+  return isValidExtension || isValidMimeType;
+}
+
+// Helper to check if file is an image
+function isImageFile(file: File): boolean {
+  const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+  return file.type.startsWith('image/') || (ext ? IMAGE_EXTENSIONS.includes(ext) : false);
+}
 
 export function MessageInput({ 
   conversationId,
@@ -159,12 +177,12 @@ export function MessageInput({
     
     // Validate file types and sizes
     for (const file of files) {
-      if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
+      if (!isAcceptedFile(file)) {
         setAttachmentError(`Unsupported format: ${file.name}. Use images (PNG, JPEG, WebP, GIF) or text files (.txt, .md).`);
         return;
       }
       
-      const isImage = file.type.startsWith('image/');
+      const isImage = isImageFile(file);
       const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_TEXT_SIZE;
       const sizeLabel = isImage ? '5MB' : '500KB';
       
@@ -177,7 +195,7 @@ export function MessageInput({
     // Convert files to attachments (different handling for images vs text)
     const readers = files.map(file => {
       return new Promise<MessageAttachment>((resolve, reject) => {
-        const isImage = file.type.startsWith('image/');
+        const isImage = isImageFile(file);
         const reader = new FileReader();
         
         reader.onload = () => {
