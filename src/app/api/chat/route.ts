@@ -23,7 +23,8 @@ interface ChatRequestBody {
   /** Conversation messages */
   messages: Array<{
     role: 'user' | 'assistant' | 'system';
-    content: string;
+    content?: string | Array<{ type: string; text?: string }>;
+    parts?: Array<{ type: string; text?: string }>;
   }>;
   /** Canvas-level context for Phase 2 */
   canvasContext?: {
@@ -48,6 +49,28 @@ interface APIError {
   recoverable: boolean;
   retryAfter?: number;
   suggestion?: string;
+}
+
+function extractMessageText(message: ChatRequestBody['messages'][number]): string {
+  if (typeof message.content === 'string') {
+    return message.content;
+  }
+
+  if (Array.isArray(message.content)) {
+    return message.content
+      .filter((part): part is { type: string; text: string } => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('');
+  }
+
+  if (Array.isArray(message.parts)) {
+    return message.parts
+      .filter((part): part is { type: string; text: string } => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('');
+  }
+
+  return '';
 }
 
 // =============================================================================
@@ -246,13 +269,13 @@ export async function POST(req: Request): Promise<Response> {
         
         if (msg.role === 'system') {
           // Add to system prompt parts instead of keeping in message flow
-          systemMessageParts.push(msg.content);
+          systemMessageParts.push(extractMessageText(msg));
           return null; // Will filter out
         }
         
         if (isLastUserMessage && attachments && attachments.length > 0) {
           // Prepend text attachment content to message
-          const messageWithAttachments = textAttachmentContent + msg.content;
+          const messageWithAttachments = textAttachmentContent + extractMessageText(msg);
           
           // If there are image attachments, create multimodal content
           if (imageAttachments.length > 0) {
@@ -291,7 +314,7 @@ export async function POST(req: Request): Promise<Response> {
         
         return {
           role: msg.role as 'user' | 'assistant',
-          content: msg.content,
+          content: extractMessageText(msg),
         };
       })
       .filter((msg): msg is NonNullable<typeof msg> => msg !== null);
