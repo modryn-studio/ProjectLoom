@@ -409,8 +409,8 @@ export async function POST(req: Request): Promise<Response> {
         const metadata: Record<string, unknown> = {};
 
         // Accumulate text from text-delta parts
-        if (part.type === 'text-delta' && typeof part.textDelta === 'string') {
-          accumulatedText += part.textDelta;
+        if (part.type === 'text-delta' && typeof part.text === 'string') {
+          accumulatedText += part.text;
         }
 
         if (part.type === 'finish') {
