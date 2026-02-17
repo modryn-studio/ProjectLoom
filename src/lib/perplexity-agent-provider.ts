@@ -74,6 +74,16 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         // Convert Vercel AI SDK messages to Perplexity Agent API format
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => {
+          // System messages have content as string in V3, others have array
+          if (msg.role === 'system') {
+            return {
+              type: 'message' as const,
+              role: 'system' as const,
+              content: msg.content,
+            };
+          }
+
+          // User/assistant messages have content as array
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const contentParts = msg.content.map((part: any) => {
             if (part.type === 'text') {
@@ -100,7 +110,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
           return {
             type: 'message' as const,
-            role: msg.role as 'system' | 'user' | 'assistant',
+            role: msg.role as 'user' | 'assistant',
             content,
           };
         });
@@ -167,6 +177,16 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         // Convert Vercel AI SDK messages to Perplexity Agent API format
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => {
+          // System messages have content as string in V3, others have array
+          if (msg.role === 'system') {
+            return {
+              type: 'message' as const,
+              role: 'system' as const,
+              content: msg.content,
+            };
+          }
+
+          // User/assistant messages have content as array
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const contentParts = msg.content.map((part: any) => {
             if (part.type === 'text') {
@@ -193,7 +213,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
           return {
             type: 'message' as const,
-            role: msg.role as 'system' | 'user' | 'assistant',
+            role: msg.role as 'user' | 'assistant',
             content,
           };
         });
