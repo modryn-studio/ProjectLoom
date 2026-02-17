@@ -250,10 +250,14 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
 
+        const textPartId = `text-${Date.now()}`;
+
         return {
           stream: new ReadableStream({
             async start(controller) {
               try {
+                let textStartSent = false;
+
                 while (true) {
                   const { done, value } = await reader.read();
                   if (done) break;
@@ -273,9 +277,18 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
                       // Handle delta events
                       if (parsed.type === 'response.output_text.delta') {
+                        // V3 protocol requires text-start before any text-delta
+                        if (!textStartSent) {
+                          controller.enqueue({
+                            type: 'text-start' as const,
+                            id: textPartId,
+                          });
+                          textStartSent = true;
+                        }
+
                         controller.enqueue({
                           type: 'text-delta' as const,
-                          id: '',
+                          id: textPartId,
                           delta: parsed.delta || '',
                         });
                       }
@@ -289,6 +302,14 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                       console.warn('[PerplexityAgent] Failed to parse SSE event:', e);
                     }
                   }
+                }
+
+                // Close the text part if we opened one
+                if (textStartSent) {
+                  controller.enqueue({
+                    type: 'text-end' as const,
+                    id: textPartId,
+                  });
                 }
 
                 // Send final usage data
