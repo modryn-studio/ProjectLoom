@@ -400,17 +400,58 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     return result.toUIMessageStreamResponse({
-      // Send usage data as message metadata so the client can track costs
-      messageMetadata: ({ part }) => {
+      // Extract and pass citations via metadata for dropdown UI display
+      messageMetadata: ({ message, part }) => {
+        const metadata: Record<string, unknown> = {};
+
         if (part.type === 'finish') {
           const usage = {
             inputTokens: part.totalUsage.inputTokens ?? 0,
             outputTokens: part.totalUsage.outputTokens ?? 0,
           };
           console.log('[chat/route] Sending usage metadata:', usage);
-          return { usage };
+          metadata.usage = usage;
         }
-        return undefined;
+
+        // Extract citations from message text (markdown format from Sonar)
+        // Convert from: "... text\n\n---\n\n**Sources:**\n\n1. [Title](url)\n2. ..."
+        const messageText = message.content
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map(p => p.text)
+          .join('');
+
+        const citationMatches = messageText.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g);
+        if (citationMatches && citationMatches.length > 0) {
+          const sources = citationMatches.map(match => {
+            const titleMatch = match.match(/\[([^\]]+)\]/);
+            const urlMatch = match.match(/\((https?:\/\/[^\)]+)\)/);
+            return {
+              title: titleMatch ? titleMatch[1] : 'Unknown',
+              url: urlMatch ? urlMatch[1] : '',
+            };
+          });
+
+          metadata.custom = {
+            webSearch: {
+              used: true,
+              sources,
+            },
+          };
+
+          // Also remove citations from display text by stripping the markdown section
+          // Replace the "---\n\n**Sources:**" section and all citations below it with nothing
+          message.content = message.content.map((part) => {
+            if (part.type === 'text') {
+              return {
+                ...part,
+                text: part.text.replace(/\n\n---\n\n\*\*Sources:\*\*[\s\S]*$/, ''),
+              };
+            }
+            return part;
+          });
+        }
+
+        return Object.keys(metadata).length > 0 ? metadata : undefined;
       },
       onError: (error) => {
         console.error('[Chat API Stream Error]', error);

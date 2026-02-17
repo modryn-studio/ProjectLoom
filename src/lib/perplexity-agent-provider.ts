@@ -224,7 +224,8 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           }
         }
 
-        // Append citations to text
+        // Citations are appended as markdown. The chat API will extract them
+        // and pass through metadata for dropdown UI display.
         let finalText = textContent;
         if (citations.length > 0) {
           const citationText = '\n\n---\n\n**Sources:**\n\n' + 
@@ -461,7 +462,8 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
                 // Close the text part if we opened one
                 if (textStartSent) {
-                  // Append citations as markdown if available
+                  // Append citations as markdown. The chat API will extract them
+                  // and pass through metadata for dropdown UI display.
                   if (citations.length > 0) {
                     const citationText = '\n\n---\n\n**Sources:**\n\n' + 
                       citations.map((c, i) => `${i + 1}. [${c.title}](${c.url})`).join('\n');
