@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight, FileText, RefreshCcw } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight, FileText, RefreshCcw, Link2 } from 'lucide-react';
 import { SimpleChatMarkdown } from './SimpleChatMarkdown';
 import type { UIMessage } from 'ai';
 
@@ -583,35 +583,45 @@ const MessageBubble = memo(function MessageBubble({
 
         {!isUser && webSearchData.sources.length > 0 && (
           <div style={bubbleStyles.citations}>
-            <div 
-              style={{
-                ...bubbleStyles.citationsTitle,
-                display: 'flex',
-                alignItems: 'center',
-                gap: spacing[1],
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-              onClick={() => setSourcesCollapsed(!sourcesCollapsed)}
-            >
-              {sourcesCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-              <span>{webSearchData.sources.length} {webSearchData.sources.length === 1 ? 'source' : 'sources'}</span>
-            </div>
-            {!sourcesCollapsed && (
-              <ol style={bubbleStyles.citationsList}>
-                {webSearchData.sources.map((source) => (
-                  <li key={source.url} style={bubbleStyles.citationItem}>
-                    <a
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={bubbleStyles.citationLink}
-                    >
-                      {source.title}
-                    </a>
-                  </li>
-                ))}
-              </ol>
+            {sourcesCollapsed ? (
+              <div 
+                style={bubbleStyles.sourceBadge}
+                onClick={() => setSourcesCollapsed(false)}
+              >
+                <Link2 size={14} style={{ flexShrink: 0 }} />
+                <span>{webSearchData.sources.length} {webSearchData.sources.length === 1 ? 'source' : 'sources'}</span>
+              </div>
+            ) : (
+              <div>
+                <div 
+                  style={{
+                    ...bubbleStyles.citationsTitle,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing[1],
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                  onClick={() => setSourcesCollapsed(true)}
+                >
+                  <ChevronDown size={14} />
+                  <span>{webSearchData.sources.length} {webSearchData.sources.length === 1 ? 'source' : 'sources'}</span>
+                </div>
+                <ol style={bubbleStyles.citationsList}>
+                  {webSearchData.sources.map((source) => (
+                    <li key={source.url} style={bubbleStyles.citationItem}>
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={bubbleStyles.citationLink}
+                      >
+                        {source.title}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             )}
           </div>
         )}
@@ -1202,6 +1212,22 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     wordBreak: 'break-word',
     cursor: 'pointer',
   },
+
+  sourceBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[1],
+    padding: `${spacing[1]} ${spacing[2]}`,
+    backgroundColor: colors.bg.tertiary,
+    borderRadius: effects.radius.md,
+    fontSize: typography.sizes.xs,
+    color: colors.fg.secondary,
+    fontFamily: typography.fonts.body,
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'background-color 0.15s ease',
+    border: `1px solid ${colors.border.subtle}`,
+  } as React.CSSProperties,
 };
 
 const actionButtonGroupStyles: Record<string, React.CSSProperties> = {
