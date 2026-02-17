@@ -15,9 +15,7 @@
 
 import { generateText, type CoreTool, type GenerateTextResult } from 'ai';
 import type { LanguageModelV1 } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createPerplexity } from '@ai-sdk/perplexity';
 import { nanoid } from 'nanoid';
 
 import { estimateCost, detectProvider } from '@/lib/vercel-ai-integration';
@@ -33,16 +31,12 @@ import type {
 // PROVIDER FACTORY
 // =============================================================================
 
+/**
+ * All models route through the Perplexity Agent API gateway.
+ * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-5', etc.
+ */
 function createModel(modelId: string, apiKey: string): LanguageModelV1 {
-  if (modelId.startsWith('claude') || modelId.startsWith('anthropic')) {
-    const provider = createAnthropic({ apiKey });
-    return provider(modelId) as unknown as LanguageModelV1;
-  }
-  if (modelId.startsWith('gemini')) {
-    const provider = createGoogleGenerativeAI({ apiKey });
-    return provider(modelId) as unknown as LanguageModelV1;
-  }
-  const provider = createOpenAI({ apiKey });
+  const provider = createPerplexity({ apiKey });
   return provider(modelId) as unknown as LanguageModelV1;
 }
 
@@ -129,7 +123,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
     // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     // because Vercel AI SDK defaults to temperature: 0 when tools are present.
     const temperatureConfig = (providerType === 'openai' && 
-                               config.modelId === 'gpt-5-mini')
+                               config.modelId === 'openai/gpt-5-mini')
       ? { temperature: 1 } // Explicitly set to 1 - SDK would override omission with 0
       : { temperature: modelConfig.temperature };
 

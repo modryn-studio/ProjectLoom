@@ -72,6 +72,11 @@ export function UsageDisplay() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
             Claude (Anthropic)
+            {usageTotals.byProvider.anthropic.recordCount > 0 && (
+              <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>
+                ({usageTotals.byProvider.anthropic.recordCount})
+              </span>
+            )}
           </span>
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.byProvider.anthropic.costUsd)}
@@ -80,6 +85,11 @@ export function UsageDisplay() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
             GPT (OpenAI)
+            {usageTotals.byProvider.openai.recordCount > 0 && (
+              <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>
+                ({usageTotals.byProvider.openai.recordCount})
+              </span>
+            )}
           </span>
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.byProvider.openai.costUsd)}
@@ -88,14 +98,37 @@ export function UsageDisplay() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
             Gemini (Google)
+            {usageTotals.byProvider.google.recordCount > 0 && (
+              <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>
+                ({usageTotals.byProvider.google.recordCount})
+              </span>
+            )}
           </span>
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.byProvider.google.costUsd)}
           </span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
+            Sonar (Perplexity)
+            {usageTotals.byProvider.perplexity.recordCount > 0 && (
+              <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>
+                ({usageTotals.byProvider.perplexity.recordCount})
+              </span>
+            )}
+          </span>
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
+            {formatUsd(usageTotals.byProvider.perplexity.costUsd)}
+          </span>
+        </div>
         <div style={{ borderTop: `1px solid ${colors.border.default}`, paddingTop: spacing[2], display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.fg.primary, fontFamily: typography.fonts.body }}>
             Total
+            {usageTotals.recordCount > 0 && (
+              <span style={{ fontSize: typography.sizes.xs, fontWeight: typography.weights.normal, opacity: 0.6, marginLeft: spacing[1] }}>
+                ({usageTotals.recordCount} requests)
+              </span>
+            )}
           </span>
           <span style={{ fontSize: typography.sizes.base, fontWeight: typography.weights.bold, fontFamily: typography.fonts.code }}>
             {formatUsd(usageTotals.totalCostUsd)}
@@ -103,8 +136,8 @@ export function UsageDisplay() {
         </div>
       </div>
 
-      {/* Free tier notice */}
-      {usageTotals.byProvider.google.recordCount > 0 && usageTotals.byProvider.google.costUsd === 0 && (
+      {/* Pricing disclaimer */}
+      {usageTotals.recordCount > 0 && (
         <div style={{
           padding: spacing[2],
           backgroundColor: colors.bg.inset,
@@ -118,8 +151,18 @@ export function UsageDisplay() {
             margin: 0,
             fontFamily: typography.fonts.body,
           }}>
-            💡 Gemini usage shows $0 because you&apos;re using the free tier. Paid tier offers higher rate limits.
+            💡 Estimated costs based on token usage. Actual charges may vary. Check your Perplexity dashboard for exact billing.
           </p>
+          {usageTotals.byProvider.google.recordCount > 0 && (
+            <p style={{
+              fontSize: typography.sizes.xs,
+              color: colors.fg.tertiary,
+              margin: `${spacing[1]} 0 0 0`,
+              fontFamily: typography.fonts.body,
+            }}>
+              📊 Gemini has a free tier with rate limits. Costs shown are paid tier rates.
+            </p>
+          )}
         </div>
       )}
 

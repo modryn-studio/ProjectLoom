@@ -35,34 +35,19 @@ const INITIAL_KEY_STATE: KeyState = {
 };
 
 export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModalProps) {
-  const [anthropicKey, setAnthropicKey] = useState<KeyState>(INITIAL_KEY_STATE);
-  const [openaiKey, setOpenaiKey] = useState<KeyState>(INITIAL_KEY_STATE);
-  const [googleKey, setGoogleKey] = useState<KeyState>(INITIAL_KEY_STATE);
-  const [tavilyKey, setTavilyKey] = useState<KeyState>(INITIAL_KEY_STATE);
+  const [perplexityKey, setPerplexityKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [isSaving, setIsSaving] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
   const overlayMouseDownRef = useRef(false);
 
-  // Load existing keys and storage preference on mount
+  // Load existing key and storage preference on mount
   useEffect(() => {
     if (isOpen) {
-      const existingAnthropic = apiKeyManager.getKey('anthropic');
-      const existingOpenai = apiKeyManager.getKey('openai');
-      const existingGoogle = apiKeyManager.getKey('google');
-      const existingTavily = apiKeyManager.getKey('tavily');
+      const existingPerplexity = apiKeyManager.getKey('perplexity');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
-      if (existingAnthropic) {
-        setAnthropicKey(prev => ({ ...prev, value: existingAnthropic, isValid: true }));
-      }
-      if (existingOpenai) {
-        setOpenaiKey(prev => ({ ...prev, value: existingOpenai, isValid: true }));
-      }
-      if (existingGoogle) {
-        setGoogleKey(prev => ({ ...prev, value: existingGoogle, isValid: true }));
-      }
-      if (existingTavily) {
-        setTavilyKey(prev => ({ ...prev, value: existingTavily, isValid: true }));
+      if (existingPerplexity) {
+        setPerplexityKey(prev => ({ ...prev, value: existingPerplexity, isValid: true }));
       }
       setStoragePreference(currentStoragePreference);
     }
@@ -84,9 +69,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       if (!key.startsWith('AIza')) {
         return 'Google keys start with "AIza"';
       }
-    } else if (provider === 'tavily') {
-      if (!key.startsWith('tvly-')) {
-        return 'Tavily keys start with "tvly-"';
+    } else if (provider === 'perplexity') {
+      if (!key.startsWith('pplx-')) {
+        return 'Perplexity keys start with "pplx-"';
       }
     }
     
@@ -137,20 +122,17 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     setIsSaving(true);
 
     try {
-      // Validate all keys
-      const anthropicValid = await validateKey('anthropic', anthropicKey.value, setAnthropicKey);
-      const openaiValid = await validateKey('openai', openaiKey.value, setOpenaiKey);
-      const googleValid = await validateKey('google', googleKey.value, setGoogleKey);
-      const tavilyValid = await validateKey('tavily', tavilyKey.value, setTavilyKey);
+      // Validate key
+      const perplexityValid = await validateKey('perplexity', perplexityKey.value, setPerplexityKey);
 
-      if (!anthropicValid || !openaiValid || !googleValid || !tavilyValid) {
+      if (!perplexityValid) {
         setIsSaving(false);
         return;
       }
 
-      // Check at least one AI provider key is provided
-      if (!anthropicKey.value.trim() && !openaiKey.value.trim() && !googleKey.value.trim()) {
-        setAnthropicKey(prev => ({ ...prev, error: 'At least one AI provider API key is required' }));
+      // Perplexity key is required — it's the single gateway for all models
+      if (!perplexityKey.value.trim()) {
+        setPerplexityKey(prev => ({ ...prev, error: 'Perplexity API key is required for all models' }));
         setIsSaving(false);
         return;
       }
@@ -158,19 +140,8 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       // Set storage preference first
       apiKeyManager.setStoragePreference(storagePreference);
 
-      // Save keys
-      if (anthropicKey.value.trim()) {
-        apiKeyManager.saveKey('anthropic', anthropicKey.value.trim());
-      }
-      if (openaiKey.value.trim()) {
-        apiKeyManager.saveKey('openai', openaiKey.value.trim());
-      }
-      if (googleKey.value.trim()) {
-        apiKeyManager.saveKey('google', googleKey.value.trim());
-      }
-      if (tavilyKey.value.trim()) {
-        apiKeyManager.saveKey('tavily', tavilyKey.value.trim());
-      }
+      // Save key
+      apiKeyManager.saveKey('perplexity', perplexityKey.value.trim());
 
       // Mark setup as complete
       if (typeof window !== 'undefined') {
@@ -182,7 +153,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } finally {
       setIsSaving(false);
     }
-  }, [anthropicKey.value, openaiKey.value, googleKey.value, tavilyKey.value, storagePreference, validateKey, onSuccess, onClose]);
+  }, [perplexityKey.value, storagePreference, validateKey, onSuccess, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -255,14 +226,17 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
             {/* Info banner */}
             <div style={styles.infoBanner}>
               <p style={styles.infoText}>
-                Get API keys from:
+                Get your API key from Perplexity — one key unlocks Claude, GPT, Gemini, and Sonar models:
+              </p>
+              <p style={{ ...styles.infoText, fontSize: typography.sizes.xs, marginTop: spacing[1], color: colors.fg.quaternary }}>
+                (Optional: Add OpenAI key later in Settings for embeddings/knowledge base features)
               </p>
               <div style={styles.links}>
                 <a
-                  href="https://console.anthropic.com/settings/keys"
+                  href="https://www.perplexity.ai/settings/api"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={styles.link}
+                  style={{ ...styles.link, gridColumn: '1 / -1' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
                     e.currentTarget.style.borderColor = colors.accent.primary;
@@ -272,58 +246,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                     e.currentTarget.style.borderColor = 'var(--border-primary)';
                   }}
                 >
-                  <span style={styles.linkText}>Anthropic Console</span>
-                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
-                </a>
-                <a
-                  href="https://platform.openai.com/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.link}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
-                    e.currentTarget.style.borderColor = colors.accent.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = colors.bg.inset;
-                    e.currentTarget.style.borderColor = 'var(--border-primary)';
-                  }}
-                >
-                  <span style={styles.linkText}>OpenAI Platform</span>
-                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
-                </a>
-                <a
-                  href="https://aistudio.google.com/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.link}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
-                    e.currentTarget.style.borderColor = colors.accent.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = colors.bg.inset;
-                    e.currentTarget.style.borderColor = 'var(--border-primary)';
-                  }}
-                >
-                  <span style={styles.linkText}>Google AI Studio</span>
-                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
-                </a>
-                <a
-                  href="https://tavily.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.link}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
-                    e.currentTarget.style.borderColor = colors.accent.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = colors.bg.inset;
-                    e.currentTarget.style.borderColor = 'var(--border-primary)';
-                  }}
-                >
-                  <span style={styles.linkText}>Tavily</span>
+                  <span style={styles.linkText}>Perplexity API Settings</span>
                   <ExternalLink size={18} style={{ flexShrink: 0 }} />
                 </a>
               </div>
@@ -358,48 +281,15 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
               </div>
             </div>
 
-            {/* Anthropic Key */}
+            {/* Perplexity API Key (single gateway for all models) */}
             <KeyInput
-              label="Anthropic API Key"
-              placeholder="sk-ant-..."
-              value={anthropicKey.value}
-              onChange={(v) => handleKeyChange('anthropic', v, setAnthropicKey)}
-              isValid={anthropicKey.isValid}
-              isValidating={anthropicKey.isValidating}
-              error={anthropicKey.error}
-            />
-
-            {/* OpenAI Key */}
-            <KeyInput
-              label="OpenAI API Key"
-              placeholder="sk-..."
-              value={openaiKey.value}
-              onChange={(v) => handleKeyChange('openai', v, setOpenaiKey)}
-              isValid={openaiKey.isValid}
-              isValidating={openaiKey.isValidating}
-              error={openaiKey.error}
-            />
-
-            {/* Google Key */}
-            <KeyInput
-              label="Google API Key"
-              placeholder="AIza..."
-              value={googleKey.value}
-              onChange={(v) => handleKeyChange('google', v, setGoogleKey)}
-              isValid={googleKey.isValid}
-              isValidating={googleKey.isValidating}
-              error={googleKey.error}
-            />
-
-            {/* Tavily Key */}
-            <KeyInput
-              label="Tavily API Key"
-              placeholder="tvly-..."
-              value={tavilyKey.value}
-              onChange={(v) => handleKeyChange('tavily', v, setTavilyKey)}
-              isValid={tavilyKey.isValid}
-              isValidating={tavilyKey.isValidating}
-              error={tavilyKey.error}
+              label="Perplexity API Key"
+              placeholder="pplx-..."
+              value={perplexityKey.value}
+              onChange={(v) => handleKeyChange('perplexity', v, setPerplexityKey)}
+              isValid={perplexityKey.isValid}
+              isValidating={perplexityKey.isValidating}
+              error={perplexityKey.error}
             />
           </div>
 

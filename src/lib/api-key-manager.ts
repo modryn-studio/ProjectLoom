@@ -12,7 +12,7 @@
 // TYPES
 // =============================================================================
 
-export type ProviderType = 'anthropic' | 'openai' | 'google' | 'tavily';
+export type ProviderType = 'anthropic' | 'openai' | 'google' | 'perplexity';
 export type StorageType = 'localStorage' | 'sessionStorage';
 
 export interface APIKeyInfo {
@@ -40,7 +40,7 @@ const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI',
   google: 'Google (Gemini)',
-  tavily: 'Tavily (Web Search)',
+  perplexity: 'Perplexity (All Models)',
 };
 
 // =============================================================================
@@ -263,10 +263,11 @@ class APIKeyManager {
   }
 
   /**
-   * Check if user has any API keys configured
+   * Check if user has the Perplexity API key configured.
+   * All models route through Perplexity Agent API — only one key needed.
    */
   hasAnyKey(): boolean {
-    return this.getKey('anthropic') !== null || this.getKey('openai') !== null || this.getKey('google') !== null;
+    return this.getKey('perplexity') !== null;
   }
 
   /**
@@ -279,7 +280,7 @@ class APIKeyManager {
         anthropic: this.getKeyInfo('anthropic'),
         openai: this.getKeyInfo('openai'),
         google: this.getKeyInfo('google'),
-        tavily: this.getKeyInfo('tavily'),
+        perplexity: this.getKeyInfo('perplexity'),
       },
     };
   }
@@ -331,9 +332,9 @@ class APIKeyManager {
           return { valid: false, error: 'Google API keys should start with "AIza"' };
         }
         break;
-      case 'tavily':
-        if (!key.startsWith('tvly-')) {
-          return { valid: false, error: 'Tavily API keys should start with "tvly-"' };
+      case 'perplexity':
+        if (!key.startsWith('pplx-')) {
+          return { valid: false, error: 'Perplexity API keys should start with "pplx-"' };
         }
         break;
     }
@@ -381,6 +382,6 @@ export function useAPIKeyStatus() {
     hasDevModeKeys: status.providers.anthropic.isDevMode
       || status.providers.openai.isDevMode
       || status.providers.google.isDevMode
-      || status.providers.tavily.isDevMode,
+      || status.providers.perplexity.isDevMode,
   };
 }

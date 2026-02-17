@@ -113,7 +113,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [usedModelId, setUsedModelId] = useState<string>('claude-sonnet-4-5');
+  const [usedModelId, setUsedModelId] = useState<string>('anthropic/claude-sonnet-4-5');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const overlayMouseDownRef = useRef(false);
@@ -161,7 +161,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     setSteps([]);
     setError(null);
     setShowConfirmation(false);
-    setUsedModelId('claude-sonnet-4-5');
+    setUsedModelId('anthropic/claude-sonnet-4-5');
   }, []);
 
   // Handle close
@@ -185,12 +185,9 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
       return;
     }
 
-    // Check API key
-    const anthropicKey = apiKeyManager.getKey('anthropic');
-    const openaiKey = apiKeyManager.getKey('openai');
-    const googleKey = apiKeyManager.getKey('google');
-    const apiKey = anthropicKey || openaiKey || googleKey;
-    const modelId = anthropicKey ? 'claude-sonnet-4-5' : (openaiKey ? 'gpt-5.2' : 'gemini-2.5-flash');
+    // Check API key — all models route through Perplexity Agent API
+    const apiKey = apiKeyManager.getKey('perplexity');
+    const modelId = 'anthropic/claude-sonnet-4-5'; // Default agent model
 
     if (!apiKey) {
       setError('No API key configured. Add one in Settings.');

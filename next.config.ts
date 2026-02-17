@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com",
+              "connect-src 'self' https://api.perplexity.ai https://huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
@@ -39,6 +39,26 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  // Turbopack is the default bundler in Next.js 16; empty config silences the webpack-fallback warning
+  turbopack: {},
+  // Webpack config used when building with --webpack flag
+  webpack: (config, { isServer }) => {
+    // Exclude server-only native packages that Transformers.js / ONNX Runtime may reference
+    if (!isServer) {
+      config.resolve = config.resolve ?? {};
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+      };
+    }
+    config.externals = config.externals ?? [];
+    if (isServer) {
+      config.externals.push('sharp', 'onnxruntime-node');
+    }
+    return config;
   },
 };
 

@@ -33,14 +33,12 @@ export default function CanvasPage() {
 
     // Check if this is first launch (no keys configured)
     const keysConfigured = localStorage.getItem('projectloom:keys-configured');
-    const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
-    const hasOpenAIKey = !!apiKeyManager.getKey('openai');
-    const hasGoogleKey = !!apiKeyManager.getKey('google');
+    const hasPerplexityKey = !!apiKeyManager.getKey('perplexity');
 
     // Show modal if:
     // 1. Never configured keys before AND
-    // 2. No keys currently available (no env vars, no localStorage)
-    if (!keysConfigured && !hasAnthropicKey && !hasOpenAIKey && !hasGoogleKey) {
+    // 2. No Perplexity key currently available
+    if (!keysConfigured && !hasPerplexityKey) {
       // Small delay to let the app initialize first
       const timer = setTimeout(() => setShowAPIKeySetup(true), 500);
       return () => clearTimeout(timer);

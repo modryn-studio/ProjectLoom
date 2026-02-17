@@ -262,15 +262,8 @@ async function generateAITitle(
     // Import dynamically to avoid SSR issues
     const { apiKeyManager } = await import('@/lib/api-key-manager');
     
-    // Get API key for the model's provider
-    let apiKey: string | null = null;
-    if (model.startsWith('claude') || model.startsWith('anthropic')) {
-      apiKey = apiKeyManager.getKey('anthropic');
-    } else if (model.startsWith('gemini')) {
-      apiKey = apiKeyManager.getKey('google');
-    } else {
-      apiKey = apiKeyManager.getKey('openai');
-    }
+    // All models route through Perplexity Agent API — single key
+    const apiKey = apiKeyManager.getKey('perplexity');
 
     if (!apiKey) {
       console.warn('[Auto-Title] No API key available for title generation');

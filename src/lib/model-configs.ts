@@ -32,43 +32,60 @@ export interface ModelConfig {
 // =============================================================================
 
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
-  // ── Anthropic Models ──────────────────────────────────────────────────────
-  'claude-haiku-4-5': {
+  // ── Anthropic Models (via Perplexity Agent API) ───────────────────────────
+  'anthropic/claude-haiku-4-5': {
     temperature: 1.0,         // Anthropic's default
     maxTokens: 8192,
     systemPrompt: undefined,  // Let Claude be Claude
   },
-  'claude-sonnet-4-5': {
+  'anthropic/claude-sonnet-4-5': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'claude-opus-4-6': {
+  'anthropic/claude-opus-4-6': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },
 
-  // ── OpenAI Models ─────────────────────────────────────────────────────────
-  'gpt-5-mini': {
+  // ── OpenAI Models (via Perplexity Agent API) ──────────────────────────────
+  'openai/gpt-5-mini': {
     temperature: 1.0,         // Only temperature: 1 supported for this model
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'gpt-5.2': {
+  'openai/gpt-5.2': {
     temperature: 0.7,         // OpenAI's balanced default
     maxTokens: 16384,
     systemPrompt: undefined,
   },
 
-  // ── Google Gemini Models ──────────────────────────────────────────────────
-  'gemini-2.5-flash': {
+  // ── Google Gemini Models (via Perplexity Agent API) ───────────────────────
+  'google/gemini-2.5-flash': {
     temperature: 1.0,         // Google's default
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'gemini-3-flash': {
+  'google/gemini-3-flash': {
     temperature: 1.0,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
+
+  // ── Perplexity Sonar Models (native) ──────────────────────────────────────
+  'sonar': {
+    temperature: 0.7,
+    maxTokens: 4096,
+    systemPrompt: undefined,  // Sonar handles search context internally
+  },
+  'sonar-pro': {
+    temperature: 0.7,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
+  'sonar-reasoning-pro': {
+    temperature: 0.7,
     maxTokens: 8192,
     systemPrompt: undefined,
   },

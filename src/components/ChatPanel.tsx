@@ -12,6 +12,7 @@ import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-i
 import { useUsageStore } from '@/stores/usage-store';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { attachEmbeddings, buildKnowledgeBaseContext, buildRagIndex, type RagIndex } from '@/lib/rag-utils';
+import { embedTexts, embedQuery, EMBEDDING_MODEL_NAME } from '@/lib/transformers-embeddings';
 import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
@@ -25,7 +26,6 @@ import type { MessageAttachment } from '@/types';
 const MIN_PANEL_WIDTH = 400;
 const MAX_PANEL_WIDTH = 800;
 const KB_CONTEXT_MAX_CHARS = 5000;
-const EMBEDDING_MODEL = 'text-embedding-3-small';
 
 // =============================================================================
 // CHAT PANEL COMPONENT
@@ -93,43 +93,24 @@ export function ChatPanel() {
 
     if (conversationModel) return conversationModel;
 
-    // Otherwise, determine default based on available API keys
-    const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
-    const hasOpenAIKey = !!apiKeyManager.getKey('openai');
-    const hasGoogleKey = !!apiKeyManager.getKey('google');
+    // All models route through Perplexity Agent API — single key
+    const hasPerplexityKey = !!apiKeyManager.getKey('perplexity');
 
-    if (hasAnthropicKey) {
+    if (hasPerplexityKey) {
       return getDefaultModel('anthropic').id;
-    }
-    if (hasOpenAIKey) {
-      return getDefaultModel('openai').id;
-    }
-    if (hasGoogleKey) {
-      return getDefaultModel('google').id;
     }
 
     return null;
   }, [activeConversationId, conversationModel]);
 
-  // Get API key for current model
+  // Get API key — always the Perplexity key (single gateway)
   const currentApiKey = useMemo(() => {
     if (!currentModel) return null;
-    
-    if (currentModel.startsWith('claude') || currentModel.startsWith('anthropic')) {
-      return apiKeyManager.getKey('anthropic');
-    }
-    if (currentModel.startsWith('gemini')) {
-      return apiKeyManager.getKey('google');
-    }
-    return apiKeyManager.getKey('openai');
+    return apiKeyManager.getKey('perplexity');
   }, [currentModel]);
 
-  const tavilyKey = apiKeyManager.getKey('tavily');
-
-  // Check if we have any API key configured
-  // Note: apiKeyManager reads from localStorage; no reactive deps, but we re-check
-  // on every render to pick up keys added mid-session. This is cheap (sync reads).
-  const hasAnyApiKey = !!apiKeyManager.getKey('anthropic') || !!apiKeyManager.getKey('openai') || !!apiKeyManager.getKey('google');
+  // Check if we have the Perplexity API key configured
+  const hasAnyApiKey = !!apiKeyManager.getKey('perplexity');
 
   // Check if current model supports vision
   const supportsVision = useMemo(() => {
@@ -190,44 +171,15 @@ export function ChatPanel() {
       }
 
       const baseIndex = buildRagIndex(kbFiles);
-      const openaiKey = apiKeyManager.getKey('openai');
-      if (!openaiKey) {
-        safeSetRagIndex(baseIndex);
-        return;
-      }
 
       try {
-        const response = await fetch('/api/embeddings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: openaiKey,
-            texts: baseIndex.chunks.map((chunk) => chunk.content),
-            model: EMBEDDING_MODEL,
-          }),
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          safeSetRagIndex(baseIndex);
-          return;
-        }
-
-        const data = await response.json() as { embeddings: number[][]; model: string; usage?: { totalTokens: number } };
-        safeSetRagIndex(attachEmbeddings(baseIndex, data.embeddings, data.model));
-
-        if (!isCancelled && data.usage?.totalTokens) {
-          addUsage({
-            provider: 'openai',
-            model: data.model,
-            inputTokens: data.usage.totalTokens,
-            outputTokens: 0,
-            source: 'embeddings',
-          });
-        }
+        const chunkTexts = baseIndex.chunks.map((chunk) => chunk.content);
+        const embeddings = await embedTexts(chunkTexts);
+        if (isCancelled) return;
+        safeSetRagIndex(attachEmbeddings(baseIndex, embeddings, EMBEDDING_MODEL_NAME));
       } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return; // Expected on cleanup
-        console.error('[ChatPanel] Failed to build embedding index', err);
+        if ((err as Error)?.name === 'AbortError') return;
+        console.error('[ChatPanel] Failed to build embedding index, falling back to TF-IDF', err);
         safeSetRagIndex(baseIndex);
       }
     }
@@ -242,14 +194,12 @@ export function ChatPanel() {
       abortController.abort();
     };
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [contextLoadKey, activeWorkspaceId, addUsage]);
+  }, [contextLoadKey, activeWorkspaceId]);
 
   // useChat hook for streaming AI responses
   const chatBody = useMemo(() => ({
     model: currentModel,
     apiKey: currentApiKey,
-    // Pass Tavily key so the AI can use web search tool
-    ...(tavilyKey ? { tavilyKey } : {}),
     // Pass image attachments for vision
     ...(pendingAttachments.length > 0 ? {
       attachments: pendingAttachments.map(a => ({
@@ -258,7 +208,7 @@ export function ChatPanel() {
         url: a.url,
       })),
     } : {}),
-  }), [currentModel, currentApiKey, tavilyKey, pendingAttachments]);
+  }), [currentModel, currentApiKey, pendingAttachments]);
 
   const {
     messages: chatMessages,
@@ -399,36 +349,10 @@ export function ChatPanel() {
 
     let queryEmbedding: number[] | undefined;
     if (ragIndex.embeddings?.length) {
-      const openaiKey = apiKeyManager.getKey('openai');
-      if (openaiKey) {
-        try {
-          const response = await fetch('/api/embeddings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              apiKey: openaiKey,
-              texts: [query],
-              model: ragIndex.embeddingModel || EMBEDDING_MODEL,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json() as { embeddings: number[][]; model?: string; usage?: { totalTokens: number } };
-            queryEmbedding = data.embeddings?.[0];
-
-            if (data.usage?.totalTokens) {
-              addUsage({
-                provider: 'openai',
-                model: data.model || ragIndex.embeddingModel || EMBEDDING_MODEL,
-                inputTokens: data.usage.totalTokens,
-                outputTokens: 0,
-                source: 'embeddings',
-              });
-            }
-          }
-        } catch (err) {
-          console.error('[ChatPanel] Failed to embed query', err);
-        }
+      try {
+        queryEmbedding = await embedQuery(query);
+      } catch (err) {
+        console.error('[ChatPanel] Failed to embed query, falling back to TF-IDF', err);
       }
     }
 
@@ -446,7 +370,7 @@ export function ChatPanel() {
       instructions: instructions || undefined,
       knowledgeBase: knowledgeBase || undefined,
     };
-  }, [activeWorkspace, ragIndex, getRagQuery, addUsage]);
+  }, [activeWorkspace, ragIndex, getRagQuery]);
 
   // Handle message submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -553,7 +477,6 @@ export function ChatPanel() {
     const body = {
       model: currentModel,
       apiKey: currentApiKey,
-      ...(tavilyKey ? { tavilyKey } : {}),
       ...(messageAttachments.length > 0 ? {
         attachments: messageAttachments.map(a => ({
           contentType: a.contentType,
@@ -583,7 +506,7 @@ export function ChatPanel() {
     );
     
     console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
-  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, tavilyKey, buildCanvasContextPayload, setData, append, setPendingAttachments]);
+  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, setData, append, setPendingAttachments]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {

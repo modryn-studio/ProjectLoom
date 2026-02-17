@@ -79,12 +79,12 @@ interface Message {
 
 ## AI Integration
 
-**Architecture:** BYOK (Bring Your Own Key) using Vercel AI SDK
+**Architecture:** BYOK (Bring Your Own Key) via Perplexity Agent API (single gateway)
 
 **Flow:**
-1. User stores API keys in localStorage (or env vars for prod)
-2. Keys passed per-request to `/api/chat` endpoint
-3. Vercel AI SDK abstracts provider (Anthropic, OpenAI)
+1. User stores Perplexity API key in localStorage
+2. Key passed per-request to `/api/chat` endpoint
+3. Perplexity Agent API routes to Claude, GPT, Gemini, or Sonar
 4. Streaming SSE response using `streamText()`
 5. `useChat` hook handles real-time updates
 
@@ -92,11 +92,17 @@ interface Message {
 - `/api/chat` - Streaming AI responses
 - `/api/summarize` - Context summarization
 - `/api/agent` - Agent tool calling workflows
-- `/api/embeddings` - RAG/semantic search (future)
 
-**Supported Models:**
-- **Anthropic:** Claude Opus 4, Sonnet 4, Haiku 4 (all support vision)
-- **OpenAI:** GPT-4o, GPT-4o Mini (both support vision)
+**Embeddings (Knowledge Base):**
+- Client-side via Transformers.js (`@huggingface/transformers`)
+- Model: `all-MiniLM-L6-v2` (384-dim, ~17MB, cached in browser)
+- No external API key required
+
+**Supported Models (via Perplexity):**
+- **Claude:** Opus 4, Sonnet 4, Haiku 4 (all support vision)
+- **GPT:** GPT-4o, GPT-4o Mini (both support vision)
+- **Gemini:** Gemini 2.5 Pro, Flash
+- **Sonar:** Perplexity Sonar (built-in web search)
 
 **Vision Support:** Image attachments via base64 data URLs (max 3 images, 5MB each, PNG/JPEG/WebP/GIF)
 
@@ -121,8 +127,7 @@ src/
 │   └── api/
 │       ├── chat/route.ts           # Streaming AI endpoint
 │       ├── summarize/route.ts      # Summary generation
-│       ├── agent/route.ts          # Agent workflows
-│       └── embeddings/route.ts     # RAG embeddings
+│       └── agent/route.ts          # Agent workflows
 │
 ├── components/
 │   ├── InfiniteCanvas.tsx          # ReactFlow wrapper
@@ -148,7 +153,8 @@ src/
 │   ├── api-key-manager.ts          # Key storage
 │   ├── storage.ts                  # Persistence layer
 │   ├── context-utils.ts            # Context selection logic
-│   ├── rag-utils.ts                # RAG/embeddings
+│   ├── rag-utils.ts                # RAG chunking & search
+│   ├── transformers-embeddings.ts  # Client-side embeddings (Transformers.js)
 │   └── agents/
 │       ├── branch-agent.ts         # Branch generation
 │       ├── cleanup-agent.ts        # Workspace cleanup
@@ -193,7 +199,8 @@ src/
 - **Framework:** Next.js 15 (App Router)
 - **State:** Zustand (canvas-store, preferences-store, toast-store, search-store)
 - **Canvas:** React Flow (infinite canvas, nodes, edges, minimap)
-- **AI:** Vercel AI SDK (`ai` package with `@ai-sdk/anthropic`, `@ai-sdk/openai`)
+- **AI:** Vercel AI SDK (`ai` package with `@ai-sdk/perplexity` — single gateway for Claude, GPT, Gemini, Sonar models)
+- **Embeddings:** Transformers.js (`@huggingface/transformers` — client-side, all-MiniLM-L6-v2, no API key required)
 - **Animation:** Framer Motion
 - **Storage:** localStorage (debounced writes, schema version 4)
 - **Tests:** Vitest
@@ -201,9 +208,10 @@ src/
 ## Common Tasks for AI Agents
 
 **Adding a new model:**
-1. Add to `AVAILABLE_MODELS` in `src/lib/vercel-ai-integration.ts`
-2. Update `detectProvider()` if new provider
-3. Test in ModelSelector dropdown
+1. Add to `AVAILABLE_MODELS` in `src/lib/vercel-ai-integration.ts` with provider prefix (e.g., `anthropic/claude-sonnet-4-5`)
+2. Add pricing to `MODEL_PRICING` in the same file
+3. Update `model-configs.ts` with model-specific configuration
+4. Test in ModelSelector dropdown
 
 **Adding a keyboard shortcut:**
 1. Add handler in `src/hooks/useKeyboardShortcuts.ts`

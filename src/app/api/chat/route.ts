@@ -2,20 +2,19 @@
  * Chat API Route
  * 
  * Streaming chat endpoint using Vercel AI SDK.
- * Supports Claude (Anthropic), OpenAI, and Google Gemini models with BYOK (Bring Your Own Key).
+ * All models route through the Perplexity Agent API gateway with a single API key.
+ * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-5', 'openai/gpt-5.2', etc.
+ * Sonar models include built-in web search — no external search orchestration needed.
  * 
- * @version 1.0.0
+ * @version 3.0.0
  */
 
 export const runtime = 'edge';
 
 import { streamText, createDataStreamResponse } from 'ai';
 import type { LanguageModelV1 } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createPerplexity } from '@ai-sdk/perplexity';
 import { getModelConfig } from '@/lib/model-configs';
-import { orchestrateSearch } from '@/lib/search-orchestration';
 
 // =============================================================================
 // TYPES
@@ -32,7 +31,7 @@ interface ChatRequestBody {
     instructions?: string;
     knowledgeBase?: string;
   };
-  /** Model identifier (e.g., 'claude-sonnet-4-5', 'gpt-5.2') */
+  /** Model identifier (e.g., 'anthropic/claude-sonnet-4-5', 'openai/gpt-5.2', 'sonar-pro') */
   model: string;
   /** User's API key for the provider */
   apiKey: string;
@@ -42,8 +41,6 @@ interface ChatRequestBody {
     name: string;
     url: string; // base64 data URL
   }>;
-  /** Optional Tavily API key for web search tool */
-  tavilyKey?: string;
 }
 
 interface APIError {
@@ -58,20 +55,18 @@ interface APIError {
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai' | 'google';
+type ProviderType = 'anthropic' | 'openai' | 'google' | 'perplexity';
 
 function detectProvider(model: string): ProviderType {
-  if (model.startsWith('claude') || model.startsWith('anthropic')) {
-    return 'anthropic';
-  }
-  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) {
-    return 'openai';
-  }
-  if (model.startsWith('gemini')) {
-    return 'google';
-  }
-  // Default to anthropic for unknown models
-  return 'anthropic';
+  if (model.startsWith('anthropic/')) return 'anthropic';
+  if (model.startsWith('openai/')) return 'openai';
+  if (model.startsWith('google/')) return 'google';
+  if (model.startsWith('sonar')) return 'perplexity';
+  // Legacy bare model IDs
+  if (model.startsWith('claude')) return 'anthropic';
+  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
+  if (model.startsWith('gemini')) return 'google';
+  return 'perplexity';
 }
 
 // =============================================================================
@@ -155,7 +150,7 @@ function handleProviderError(error: unknown): Response {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, apiKey, attachments, canvasContext, tavilyKey } = body;
+    const { messages, model, apiKey, attachments, canvasContext } = body;
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -185,21 +180,12 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    // Detect provider and create model instance
+    // Detect underlying provider for config adjustments
     const providerType = detectProvider(model);
     
-    let aiModel: LanguageModelV1;
-    
-    if (providerType === 'anthropic') {
-      const anthropic = createAnthropic({ apiKey });
-      aiModel = anthropic(model) as unknown as LanguageModelV1;
-    } else if (providerType === 'google') {
-      const google = createGoogleGenerativeAI({ apiKey });
-      aiModel = google(model) as unknown as LanguageModelV1;
-    } else {
-      const openai = createOpenAI({ apiKey });
-      aiModel = openai(model) as unknown as LanguageModelV1;
-    }
+    // All models route through Perplexity Agent API
+    const perplexity = createPerplexity({ apiKey });
+    const aiModel: LanguageModelV1 = perplexity(model) as unknown as LanguageModelV1;
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
@@ -320,65 +306,27 @@ export async function POST(req: Request): Promise<Response> {
       ? systemMessageParts.join('\n\n---\n\n')
       : modelConfig.systemPrompt;
 
-    // OpenAI GPT-5+ models require maxCompletionTokens instead of maxTokens
-    const tokenConfig = providerType === 'openai'
-      ? { maxCompletionTokens: modelConfig.maxTokens }
-      : { maxTokens: modelConfig.maxTokens };
+    // Token config — use maxTokens uniformly through Perplexity gateway
+    const tokenConfig = { maxTokens: modelConfig.maxTokens };
 
     // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     const temperatureConfig = (providerType === 'openai' &&
-                               model === 'gpt-5-mini')
+                               model === 'openai/gpt-5-mini')
       ? { temperature: 1 }
       : { temperature: modelConfig.temperature };
 
     // =========================================================================
-    // WEB SEARCH ORCHESTRATION
+    // SYSTEM PROMPT FINALIZATION
     // =========================================================================
-    // Search runs BEFORE the LLM call. Results are injected into the system
-    // prompt so the model can cite them naturally — no tool-calling needed.
+    // Sonar models (Perplexity) include built-in web search — results are
+    // automatically woven into the response. No external search needed.
     // =========================================================================
 
-    // Extract the last user message text for search intent detection
-    const lastUserMessage = messages[messages.length - 1];
-    const lastUserText = typeof lastUserMessage?.content === 'string'
-      ? lastUserMessage.content
-      : '';
+    const finalSystemPrompt = combinedSystemPrompt;
 
-    // Run search orchestration with error handling to prevent route crashes
-    let searchResult = null;
-    if (tavilyKey?.trim() && lastUserText.trim()) {
-      try {
-        searchResult = await orchestrateSearch(lastUserText, tavilyKey);
-      } catch (searchError) {
-        console.error('[Chat API] Search orchestration failed:', searchError);
-        // Continue without search results rather than crashing the entire request
-      }
-    }
-
-    // If search returned results, append context to system prompt
-    const finalSystemPrompt = searchResult
-      ? (combinedSystemPrompt ? combinedSystemPrompt + '\n\n---\n\n' : '') + searchResult.searchContext
-      : combinedSystemPrompt;
-
-    // Stream the response with error handling, wrapped in a data stream
-    // so we can send search source metadata alongside the LLM output.
+    // Stream the response with error handling, wrapped in a data stream.
     return createDataStreamResponse({
       execute: (dataStream) => {
-        // Write search sources as a message annotation BEFORE the LLM stream
-        // starts, so they arrive in onFinish's message.annotations on the client.
-        if (searchResult && searchResult.sources.length > 0) {
-          dataStream.writeMessageAnnotation({
-            webSearch: {
-              used: true,
-              sources: searchResult.sources.map((s) => ({
-                title: s.title,
-                url: s.url,
-                snippet: s.snippet || '',
-              })),
-            },
-          });
-        }
-
         const result = streamText({
           model: aiModel,
           system: finalSystemPrompt,

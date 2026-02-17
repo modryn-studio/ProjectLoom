@@ -127,15 +127,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const backupInputRef = useRef<HTMLInputElement>(null);
   const overlayMouseDownRef = useRef(false);
 
-  // API Keys state
-  const [anthropicKey, setAnthropicKey] = useState('');
-  const [openaiKey, setOpenaiKey] = useState('');
-  const [googleKey, setGoogleKey] = useState('');
-  const [tavilyKey, setTavilyKey] = useState('');
-  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
-  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
-  const [showGoogleKey, setShowGoogleKey] = useState(false);
-  const [showTavilyKey, setShowTavilyKey] = useState(false);
+  // API Keys state — single Perplexity key for all models
+  const [perplexityKey, setPerplexityKey] = useState('');
+  const [showPerplexityKey, setShowPerplexityKey] = useState(false);
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
 
@@ -146,17 +140,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   useEffect(() => {
     if (isOpen && !keysLoaded) {
-      const savedAnthropicKey = apiKeyManager.getKey('anthropic');
-      const savedOpenAIKey = apiKeyManager.getKey('openai');
-      const savedGoogleKey = apiKeyManager.getKey('google');
-      const savedTavilyKey = apiKeyManager.getKey('tavily');
+      const savedPerplexityKey = apiKeyManager.getKey('perplexity');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
-      if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
-       
-      if (savedOpenAIKey) setOpenaiKey(savedOpenAIKey);
-      if (savedGoogleKey) setGoogleKey(savedGoogleKey);
-      if (savedTavilyKey) setTavilyKey(savedTavilyKey);
+      if (savedPerplexityKey) setPerplexityKey(savedPerplexityKey);
        
       setStoragePreference(currentStoragePreference);
        
@@ -207,14 +194,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     const providerName = apiKeyManager.getProviderDisplayName(provider);
     if (window.confirm(`Delete ${providerName} API key?`)) {
       apiKeyManager.removeKey(provider);
-      if (provider === 'anthropic') {
-        setAnthropicKey('');
-      } else if (provider === 'openai') {
-        setOpenaiKey('');
-      } else if (provider === 'google') {
-        setGoogleKey('');
-      } else {
-        setTavilyKey('');
+      if (provider === 'perplexity') {
+        setPerplexityKey('');
       }
     }
   }, []);
@@ -458,17 +439,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </select>
                 </div>
 
-                {/* Anthropic Key */}
+                {/* Perplexity API Key (single gateway for all models) */}
                 <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>Anthropic API Key</label>
+                  <label style={labelStyles}>Perplexity API Key</label>
                   <div style={{ display: 'flex', gap: spacing[2] }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input
-                        type={showAnthropicKey ? 'text' : 'password'}
-                        value={anthropicKey}
-                        onChange={(e) => setAnthropicKey(e.target.value)}
-                        onBlur={() => handleSaveKey('anthropic', anthropicKey)}
-                        placeholder="sk-ant-..."
+                        type={showPerplexityKey ? 'text' : 'password'}
+                        value={perplexityKey}
+                        onChange={(e) => setPerplexityKey(e.target.value)}
+                        onBlur={() => handleSaveKey('perplexity', perplexityKey)}
+                        placeholder="pplx-..."
                         style={{
                           ...selectStyles,
                           fontFamily: typography.fonts.code,
@@ -477,7 +458,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                        onClick={() => setShowPerplexityKey(!showPerplexityKey)}
                         style={{
                           position: 'absolute',
                           right: spacing[2],
@@ -490,16 +471,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           padding: spacing[1],
                         }}
                       >
-                        {showAnthropicKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showPerplexityKey ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
-                    {anthropicKey && (
+                    {perplexityKey && (
                       <>
                         <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
                           <CheckCircle size={16} />
                         </span>
                         <button
-                          onClick={() => handleDeleteKey('anthropic')}
+                          onClick={() => handleDeleteKey('perplexity')}
                           title="Delete key"
                           style={{
                             background: 'none',
@@ -514,180 +495,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       </>
                     )}
                   </div>
-                </div>
-
-                {/* OpenAI Key */}
-                <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>OpenAI API Key</label>
-                  <div style={{ display: 'flex', gap: spacing[2] }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <input
-                        type={showOpenAIKey ? 'text' : 'password'}
-                        value={openaiKey}
-                        onChange={(e) => setOpenaiKey(e.target.value)}
-                        onBlur={() => handleSaveKey('openai', openaiKey)}
-                        placeholder="sk-..."
-                        style={{
-                          ...selectStyles,
-                          fontFamily: typography.fonts.code,
-                          paddingRight: '40px',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowOpenAIKey(!showOpenAIKey)}
-                        style={{
-                          position: 'absolute',
-                          right: spacing[2],
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          color: colors.fg.quaternary,
-                          cursor: 'pointer',
-                          padding: spacing[1],
-                        }}
-                      >
-                        {showOpenAIKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                    {openaiKey && (
-                      <>
-                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
-                          <CheckCircle size={16} />
-                        </span>
-                        <button
-                          onClick={() => handleDeleteKey('openai')}
-                          title="Delete key"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: colors.fg.quaternary,
-                            cursor: 'pointer',
-                            padding: spacing[1],
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Google Key */}
-                <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>Google AI API Key</label>
-                  <div style={{ display: 'flex', gap: spacing[2] }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <input
-                        type={showGoogleKey ? 'text' : 'password'}
-                        value={googleKey}
-                        onChange={(e) => setGoogleKey(e.target.value)}
-                        onBlur={() => handleSaveKey('google', googleKey)}
-                        placeholder="AIza..."
-                        style={{
-                          ...selectStyles,
-                          fontFamily: typography.fonts.code,
-                          paddingRight: '40px',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowGoogleKey(!showGoogleKey)}
-                        style={{
-                          position: 'absolute',
-                          right: spacing[2],
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          color: colors.fg.quaternary,
-                          cursor: 'pointer',
-                          padding: spacing[1],
-                        }}
-                      >
-                        {showGoogleKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                    {googleKey && (
-                      <>
-                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
-                          <CheckCircle size={16} />
-                        </span>
-                        <button
-                          onClick={() => handleDeleteKey('google')}
-                          title="Delete key"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: colors.fg.quaternary,
-                            cursor: 'pointer',
-                            padding: spacing[1],
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Tavily Key */}
-                <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>Tavily API Key</label>
-                  <div style={{ display: 'flex', gap: spacing[2] }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <input
-                        type={showTavilyKey ? 'text' : 'password'}
-                        value={tavilyKey}
-                        onChange={(e) => setTavilyKey(e.target.value)}
-                        onBlur={() => handleSaveKey('tavily', tavilyKey)}
-                        placeholder="tvly-..."
-                        style={{
-                          ...selectStyles,
-                          fontFamily: typography.fonts.code,
-                          paddingRight: '40px',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowTavilyKey(!showTavilyKey)}
-                        style={{
-                          position: 'absolute',
-                          right: spacing[2],
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          color: colors.fg.quaternary,
-                          cursor: 'pointer',
-                          padding: spacing[1],
-                        }}
-                      >
-                        {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                    {tavilyKey && (
-                      <>
-                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
-                          <CheckCircle size={16} />
-                        </span>
-                        <button
-                          onClick={() => handleDeleteKey('tavily')}
-                          title="Delete key"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: colors.fg.quaternary,
-                            cursor: 'pointer',
-                            padding: spacing[1],
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <p style={{ fontSize: typography.sizes.xs, color: colors.fg.quaternary, marginTop: spacing[1] }}>
+                    One key for all models — Claude, GPT, Gemini, and Sonar with built-in web search.
+                  </p>
                 </div>
               </div>
               

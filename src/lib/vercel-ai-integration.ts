@@ -16,8 +16,8 @@ export interface ModelDefinition {
   id: string;
   /** Human-readable display name */
   name: string;
-  /** Provider (anthropic/openai/google) */
-  provider: 'anthropic' | 'openai' | 'google';
+  /** Provider (anthropic/openai/google/perplexity) */
+  provider: 'anthropic' | 'openai' | 'google' | 'perplexity';
   /** Maximum context tokens */
   maxTokens: number;
   /** Whether streaming is supported */
@@ -28,6 +28,8 @@ export interface ModelDefinition {
   costTier: 'low' | 'medium' | 'high';
   /** Brief description for UI */
   description: string;
+  /** Whether the model has built-in web search */
+  hasWebSearch?: boolean;
 }
 
 /**
@@ -35,9 +37,9 @@ export interface ModelDefinition {
  * Updated for Feb 2026 model lineup
  */
 export const AVAILABLE_MODELS: ModelDefinition[] = [
-  // Anthropic Claude Models
+  // Anthropic Claude Models (routed via Perplexity Agent API)
   {
-    id: 'claude-haiku-4-5',
+    id: 'anthropic/claude-haiku-4-5',
     name: 'Claude Haiku 4.5',
     provider: 'anthropic',
     maxTokens: 200000,
@@ -47,7 +49,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K context. Fastest and most affordable Claude. Great for quick tasks and early branches before context grows.',
   },
   {
-    id: 'claude-sonnet-4-5',
+    id: 'anthropic/claude-sonnet-4-5',
     name: 'Claude Sonnet 4.5',
     provider: 'anthropic',
     maxTokens: 200000,
@@ -57,7 +59,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K-1M context. Ideal balance of speed and intelligence. Handles 3-4 parent merges with moderate message history.',
   },
   {
-    id: 'claude-opus-4-6',
+    id: 'anthropic/claude-opus-4-6',
     name: 'Claude Opus 4.6',
     provider: 'anthropic',
     maxTokens: 200000,
@@ -67,9 +69,9 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K-1M context. Most capable for complex reasoning and deep branch synthesis. Best for 5-parent merges with rich context.',
   },
 
-  // OpenAI Models
+  // OpenAI Models (routed via Perplexity Agent API)
   {
-    id: 'gpt-5-mini',
+    id: 'openai/gpt-5-mini',
     name: 'GPT-5 Mini',
     provider: 'openai',
     maxTokens: 128000,
@@ -79,7 +81,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '128K context. Fast and affordable for straightforward tasks. Good for shallow branches with focused conversations.',
   },
   {
-    id: 'gpt-5.2',
+    id: 'openai/gpt-5.2',
     name: 'GPT-5.2',
     provider: 'openai',
     maxTokens: 128000,
@@ -89,9 +91,9 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '128K context. OpenAI flagship model. Balanced for 2-3 parent merges with 20-30 messages per branch.',
   },
 
-  // Google Gemini Models
+  // Google Gemini Models (routed via Perplexity Agent API)
   {
-    id: 'gemini-2.5-flash',
+    id: 'google/gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
     provider: 'google',
     maxTokens: 1000000,
@@ -101,7 +103,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '1M context. Excellent price-performance for deep branching. Handles 4-5 parent merges with 30+ messages each at low cost.',
   },
   {
-    id: 'gemini-3-flash',
+    id: 'google/gemini-3-flash',
     name: 'Gemini 3 Flash',
     provider: 'google',
     maxTokens: 2000000,
@@ -110,22 +112,51 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     costTier: 'medium',
     description: '2M context. Largest context window available. Ideal for maximum branching depth—5 parents with 50+ messages each. FREE tier available.',
   },
+
+  // Perplexity Sonar Models (native, built-in web search)
+  {
+    id: 'sonar',
+    name: 'Sonar',
+    provider: 'perplexity',
+    maxTokens: 128000,
+    supportsStreaming: true,
+    supportsVision: false,
+    costTier: 'low',
+    hasWebSearch: true,
+    description: '128K context. Fast with built-in web search. Always up-to-date info in every response.',
+  },
+  {
+    id: 'sonar-pro',
+    name: 'Sonar Pro',
+    provider: 'perplexity',
+    maxTokens: 200000,
+    supportsStreaming: true,
+    supportsVision: false,
+    costTier: 'medium',
+    hasWebSearch: true,
+    description: '200K context. Enhanced search with 2x more citations. Best balance of search quality and reasoning.',
+  },
+  {
+    id: 'sonar-reasoning-pro',
+    name: 'Sonar Reasoning Pro',
+    provider: 'perplexity',
+    maxTokens: 200000,
+    supportsStreaming: true,
+    supportsVision: false,
+    costTier: 'high',
+    hasWebSearch: true,
+    description: '200K context. Deep reasoning with real-time web data. Best for complex analysis needing current information.',
+  },
 ];
 
 /**
- * Get models available based on configured API keys
+ * Get models available based on configured API keys.
+ * All models route through the Perplexity Agent API — a single key unlocks everything.
  */
 export function getAvailableModels(
-  hasAnthropicKey: boolean,
-  hasOpenAIKey: boolean,
-  hasGoogleKey: boolean = false
+  hasPerplexityKey: boolean
 ): ModelDefinition[] {
-  return AVAILABLE_MODELS.filter((model) => {
-    if (model.provider === 'anthropic') return hasAnthropicKey;
-    if (model.provider === 'openai') return hasOpenAIKey;
-    if (model.provider === 'google') return hasGoogleKey;
-    return false;
-  });
+  return hasPerplexityKey ? [...AVAILABLE_MODELS] : [];
 }
 
 /**
@@ -138,7 +169,7 @@ export function getModelById(id: string): ModelDefinition | undefined {
 /**
  * Get the default model for a provider
  */
-export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google'): ModelDefinition {
+export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google' | 'perplexity'): ModelDefinition {
   const models = AVAILABLE_MODELS.filter((m) => m.provider === provider);
   if (models.length === 0) {
     if (AVAILABLE_MODELS.length === 0) {
@@ -152,20 +183,22 @@ export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google'): Mo
 }
 
 /**
- * Detect provider from model ID
+ * Detect the underlying provider from a model ID.
+ * Model IDs use the Perplexity Agent API prefix format: 'provider/model-name'.
+ * Sonar models are native Perplexity and use bare names.
  */
-export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'google' {
-  if (modelId.startsWith('claude') || modelId.startsWith('anthropic')) {
-    return 'anthropic';
-  }
-  if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) {
-    return 'openai';
-  }
-  if (modelId.startsWith('gemini')) {
-    return 'google';
-  }
-  // Default to anthropic
-  return 'anthropic';
+export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'google' | 'perplexity' {
+  // Prefixed format: 'anthropic/claude-...', 'openai/gpt-...', 'google/gemini-...'
+  if (modelId.startsWith('anthropic/')) return 'anthropic';
+  if (modelId.startsWith('openai/')) return 'openai';
+  if (modelId.startsWith('google/')) return 'google';
+  // Sonar models are native Perplexity (bare name)
+  if (modelId.startsWith('sonar')) return 'perplexity';
+  // Legacy bare model IDs (backwards compat)
+  if (modelId.startsWith('claude')) return 'anthropic';
+  if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai';
+  if (modelId.startsWith('gemini')) return 'google';
+  return 'perplexity';
 }
 
 // =============================================================================
@@ -251,18 +284,33 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
 // =============================================================================
 
 /**
- * Approximate cost per 1M tokens (input/output) by model ID.
- * Used for both previews and usage tracking.
+ * Cost per 1M tokens (input/output) by model ID.
+ * Pricing via Perplexity Agent API — pass-through at direct provider rates, no markup.
+ * Source: https://docs.perplexity.ai/docs/agent-api/models
+ *
+ * NOTE: These are estimates based on actual token consumption.
+ * Gemini models offer 90% cache read discounts (not reflected here).
+ * Sonar models also incur per-request search fees ($0.005/search).
+ * Check your Perplexity dashboard for exact billing.
  */
 export const MODEL_PRICING = {
-  'claude-haiku-4-5': { input: 1, output: 5 },
-  'claude-sonnet-4-5': { input: 3, output: 15 },
-  'claude-opus-4-6': { input: 5, output: 25 },
-  'gpt-5-mini': { input: 0.25, output: 2 },
-  'gpt-5.2': { input: 1.75, output: 14 },
-  'gemini-2.5-flash': { input: 0.30, output: 2.50 },
-  'gemini-3-flash': { input: 0.50, output: 3.00 },
-  'text-embedding-3-small': { input: 0.02, output: 0 },
+  // Anthropic Claude (via Perplexity Agent API)
+  'anthropic/claude-haiku-4-5': { input: 1, output: 5 },
+  'anthropic/claude-sonnet-4-5': { input: 3, output: 15 },
+  'anthropic/claude-opus-4-6': { input: 5, output: 25 },
+
+  // OpenAI (via Perplexity Agent API)
+  'openai/gpt-5-mini': { input: 0.25, output: 2 },
+  'openai/gpt-5.2': { input: 1.75, output: 14 },
+
+  // Google Gemini (via Perplexity Agent API) — 90% cache discount available
+  'google/gemini-2.5-flash': { input: 0.30, output: 2.50 },
+  'google/gemini-3-flash': { input: 0.50, output: 3.00 },
+
+  // Perplexity Sonar (native — built-in web search, +$0.005/search not included)
+  'sonar': { input: 1, output: 1 },
+  'sonar-pro': { input: 3, output: 15 },
+  'sonar-reasoning-pro': { input: 2, output: 8 },
 } as const;
 
 const DEFAULT_PRICING = { input: 3, output: 15 };

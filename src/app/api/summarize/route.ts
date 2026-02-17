@@ -9,9 +9,7 @@
 
 import { generateText } from 'ai';
 import type { LanguageModelV1 } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createPerplexity } from '@ai-sdk/perplexity';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -53,19 +51,17 @@ interface APIError {
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai' | 'google';
+type ProviderType = 'anthropic' | 'openai' | 'google' | 'perplexity';
 
 function detectProvider(model: string): ProviderType {
-  if (model.startsWith('claude') || model.startsWith('anthropic')) {
-    return 'anthropic';
-  }
-  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) {
-    return 'openai';
-  }
-  if (model.startsWith('gemini')) {
-    return 'google';
-  }
-  return 'anthropic';
+  if (model.startsWith('anthropic/')) return 'anthropic';
+  if (model.startsWith('openai/')) return 'openai';
+  if (model.startsWith('google/')) return 'google';
+  if (model.startsWith('sonar')) return 'perplexity';
+  if (model.startsWith('claude')) return 'anthropic';
+  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
+  if (model.startsWith('gemini')) return 'google';
+  return 'perplexity';
 }
 
 // =============================================================================
@@ -186,20 +182,10 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    // Create provider model instance
+    // Create provider model instance — all models route through Perplexity Agent API
     const providerType = detectProvider(model);
-    let aiModel: LanguageModelV1;
-
-    if (providerType === 'anthropic') {
-      const anthropic = createAnthropic({ apiKey });
-      aiModel = anthropic(model) as unknown as LanguageModelV1;
-    } else if (providerType === 'google') {
-      const google = createGoogleGenerativeAI({ apiKey });
-      aiModel = google(model) as unknown as LanguageModelV1;
-    } else {
-      const openai = createOpenAI({ apiKey });
-      aiModel = openai(model) as unknown as LanguageModelV1;
-    }
+    const perplexity = createPerplexity({ apiKey });
+    const aiModel: LanguageModelV1 = perplexity(model) as unknown as LanguageModelV1;
 
     // Get per-model temperature
     const modelConfig = getModelConfig(model);
@@ -207,7 +193,7 @@ export async function POST(req: Request): Promise<Response> {
     // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     // even though no tools used here, for consistency with chat route.
     const temperatureConfig = (providerType === 'openai' && 
-                               model === 'gpt-5-mini')
+                               model === 'openai/gpt-5-mini')
       ? { temperature: 1 } // Explicitly set to 1 for consistency
       : { temperature: modelConfig.temperature };
 

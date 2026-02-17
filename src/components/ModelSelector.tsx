@@ -37,18 +37,10 @@ export function ModelSelector({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Determine which models are available based on API keys
-  // Re-check when dropdown opens in case keys were added during the session
-  const { hasAnthropicKey, hasOpenAIKey, hasGoogleKey } = useMemo(() => {
-    const anthropicKey = !!apiKeyManager.getKey('anthropic');
-    const openaiKey = !!apiKeyManager.getKey('openai');
-    const googleKey = !!apiKeyManager.getKey('google');
-
-    return {
-      hasAnthropicKey: anthropicKey,
-      hasOpenAIKey: openaiKey,
-      hasGoogleKey: googleKey,
-    };
+  // All models are available when the Perplexity API key is configured
+  // (single gateway — no per-provider key checks needed)
+  const hasPerplexityKey = useMemo(() => {
+    return !!apiKeyManager.getKey('perplexity');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -129,7 +121,7 @@ export function ModelSelector({
             role="listbox"
           >
             {/* Anthropic Models */}
-            {hasAnthropicKey && (
+            {hasPerplexityKey && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'anthropic')
@@ -145,12 +137,12 @@ export function ModelSelector({
             )}
 
             {/* Divider between providers */}
-            {hasAnthropicKey && (hasOpenAIKey || hasGoogleKey) && (
+            {hasPerplexityKey && (
               <div style={styles.divider} />
             )}
 
             {/* OpenAI Models */}
-            {hasOpenAIKey && (
+            {hasPerplexityKey && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'openai')
@@ -166,12 +158,12 @@ export function ModelSelector({
             )}
 
             {/* Divider between providers */}
-            {hasOpenAIKey && hasGoogleKey && (
+            {hasPerplexityKey && (
               <div style={styles.divider} />
             )}
 
             {/* Google Models */}
-            {hasGoogleKey && (
+            {hasPerplexityKey && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'google')
@@ -186,11 +178,32 @@ export function ModelSelector({
               </>
             )}
 
-            {/* No keys configured */}
-            {!hasAnthropicKey && !hasOpenAIKey && !hasGoogleKey && (
+            {/* Divider between providers */}
+            {hasPerplexityKey && (
+              <div style={styles.divider} />
+            )}
+
+            {/* Perplexity Sonar Models (native, built-in web search) */}
+            {hasPerplexityKey && (
+              <>
+                {AVAILABLE_MODELS
+                  .filter(m => m.provider === 'perplexity')
+                  .map(model => (
+                    <ModelOption
+                      key={model.id}
+                      model={model}
+                      isSelected={model.id === currentModel}
+                      onSelect={handleSelect}
+                    />
+                  ))}
+              </>
+            )}
+
+            {/* No key configured */}
+            {!hasPerplexityKey && (
               <div style={styles.noKeys}>
                 <Key size={16} />
-                <span>Configure API keys in Settings</span>
+                <span>Configure Perplexity API key in Settings</span>
               </div>
             )}
           </motion.div>
