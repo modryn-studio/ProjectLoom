@@ -1219,14 +1219,14 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     gap: spacing[1],
     padding: `${spacing[1]} ${spacing[2]}`,
     backgroundColor: colors.bg.tertiary,
-    borderRadius: effects.radius.md,
+    borderRadius: effects.border.radius.md,
     fontSize: typography.sizes.xs,
     color: colors.fg.secondary,
     fontFamily: typography.fonts.body,
     cursor: 'pointer',
     userSelect: 'none',
     transition: 'background-color 0.15s ease',
-    border: `1px solid ${colors.border.subtle}`,
+    border: `1px solid ${colors.border.muted}`,
   } as React.CSSProperties,
 };
 
