@@ -85,7 +85,7 @@ export async function runSummarizeAgent(
   const tools = {
     readCard: tool({
       description: 'Read the conversation content of a specific card. Returns the card title and all messages.',
-      parameters: z.object({
+      inputSchema: z.object({
         cardId: z.string().describe('The ID of the card to read'),
       }),
       execute: async ({ cardId }) => {
@@ -107,7 +107,7 @@ export async function runSummarizeAgent(
 
     createMarkdownDoc: tool({
       description: 'Create a markdown summary document from the analyzed cards.',
-      parameters: z.object({
+      inputSchema: z.object({
         title: z.string().describe('Document title'),
         sections: z.array(
           z.object({

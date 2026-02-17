@@ -67,7 +67,7 @@ export async function runCleanupAgent(
   const tools = {
     analyzeWorkspace: tool({
       description: 'Get an overview of all cards in the workspace. Call this first to understand the workspace structure.',
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         return {
           workspaceTitle: workspace.workspaceTitle,
@@ -92,7 +92,7 @@ export async function runCleanupAgent(
 
     suggestDeletion: tool({
       description: 'Suggest a card for deletion. This requires user confirmation — it will NOT be auto-deleted.',
-      parameters: z.object({
+      inputSchema: z.object({
         cardId: z.string().describe('The ID of the card to suggest for deletion'),
         reason: z.string().describe('Clear explanation of why this card should be deleted'),
       }),
@@ -114,7 +114,7 @@ export async function runCleanupAgent(
 
     suggestRename: tool({
       description: 'Suggest a better name for a card.',
-      parameters: z.object({
+      inputSchema: z.object({
         cardId: z.string().describe('The ID of the card to rename'),
         newTitle: z.string().describe('The suggested new title'),
         reason: z.string().describe('Why this name is better'),

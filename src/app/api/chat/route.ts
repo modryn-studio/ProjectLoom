@@ -11,8 +11,7 @@
 
 export const runtime = 'edge';
 
-import { streamText, createDataStreamResponse } from 'ai';
-import type { LanguageModelV1 } from 'ai';
+import { streamText } from 'ai';
 import { createPerplexity } from '@ai-sdk/perplexity';
 import { getModelConfig } from '@/lib/model-configs';
 
@@ -185,7 +184,7 @@ export async function POST(req: Request): Promise<Response> {
     
     // All models route through Perplexity Agent API
     const perplexity = createPerplexity({ apiKey });
-    const aiModel: LanguageModelV1 = perplexity(model) as unknown as LanguageModelV1;
+    const aiModel = perplexity(model);
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
@@ -307,7 +306,7 @@ export async function POST(req: Request): Promise<Response> {
       : modelConfig.systemPrompt;
 
     // Token config — use maxTokens uniformly through Perplexity gateway
-    const tokenConfig = { maxTokens: modelConfig.maxTokens };
+    const tokenConfig = { maxOutputTokens: modelConfig.maxTokens };
 
     // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
     const temperatureConfig = (providerType === 'openai' &&
@@ -324,30 +323,40 @@ export async function POST(req: Request): Promise<Response> {
 
     const finalSystemPrompt = combinedSystemPrompt;
 
-    // Stream the response with error handling, wrapped in a data stream.
-    return createDataStreamResponse({
-      execute: (dataStream) => {
-        const result = streamText({
-          model: aiModel,
-          system: finalSystemPrompt,
-          ...temperatureConfig,
-          ...tokenConfig,
-          messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
-          onError: (error) => {
-            console.error('[Chat API Streaming Error]', {
-              provider: providerType,
-              model,
-              error: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : undefined,
-              ...(typeof error === 'object' && error !== null ? error : {}),
-            });
-          },
+    // Stream the response with error handling
+    const result = streamText({
+      model: aiModel,
+      system: finalSystemPrompt,
+      ...temperatureConfig,
+      ...tokenConfig,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      messages: conversationMessages as any,
+      onError: (error) => {
+        console.error('[Chat API Streaming Error]', {
+          provider: providerType,
+          model,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          ...(typeof error === 'object' && error !== null ? error : {}),
         });
+      },
+    });
 
-        result.mergeIntoDataStream(dataStream);
+    return result.toUIMessageStreamResponse({
+      // Send usage data as message metadata so the client can track costs
+      messageMetadata: ({ part }) => {
+        if (part.type === 'finish') {
+          return {
+            usage: {
+              inputTokens: part.totalUsage.inputTokens ?? 0,
+              outputTokens: part.totalUsage.outputTokens ?? 0,
+            },
+          };
+        }
+        return undefined;
       },
       onError: (error) => {
-        console.error('[Chat API DataStream Error]', error);
+        console.error('[Chat API Stream Error]', error);
         return error instanceof Error ? error.message : 'An error occurred';
       },
     });

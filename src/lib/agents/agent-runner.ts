@@ -13,8 +13,8 @@
  * @version 1.0.0
  */
 
-import { generateText, type CoreTool, type GenerateTextResult } from 'ai';
-import type { LanguageModelV1 } from 'ai';
+import { generateText, type ToolSet, stepCountIs } from 'ai';
+import type { LanguageModel } from 'ai';
 import { createPerplexity } from '@ai-sdk/perplexity';
 import { nanoid } from 'nanoid';
 
@@ -35,9 +35,9 @@ import type {
  * All models route through the Perplexity Agent API gateway.
  * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-5', etc.
  */
-function createModel(modelId: string, apiKey: string): LanguageModelV1 {
+function createModel(modelId: string, apiKey: string): LanguageModel {
   const provider = createPerplexity({ apiKey });
-  return provider(modelId) as unknown as LanguageModelV1;
+  return provider(modelId);
 }
 
 // =============================================================================
@@ -79,7 +79,7 @@ export interface RunAgentOptions {
   /** User prompt (what the user asked) */
   userPrompt: string;
   /** Tools available to the agent */
-  tools: Record<string, CoreTool>;
+  tools: ToolSet;
   /** Runner configuration */
   config: AgentRunnerConfig;
   /** Abort signal for cancellation */
@@ -138,16 +138,16 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
       system: systemPrompt,
       prompt: userPrompt,
       ...temperatureConfig,
-      maxTokens: modelConfig.maxTokens,
+      maxOutputTokens: modelConfig.maxTokens,
       tools,
-      maxSteps: config.maxSteps,
+      stopWhen: stepCountIs(config.maxSteps),
       abortSignal,
       onStepFinish: (event) => {
         // Track each tool call
         if (event.toolCalls && event.toolCalls.length > 0) {
           for (const toolCall of event.toolCalls) {
             const stepIndex = steps.length;
-            const args = toolCall.args as Record<string, unknown>;
+            const args = (toolCall as unknown as { input: unknown }).input as Record<string, unknown>;
             
             // Record for loop detection
             callHistory.push({
@@ -155,13 +155,13 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
               argsHash: hashArgs(args),
             });
 
-            // Find matching result
-            const toolResults = event.toolResults as Array<{ toolCallId: string; result: unknown }> | undefined;
+            // Find matching result (v6: output instead of result)
+            const toolResults = event.toolResults as Array<{ toolCallId: string; output: unknown }> | undefined;
             const matchingResult = toolResults?.find(
               (r) => r.toolCallId === toolCall.toolCallId
             );
 
-            const resultValue = matchingResult?.result ?? null;
+            const resultValue = matchingResult?.output ?? null;
 
             const step: AgentStep = {
               index: stepIndex,
@@ -204,13 +204,13 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
     });
 
     // Race against timeout
-    const result = await Promise.race([generatePromise, timeoutPromise]) as GenerateTextResult<Record<string, CoreTool>, unknown>;
+    const result = await Promise.race([generatePromise, timeoutPromise]) as Awaited<typeof generatePromise>;
 
     // Calculate usage
     const usage = {
-      promptTokens: result.usage?.promptTokens ?? 0,
-      completionTokens: result.usage?.completionTokens ?? 0,
-      totalTokens: (result.usage?.promptTokens ?? 0) + (result.usage?.completionTokens ?? 0),
+      promptTokens: result.usage?.inputTokens ?? 0,
+      completionTokens: result.usage?.outputTokens ?? 0,
+      totalTokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
     };
 
     // Check cost budget

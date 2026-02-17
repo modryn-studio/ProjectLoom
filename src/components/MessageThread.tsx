@@ -4,13 +4,21 @@ import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from '
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight, FileText, RefreshCcw } from 'lucide-react';
 import { SimpleChatMarkdown } from './SimpleChatMarkdown';
-import type { Message as ChatMessage } from 'ai';
+import type { UIMessage } from 'ai';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useToast } from '@/stores/toast-store';
 import type { Conversation, InheritedContextEntry, Message, MessageAttachment } from '@/types';
+
+/** Extract text content from a UIMessage (v6 uses parts instead of content) */
+function getStreamingMessageText(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map(p => p.text)
+    .join('');
+}
 
 // =============================================================================
 // INHERITED FROM BANNER COMPONENT
@@ -130,7 +138,7 @@ interface WebSource {
 interface MessageThreadProps {
   conversation: Conversation;
   /** Messages from useChat hook during streaming */
-  streamingMessages?: ChatMessage[];
+  streamingMessages?: UIMessage[];
   /** Whether AI is currently streaming a response */
   isStreaming?: boolean;
   /** Notify parent of scroll container height changes */
@@ -180,7 +188,7 @@ export function MessageThread({
         // isStreaming hasn't flipped yet), just use conversation.content as-is
         if (
           lastContent?.role === 'assistant' &&
-          lastContent.content === lastStreaming.content
+          lastContent.content === getStreamingMessageText(lastStreaming)
         ) {
           return conversation.content;
         }
@@ -191,7 +199,7 @@ export function MessageThread({
           {
             id: lastStreaming.id ?? `streaming-${conversation.id}`,
             role: 'assistant' as const,
-            content: lastStreaming.content,
+            content: getStreamingMessageText(lastStreaming),
             timestamp: new Date(),
             metadata: { isStreaming: true },
           },
@@ -242,7 +250,7 @@ export function MessageThread({
   // Only track streaming content when actively streaming — when streaming ends,
   // lastStreamingContent changes to '', which should NOT trigger auto-scroll.
   const lastStreamingContent = isStreaming && streamingMessages.length > 0
-    ? streamingMessages[streamingMessages.length - 1]?.content ?? ''
+    ? getStreamingMessageText(streamingMessages[streamingMessages.length - 1])
     : '';
 
   useEffect(() => {

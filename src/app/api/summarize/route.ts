@@ -8,7 +8,6 @@
  */
 
 import { generateText } from 'ai';
-import type { LanguageModelV1 } from 'ai';
 import { createPerplexity } from '@ai-sdk/perplexity';
 import { getModelConfig } from '@/lib/model-configs';
 
@@ -185,7 +184,7 @@ export async function POST(req: Request): Promise<Response> {
     // Create provider model instance — all models route through Perplexity Agent API
     const providerType = detectProvider(model);
     const perplexity = createPerplexity({ apiKey });
-    const aiModel: LanguageModelV1 = perplexity(model) as unknown as LanguageModelV1;
+    const aiModel = perplexity(model);
 
     // Get per-model temperature
     const modelConfig = getModelConfig(model);
@@ -202,15 +201,15 @@ export async function POST(req: Request): Promise<Response> {
       model: aiModel,
       prompt: buildSummaryPrompt(messages, parentTitle),
       ...temperatureConfig,
-      maxTokens: 1000, // Summaries should be concise
+      maxOutputTokens: 1000, // Summaries should be concise
     });
 
     const response: SummarizeResponse = {
       summary: result.text,
       usage: {
-        promptTokens: result.usage?.promptTokens ?? 0,
-        completionTokens: result.usage?.completionTokens ?? 0,
-        totalTokens: result.usage?.totalTokens ?? 0,
+        promptTokens: result.usage?.inputTokens ?? 0,
+        completionTokens: result.usage?.outputTokens ?? 0,
+        totalTokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
       },
     };
 

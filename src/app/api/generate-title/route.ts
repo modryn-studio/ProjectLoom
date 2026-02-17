@@ -8,7 +8,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
-import type { LanguageModelV1 } from 'ai';
 import { createPerplexity } from '@ai-sdk/perplexity';
 import { getModelConfig } from '@/lib/model-configs';
 
@@ -101,20 +100,20 @@ Examples:
       : modelConfig.temperature;
 
     const result = await generateText({
-      model: perplexity(model) as unknown as LanguageModelV1,
+      model: perplexity(model),
       system: systemPrompt,
       prompt: userPrompt,
       temperature,
-      maxTokens: 20,
+      maxOutputTokens: 20,
     });
 
     let title = result.text?.trim() || '';
 
     // Extract usage data
     const usage = {
-      promptTokens: result.usage?.promptTokens ?? 0,
-      completionTokens: result.usage?.completionTokens ?? 0,
-      totalTokens: result.usage?.totalTokens ?? 0,
+      promptTokens: result.usage?.inputTokens ?? 0,
+      completionTokens: result.usage?.outputTokens ?? 0,
+      totalTokens: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
     };
 
     // Clean up title

@@ -64,7 +64,7 @@ export async function runBranchAgent(
   const tools = {
     createBranch: tool({
       description: 'Create a new branched conversation card. Returns a pending action for the user to confirm.',
-      parameters: z.object({
+      inputSchema: z.object({
         branchReason: z.string().describe('Short title for the branch card (under 50 chars)'),
         initialPrompt: z.string().describe('The first user message in this branch conversation'),
       }),

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
+import type { UIMessage } from 'ai';
 import { PanelRightClose } from 'lucide-react';
 
 import { colors, typography, spacing } from '@/lib/design-tokens';
@@ -26,6 +27,14 @@ import type { MessageAttachment } from '@/types';
 const MIN_PANEL_WIDTH = 400;
 const MAX_PANEL_WIDTH = 800;
 const KB_CONTEXT_MAX_CHARS = 5000;
+
+/** Extract text content from a UIMessage's parts array */
+function getMessageText(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map(p => p.text)
+    .join('');
+}
 
 // =============================================================================
 // CHAT PANEL COMPONENT
@@ -121,6 +130,9 @@ export function ChatPanel() {
 
   // Attachment state for vision
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  
+  // Local input state (managed externally from useChat in AI SDK v6)
+  const [input, setInput] = useState('');
 
   const [ragIndex, setRagIndex] = useState<RagIndex | null>(null);
 
@@ -212,19 +224,14 @@ export function ChatPanel() {
 
   const {
     messages: chatMessages,
-    input,
-    setInput,
-    append,
-    isLoading: isStreaming,
+    sendMessage,
+    status: chatStatus,
     stop,
     error: chatError,
     setMessages,
-    setData,
   } = useChat({
-    api: '/api/chat',
     id: activeConversationId || undefined,
-    body: chatBody,
-    onFinish: (message, options) => {
+    onFinish: ({ message }) => {
       // Get captured metadata from request start time (prevents race condition when switching cards)
       const metadata = streamingRequestMetadataRef.current;
       
@@ -242,59 +249,44 @@ export function ChatPanel() {
         setPendingAttachments([]);
         return;
       }
-      
-      // Extract web search metadata from message annotations
-      // (sent by the API route via createDataStreamResponse + writeMessageAnnotation)
-      type WebSearchAnnotation = {
-        webSearch?: {
-          used?: boolean;
-          sources?: Array<{ title: string; url: string; snippet?: string }>;
-        };
-      };
-      const annotations = (message.annotations ?? []) as WebSearchAnnotation[];
-      const searchAnnotation = annotations.find((a) => a.webSearch?.used);
-      const searchSources = searchAnnotation?.webSearch?.sources ?? [];
 
-      const webSearchMetadata = searchSources.length > 0 ? {
-        custom: {
-          webSearch: {
-            used: true,
-            sources: searchSources.map((s) => ({ title: s.title, url: s.url })),
-          },
-        },
-      } : undefined;
+      // Extract text content from UIMessage parts
+      const messageText = getMessageText(message);
 
       // Persist AI message to store using CAPTURED conversationId and model
-      addAIMessage(metadata.conversationId, message.content, metadata.model, webSearchMetadata);
+      addAIMessage(metadata.conversationId, messageText, metadata.model);
 
-      // Track usage if available
-      if (options?.usage) {
+      // Track usage from message metadata (sent by server via messageMetadata)
+      const msgMetadata = message.metadata as { usage?: { inputTokens: number; outputTokens: number } } | undefined;
+      const usage = msgMetadata?.usage;
+
+      if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0)) {
         console.log('[ChatPanel] Tracking usage:', {
           model: metadata.model,
           provider: detectProvider(metadata.model),
-          promptTokens: options.usage.promptTokens,
-          completionTokens: options.usage.completionTokens,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
           conversationId: metadata.conversationId,
         });
         addUsage({
           provider: detectProvider(metadata.model),
           model: metadata.model,
-          inputTokens: options.usage.promptTokens,
-          outputTokens: options.usage.completionTokens,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
           conversationId: metadata.conversationId,
           source: 'chat',
         });
       } else {
-        // Fallback: estimate tokens when SDK doesn't provide usage data (common in production Edge runtime)
-        const CHARS_PER_TOKEN = 4; // Rough estimate
-        const estimatedInputTokens = Math.ceil((message.content?.length || 0) / CHARS_PER_TOKEN);
-        const estimatedOutputTokens = Math.ceil((message.content?.length || 0) / CHARS_PER_TOKEN);
+        // Fallback: estimate tokens when SDK doesn't provide usage data
+        const CHARS_PER_TOKEN = 4;
+        const estimatedInputTokens = Math.ceil((messageText.length || 0) / CHARS_PER_TOKEN);
+        const estimatedOutputTokens = Math.ceil((messageText.length || 0) / CHARS_PER_TOKEN);
         
         console.warn('[ChatPanel] Usage data missing, using estimation:', {
           model: metadata.model,
           provider: detectProvider(metadata.model),
           conversationId: metadata.conversationId,
-          messageLength: message.content?.length || 0,
+          messageLength: messageText.length,
           estimatedInputTokens,
           estimatedOutputTokens,
         });
@@ -325,6 +317,9 @@ export function ChatPanel() {
       }
     },
   });
+
+  // Derived streaming state from chat status
+  const isStreaming = chatStatus === 'streaming' || chatStatus === 'submitted';
 
   const getRagQuery = useCallback((explicitMessage?: string) => {
     if (explicitMessage) return explicitMessage;
@@ -411,19 +406,16 @@ export function ChatPanel() {
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
 
-    setData([]);
-    
-    // Use append to programmatically add the message (doesn't rely on input field)
-    await append(
+    // Use sendMessage to programmatically add the message (doesn't rely on input field)
+    await sendMessage(
       {
-        role: 'user',
-        content: userMessage,
+        text: userMessage,
       },
       {
         body,
       }
     );
-  }, [input, setInput, buildCanvasContextPayload, chatBody, setData, append, isStreaming, activeConversationId, currentModel]);
+  }, [input, setInput, buildCanvasContextPayload, chatBody, sendMessage, isStreaming, activeConversationId, currentModel]);
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {
@@ -487,18 +479,15 @@ export function ChatPanel() {
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
     
-    setData([]);
-    
     // Update pendingAttachments state for UI consistency (but body already has them)
     if (messageAttachments.length > 0) {
       setPendingAttachments(messageAttachments);
     }
     
-    // Use append to re-send (this will trigger onFinish and add AI response)
-    await append(
+    // Use sendMessage to re-send (this will trigger onFinish and add AI response)
+    await sendMessage(
       {
-        role: 'user',
-        content: messageContent,
+        text: messageContent,
       },
       {
         body,
@@ -506,17 +495,17 @@ export function ChatPanel() {
     );
     
     console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
-  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, setData, append, setPendingAttachments]);
+  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments]);
 
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
     if (activeConversationId) {
       const storeMessages = getConversationMessages(activeConversationId);
-      // Convert to useChat format
+      // Convert to useChat UIMessage format (v6 uses parts instead of content)
       const formattedMessages = storeMessages.map((msg, idx) => ({
         id: `msg-${idx}`,
         role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
+        parts: [{ type: 'text' as const, text: msg.content }],
       }));
       setMessages(formattedMessages);
     } else {
@@ -535,7 +524,8 @@ export function ChatPanel() {
       const lastMessage = chatMessages[chatMessages.length - 1];
       
       // Check if it's an assistant message with content
-      if (lastMessage?.role === 'assistant' && lastMessage.content.trim()) {
+      const lastMessageText = lastMessage ? getMessageText(lastMessage) : '';
+      if (lastMessage?.role === 'assistant' && lastMessageText.trim()) {
         // Get captured metadata from request start time (prevents race condition)
         const metadata = streamingRequestMetadataRef.current;
         
@@ -551,7 +541,7 @@ export function ChatPanel() {
         
         // Only save if this message isn't already in the store (avoid duplicate saves)
         // Compare content to detect if it's a new/partial message
-        if (!lastStoreMessage || lastStoreMessage.content !== lastMessage.content) {
+        if (!lastStoreMessage || lastStoreMessage.content !== lastMessageText) {
           // Verify conversation still exists
           const conversations = useCanvasStore.getState().conversations;
           if (!conversations.get(metadata.conversationId)) {
@@ -565,10 +555,13 @@ export function ChatPanel() {
           // from tool invocations in message parts if available
           const partialSearchSources: Array<{ title: string; url: string }> = [];
           for (const part of lastMessage.parts ?? []) {
-            if (part.type !== 'tool-invocation') continue;
-            const invocation = part.toolInvocation as { toolName?: string; result?: { sources?: Array<{ title: string; url: string }> } };
-            if (invocation.toolName !== 'tavily_search') continue;
-            const sources = invocation.result?.sources;
+            // In v6, tool parts have type 'tool-<toolName>' with data directly on the part
+            if (!part.type.startsWith('tool-')) continue;
+            const toolName = part.type.substring(5); // Remove 'tool-' prefix
+            if (toolName !== 'tavily_search') continue;
+            const partAny = part as { state?: string; output?: { sources?: Array<{ title: string; url: string }> } };
+            if (partAny.state !== 'output') continue;
+            const sources = partAny.output?.sources;
             if (Array.isArray(sources)) {
               partialSearchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
             }
@@ -584,7 +577,7 @@ export function ChatPanel() {
           } : undefined;
           
           // Save partial message using CAPTURED values
-          addAIMessage(metadata.conversationId, lastMessage.content, metadata.model, partialWebSearchMetadata);
+          addAIMessage(metadata.conversationId, lastMessageText, metadata.model, partialWebSearchMetadata);
           
           // Don't clear metadata here - let onFinish/onError handle cleanup
           // This prevents race condition where metadata is cleared before onFinish gets it
