@@ -118,11 +118,11 @@ export function MessageInput({
       }
     }
     
-    // Auto-focus the textarea
-    if (textareaRef.current && !isStreaming) {
+    // Auto-focus the textarea on conversation change (not on streaming state change)
+    if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [conversationId, externalSetInput, isStreaming]);
+  }, [conversationId, externalSetInput]);
 
   // Auto-resize textarea based on content
   const adjustTextareaHeight = useCallback(() => {
