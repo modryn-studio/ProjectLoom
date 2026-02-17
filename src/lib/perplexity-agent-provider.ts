@@ -356,7 +356,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         let buffer = '';
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
-        let citations: Array<{ id: number; title: string; url: string; snippet?: string }> = [];
+        const citations: Array<{ id: number; title: string; url: string; snippet?: string }> = [];
 
         const textPartId = `text-${Date.now()}`;
 

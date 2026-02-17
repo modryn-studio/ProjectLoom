@@ -68,8 +68,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const provider = detectProvider(model);
-
     // Sonar is a web search model, not suitable for simple text generation
     // Fallback to Claude Haiku for title generation
     let titleModel = model;

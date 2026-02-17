@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, ChevronRight, FileText, RefreshCcw, Link2 } from 'lucide-react';
+import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, FileText, RefreshCcw, Link2 } from 'lucide-react';
 import { SimpleChatMarkdown } from './SimpleChatMarkdown';
 import type { UIMessage } from 'ai';
 

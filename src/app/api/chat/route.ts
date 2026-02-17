@@ -405,7 +405,7 @@ export async function POST(req: Request): Promise<Response> {
       // We accumulate text from text-delta parts and extract citations on finish.
       messageMetadata: (() => {
         let accumulatedText = '';
-        return ({ part }: { part: any }) => {
+        return ({ part }: { part: { type: string; text?: string; totalUsage?: { inputTokens?: number; outputTokens?: number } } }) => {
         const metadata: Record<string, unknown> = {};
 
         // Accumulate text from text-delta parts
@@ -415,8 +415,8 @@ export async function POST(req: Request): Promise<Response> {
 
         if (part.type === 'finish') {
           const usage = {
-            inputTokens: part.totalUsage.inputTokens ?? 0,
-            outputTokens: part.totalUsage.outputTokens ?? 0,
+            inputTokens: part.totalUsage?.inputTokens ?? 0,
+            outputTokens: part.totalUsage?.outputTokens ?? 0,
           };
           console.log('[chat/route] Sending usage metadata:', usage);
           metadata.usage = usage;
