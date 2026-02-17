@@ -8,7 +8,7 @@
  */
 
 import { generateText } from 'ai';
-import { createPerplexity } from '@ai-sdk/perplexity';
+import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -183,7 +183,7 @@ export async function POST(req: Request): Promise<Response> {
 
     // Create provider model instance — all models route through Perplexity Agent API
     const providerType = detectProvider(model);
-    const perplexity = createPerplexity({ apiKey });
+    const perplexity = createPerplexityAgent({ apiKey });
     const aiModel = perplexity(model);
 
     // Get per-model temperature

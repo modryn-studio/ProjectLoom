@@ -12,7 +12,7 @@
 export const runtime = 'edge';
 
 import { streamText } from 'ai';
-import { createPerplexity } from '@ai-sdk/perplexity';
+import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -206,7 +206,7 @@ export async function POST(req: Request): Promise<Response> {
     const providerType = detectProvider(model);
     
     // All models route through Perplexity Agent API
-    const perplexity = createPerplexity({ apiKey });
+    const perplexity = createPerplexityAgent({ apiKey });
     const aiModel = perplexity(model);
 
     // Build messages for AI SDK, handling both text and image attachments

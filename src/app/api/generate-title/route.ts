@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
-import { createPerplexity } from '@ai-sdk/perplexity';
+import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
 import { getModelConfig } from '@/lib/model-configs';
 
 export const runtime = 'edge';
@@ -91,7 +91,7 @@ Examples:
       : `USER: ${userMessage.slice(0, 500)}\n\nGenerate a concise title (3-5 words):`;
 
     // All models route through Perplexity Agent API
-    const perplexity = createPerplexity({ apiKey });
+    const perplexity = createPerplexityAgent({ apiKey });
     const modelConfig = getModelConfig(model);
 
     // GPT-5 Mini only supports temperature: 1

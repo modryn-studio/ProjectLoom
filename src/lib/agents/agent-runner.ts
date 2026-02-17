@@ -15,7 +15,7 @@
 
 import { generateText, type ToolSet, stepCountIs } from 'ai';
 import type { LanguageModel } from 'ai';
-import { createPerplexity } from '@ai-sdk/perplexity';
+import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
 import { nanoid } from 'nanoid';
 
 import { estimateCost, detectProvider } from '@/lib/vercel-ai-integration';
@@ -36,7 +36,7 @@ import type {
  * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-5', etc.
  */
 function createModel(modelId: string, apiKey: string): LanguageModel {
-  const provider = createPerplexity({ apiKey });
+  const provider = createPerplexityAgent({ apiKey });
   return provider(modelId);
 }
 
