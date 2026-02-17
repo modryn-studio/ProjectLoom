@@ -113,9 +113,9 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '2M context. Largest context window available.',
   },
 
-  // Perplexity Sonar Models (native, built-in web search)
+  // Perplexity Sonar Model (native, built-in web search)
   {
-    id: 'sonar',
+    id: 'perplexity/sonar',
     name: 'Sonar',
     provider: 'perplexity',
     maxTokens: 128000,
@@ -123,29 +123,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsVision: false,
     costTier: 'low',
     hasWebSearch: true,
-    description: '128K context. Fast with built-in web search.',
-  },
-  {
-    id: 'sonar-pro',
-    name: 'Sonar Pro',
-    provider: 'perplexity',
-    maxTokens: 200000,
-    supportsStreaming: true,
-    supportsVision: false,
-    costTier: 'medium',
-    hasWebSearch: true,
-    description: '200K context. Enhanced search with 2x more citations.',
-  },
-  {
-    id: 'sonar-reasoning-pro',
-    name: 'Sonar Reasoning Pro',
-    provider: 'perplexity',
-    maxTokens: 200000,
-    supportsStreaming: true,
-    supportsVision: false,
-    costTier: 'high',
-    hasWebSearch: true,
-    description: '200K context. Deep reasoning with real-time web data.',
+    description: 'Real-time web search with AI synthesis.',
   },
 ];
 
@@ -188,11 +166,12 @@ export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google' | 'p
  * Sonar models are native Perplexity and use bare names.
  */
 export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'google' | 'perplexity' {
-  // Prefixed format: 'anthropic/claude-...', 'openai/gpt-...', 'google/gemini-...'
+  // Prefixed format: 'anthropic/claude-...', 'openai/gpt-...', 'google/gemini-...', 'perplexity/sonar'
   if (modelId.startsWith('anthropic/')) return 'anthropic';
   if (modelId.startsWith('openai/')) return 'openai';
   if (modelId.startsWith('google/')) return 'google';
-  // Sonar models are native Perplexity (bare name)
+  if (modelId.startsWith('perplexity/')) return 'perplexity';
+  // Sonar models are native Perplexity (bare name - legacy)
   if (modelId.startsWith('sonar')) return 'perplexity';
   // Legacy bare model IDs (backwards compat)
   if (modelId.startsWith('claude')) return 'anthropic';
@@ -307,10 +286,8 @@ export const MODEL_PRICING = {
   'google/gemini-2.5-flash': { input: 0.30, output: 2.50 },
   'google/gemini-3-flash-preview': { input: 0.50, output: 3.00 },
 
-  // Perplexity Sonar (native — built-in web search, +$0.005/search not included)
-  'sonar': { input: 1, output: 1 },
-  'sonar-pro': { input: 3, output: 15 },
-  'sonar-reasoning-pro': { input: 2, output: 8 },
+  // Perplexity Sonar (native — built-in web search)
+  'perplexity/sonar': { input: 0.25, output: 2.50 },
 } as const;
 
 const DEFAULT_PRICING = { input: 3, output: 15 };

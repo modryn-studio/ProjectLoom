@@ -457,18 +457,20 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
         });
 
         setUploadingFiles((prev) => prev.filter((entry) => entry.id !== uploadId));
-        setFiles((prev) => {
-          const updatedFiles = [...prev, meta];
-          updateContext({ knowledgeBaseFiles: updatedFiles });
-          return updatedFiles;
-        });
+        
+        // Update local state first
+        const updatedFiles = [...files, meta];
+        setFiles(updatedFiles);
+        
+        // Then update store (must be separate, not inside setState callback)
+        updateContext({ knowledgeBaseFiles: updatedFiles });
       }
     } catch (err) {
       console.error('[CanvasContextModal] Failed to upload KB files', err);
       setError('Could not upload knowledge base files.');
       setUploadingFiles([]);
     }
-  }, [activeWorkspaceId, updateContext, validateFiles]);
+  }, [activeWorkspaceId, updateContext, validateFiles, files]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const incoming = Array.from(e.target.files || []);

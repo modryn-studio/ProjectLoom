@@ -191,7 +191,8 @@ export function ChatPanel() {
         safeSetRagIndex(attachEmbeddings(baseIndex, embeddings, EMBEDDING_MODEL_NAME));
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
-        console.error('[ChatPanel] Failed to build embedding index, falling back to TF-IDF', err);
+        console.warn('[ChatPanel] Semantic embeddings unavailable, using keyword-based search instead');
+        console.debug('[ChatPanel] Embedding error:', err);
         safeSetRagIndex(baseIndex);
       }
     }
@@ -232,6 +233,12 @@ export function ChatPanel() {
   } = useChat({
     id: activeConversationId || undefined,
     onFinish: ({ message }) => {
+      console.log('[ChatPanel] onFinish called', { 
+        messageId: message.id, 
+        hasMetadata: !!message.metadata,
+        metadata: message.metadata 
+      });
+      
       // Get captured metadata from request start time (prevents race condition when switching cards)
       const metadata = streamingRequestMetadataRef.current;
       
@@ -333,38 +340,76 @@ export function ChatPanel() {
 
   const buildCanvasContextPayload = useCallback(async (explicitMessage?: string) => {
     const instructions = activeWorkspace?.context?.instructions?.trim() || '';
+    
+    console.log('[ChatPanel] buildCanvasContextPayload called', { 
+      hasInstructions: !!instructions, 
+      hasRagIndex: !!ragIndex,
+      ragIndexChunks: ragIndex?.chunks.length || 0
+    });
+    
+    // If no knowledge base files, just return instructions
     if (!ragIndex) {
       return instructions ? { instructions } : null;
     }
 
+    // Always include knowledge base file listing so AI knows what's available
+    const kbFilesList = ragIndex.chunks
+      .map((chunk) => chunk.fileName)
+      .filter((name, idx, arr) => arr.indexOf(name) === idx) // unique names
+      .join(', ');
+    
+    let knowledgeBaseContent = '';
+    
+    // Try to retrieve relevant content via RAG
     const query = getRagQuery(explicitMessage);
-    if (!query) {
-      return instructions ? { instructions } : null;
-    }
+    if (query) {
+      let queryEmbedding: number[] | undefined;
+      if (ragIndex.embeddings?.length) {
+        try {
+          queryEmbedding = await embedQuery(query);
+        } catch (err) {
+          console.warn('[ChatPanel] Query embedding unavailable, using keyword matching');
+          console.debug('[ChatPanel] Embedding error:', err);
+        }
+      }
 
-    let queryEmbedding: number[] | undefined;
-    if (ragIndex.embeddings?.length) {
-      try {
-        queryEmbedding = await embedQuery(query);
-      } catch (err) {
-        console.error('[ChatPanel] Failed to embed query, falling back to TF-IDF', err);
+      const ragContext = buildKnowledgeBaseContext(
+        ragIndex,
+        query,
+        { maxChars: KB_CONTEXT_MAX_CHARS },
+        queryEmbedding
+      );
+      
+      if (ragContext?.text?.trim()) {
+        knowledgeBaseContent = ragContext.text.trim();
+      }
+    }
+    
+    // Build knowledge base section with file listing and optional retrieved content
+    let knowledgeBase = '';
+    if (kbFilesList) {
+      knowledgeBase = `Available files: ${kbFilesList}`;
+      if (knowledgeBaseContent) {
+        knowledgeBase += `\n\n---\n\nRelevant excerpts:\n\n${knowledgeBaseContent}`;
       }
     }
 
-    const ragContext = buildKnowledgeBaseContext(
-      ragIndex,
-      query,
-      { maxChars: KB_CONTEXT_MAX_CHARS },
-      queryEmbedding
-    );
-    const knowledgeBase = ragContext?.text?.trim() || '';
-
     if (!instructions && !knowledgeBase) return null;
 
-    return {
+    const payload = {
       instructions: instructions || undefined,
       knowledgeBase: knowledgeBase || undefined,
     };
+    
+    console.log('[ChatPanel] buildCanvasContextPayload result:', {
+      hasInstructions: !!payload.instructions,
+      instructionsLength: payload.instructions?.length || 0,
+      hasKnowledgeBase: !!payload.knowledgeBase,
+      knowledgeBaseLength: payload.knowledgeBase?.length || 0,
+      knowledgeBasePreview: payload.knowledgeBase?.substring(0, 100)
+    });
+    
+    return payload;
   }, [activeWorkspace, ragIndex, getRagQuery]);
 
   // Handle message submission
@@ -400,11 +445,15 @@ export function ChatPanel() {
 
     // Build canvas context (pass explicit message since input is now cleared)
     const canvasContextPayload = await buildCanvasContextPayload(userMessage);
+    
+    console.log('[ChatPanel] Canvas context payload:', canvasContextPayload);
 
     const body = {
       ...chatBody,
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
+    
+    console.log('[ChatPanel] Request body:', body);
 
     // Use sendMessage to programmatically add the message (doesn't rely on input field)
     await sendMessage(

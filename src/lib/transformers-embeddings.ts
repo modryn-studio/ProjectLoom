@@ -69,36 +69,43 @@ export async function getEmbeddingPipeline(
 async function initializePipeline(
   onProgress?: EmbeddingProgressCallback
 ): Promise<EmbeddingPipeline> {
-  // Dynamic import to avoid SSR issues (this module is browser-only)
-  const { pipeline, env } = await import('@huggingface/transformers');
+  try {
+    // Dynamic import to avoid SSR issues (this module is browser-only)
+    const { pipeline, env } = await import('@huggingface/transformers');
 
-  // Disable local model check — always fetch from HF Hub / browser cache
-  env.allowLocalModels = false;
+    // Disable local model check — always fetch from HF Hub / browser cache
+    env.allowLocalModels = false;
 
-  const extractor = await pipeline(
-    'feature-extraction',
-    EMBEDDING_MODEL_ID,
-    {
-      dtype: 'q8' as never,          // quantized for smaller download + faster inference
-      progress_callback: onProgress
-        ? (data: EmbeddingProgress) => {
-            onProgress(data);
-          }
-        : undefined,
-    }
-  );
+    const extractor = await pipeline(
+      'feature-extraction',
+      EMBEDDING_MODEL_ID,
+      {
+        dtype: 'q8' as never,          // quantized for smaller download + faster inference
+        progress_callback: onProgress
+          ? (data: EmbeddingProgress) => {
+              onProgress(data);
+            }
+          : undefined,
+      }
+    );
 
-  // Wrap the pipeline to match our typed API
-  return async (
-    texts: string[],
-    options?: { pooling?: string; normalize?: boolean }
-  ) => {
-    const result = await extractor(texts, {
-      pooling: (options?.pooling ?? 'mean') as never,
-      normalize: options?.normalize ?? true,
-    });
-    return result as unknown as { tolist: () => number[][] };
-  };
+    // Wrap the pipeline to match our typed API
+    return async (
+      texts: string[],
+      options?: { pooling?: string; normalize?: boolean }
+    ) => {
+      const result = await extractor(texts, {
+        pooling: (options?.pooling ?? 'mean') as never,
+        normalize: options?.normalize ?? true,
+      });
+      return result as unknown as { tolist: () => number[][] };
+    };
+  } catch (err) {
+    console.warn('[transformers-embeddings] Failed to load semantic embedding model, falling back to keyword search.');
+    console.debug('[transformers-embeddings] Error details:', err);
+    // Re-throw so caller can catch and use TF-IDF fallback
+    throw err;
+  }
 }
 
 /**

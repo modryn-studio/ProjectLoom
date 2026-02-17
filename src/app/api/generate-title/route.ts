@@ -70,6 +70,14 @@ export async function POST(request: NextRequest) {
 
     const provider = detectProvider(model);
 
+    // Sonar is a web search model, not suitable for simple text generation
+    // Fallback to Claude Haiku for title generation
+    let titleModel = model;
+    if (model === 'perplexity/sonar' || model.includes('sonar')) {
+      titleModel = 'anthropic/claude-haiku-4-5';
+      console.log('[Generate Title API] Sonar detected, falling back to Claude Haiku for title generation');
+    }
+
     // Build prompt for title generation
     const systemPrompt = `You are a title generator. Given a conversation between a user and assistant, generate a concise, descriptive title.
 
@@ -92,15 +100,16 @@ Examples:
 
     // All models route through Perplexity Agent API
     const perplexity = createPerplexityAgent({ apiKey });
-    const modelConfig = getModelConfig(model);
+    const modelConfig = getModelConfig(titleModel);
 
     // GPT-5 Mini only supports temperature: 1
-    const temperature = (provider === 'openai' && model === 'openai/gpt-5-mini')
+    const titleProvider = detectProvider(titleModel);
+    const temperature = (titleProvider === 'openai' && titleModel === 'openai/gpt-5-mini')
       ? 1
       : modelConfig.temperature;
 
     const result = await generateText({
-      model: perplexity(model),
+      model: perplexity(titleModel),
       system: systemPrompt,
       prompt: userPrompt,
       temperature,
@@ -135,8 +144,9 @@ Examples:
     }
 
     console.log('[Generate Title API] ✅ Generated title:', {
-      provider,
-      model,
+      requestedModel: model,
+      actualModel: titleModel,
+      provider: titleProvider,
       title,
       titleLength: title.length,
       usage,

@@ -26,6 +26,7 @@ interface PerplexityAgentRequestBody {
   max_output_tokens?: number;
   temperature?: number;
   stream?: boolean;
+  tools?: Array<{ type: string; user_location?: { latitude: number; longitude: number; country?: string; city?: string; region?: string } }>;
 }
 
 interface PerplexityAgentResponse {
@@ -41,6 +42,23 @@ interface PerplexityAgentResponse {
     content: Array<{
       type: 'output_text';
       text: string;
+      annotations?: Array<{
+        start_index: number;
+        end_index: number;
+        title: string;
+        url: string;
+        type?: string;
+      }>;
+    }>;
+  } | {
+    type: 'search_results';
+    results: Array<{
+      id: number;
+      title: string;
+      url: string;
+      snippet?: string;
+      date?: string;
+      source?: string;
     }>;
   }>;
   usage?: {
@@ -71,16 +89,17 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
       async doGenerate(options: LanguageModelV3CallOptions) {
         const { prompt, ...settings } = options;
         
-        // Convert Vercel AI SDK messages to Perplexity Agent API format
+        // Extract system messages for the instructions field
+        // and convert remaining messages to Perplexity Agent API format
+        const systemParts: string[] = [];
+        const messages: PerplexityAgentMessage[] = [];
+        
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => {
-          // System messages have content as string in V3, others have array
+        for (const msg of prompt as any[]) {
           if (msg.role === 'system') {
-            return {
-              type: 'message' as const,
-              role: 'system' as const,
-              content: msg.content,
-            };
+            // Collect system messages for the top-level instructions field
+            systemParts.push(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
+            continue;
           }
 
           // User/assistant messages have content as array
@@ -100,28 +119,50 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           }).filter(Boolean);
 
           // If only text parts, join into a single string. Otherwise, keep as array for multimodal.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const hasNonText = contentParts.some((p: any) => !p._isText);
           const content = hasNonText 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ? contentParts.map((p: any) => {
                 const { _isText, ...rest } = p;
                 return _isText ? { type: 'text', text: rest.text } : rest;
               })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             : contentParts.map((p: any) => p.text).join('');
 
-          return {
+          // Skip messages with empty content (API validation requires non-empty content)
+          const isEmpty = Array.isArray(content) ? content.length === 0 : content === '';
+          if (isEmpty) {
+            console.warn('[perplexity-agent] Skipping message with empty content at index', messages.length);
+            continue;
+          }
+
+          messages.push({
             type: 'message' as const,
             role: msg.role as 'user' | 'assistant',
             content,
-          };
-        });
+          });
+        }
+
+        // Use the top-level instructions field for system content
+        const instructions = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
 
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
+          ...(instructions ? { instructions } : {}),
           max_output_tokens: settings.maxOutputTokens,
           temperature: settings.temperature,
           stream: false,
+          tools: [{ type: 'web_search' }],
         };
+
+        console.log('[perplexity-agent] Generate request:', {
+          model: modelId,
+          messageCount: messages.length,
+          hasInstructions: !!instructions,
+          instructionsPreview: instructions?.substring(0, 200),
+        });
 
         const response = await fetch(`${baseURL}/v1/responses`, {
           method: 'POST',
@@ -143,6 +184,10 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           throw new Error(data.error?.message || 'Unknown error from Perplexity Agent API');
         }
 
+        if (!data.output || !Array.isArray(data.output)) {
+          throw new Error('Invalid response format: missing output array');
+        }
+
         const textContent = data.output
           .filter((item) => item.type === 'message')
           .flatMap((item) => item.content)
@@ -150,8 +195,45 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           .map((content) => content.text)
           .join('');
 
+        // Extract citations from output (both search_results and annotations)
+        const citations: Array<{ title: string; url: string }> = [];
+        const seenUrls = new Set<string>();
+        
+        for (const item of data.output) {
+          // Extract from search_results items
+          if (item.type === 'search_results') {
+            for (const result of item.results) {
+              if (!seenUrls.has(result.url)) {
+                citations.push({ title: result.title, url: result.url });
+                seenUrls.add(result.url);
+              }
+            }
+          }
+          // Extract from annotations within message content
+          else if (item.type === 'message') {
+            for (const content of item.content) {
+              if (content.annotations) {
+                for (const annotation of content.annotations) {
+                  if (!seenUrls.has(annotation.url)) {
+                    citations.push({ title: annotation.title, url: annotation.url });
+                    seenUrls.add(annotation.url);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Append citations to text
+        let finalText = textContent;
+        if (citations.length > 0) {
+          const citationText = '\n\n---\n\n**Sources:**\n\n' + 
+            citations.map((c, i) => `${i + 1}. [${c.title}](${c.url})`).join('\n');
+          finalText += citationText;
+        }
+
         return {
-          content: [{ type: 'text', text: textContent }],
+          content: [{ type: 'text', text: finalText }],
           finishReason: { unified: 'stop' as const, raw: 'stop' },
           usage: {
             inputTokens: { total: data.usage?.input_tokens || 0, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
@@ -174,16 +256,17 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
       async doStream(options: LanguageModelV3CallOptions) {
         const { prompt, ...settings } = options;
         
-        // Convert Vercel AI SDK messages to Perplexity Agent API format
+        // Extract system messages for the instructions field
+        // and convert remaining messages to Perplexity Agent API format
+        const systemParts: string[] = [];
+        const messages: PerplexityAgentMessage[] = [];
+        
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => {
-          // System messages have content as string in V3, others have array
+        for (const msg of prompt as any[]) {
           if (msg.role === 'system') {
-            return {
-              type: 'message' as const,
-              role: 'system' as const,
-              content: msg.content,
-            };
+            // Collect system messages for the top-level instructions field
+            systemParts.push(typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content));
+            continue;
           }
 
           // User/assistant messages have content as array
@@ -203,28 +286,51 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           }).filter(Boolean);
 
           // If only text parts, join into a single string. Otherwise, keep as array for multimodal.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const hasNonText = contentParts.some((p: any) => !p._isText);
           const content = hasNonText 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ? contentParts.map((p: any) => {
                 const { _isText, ...rest } = p;
                 return _isText ? { type: 'text', text: rest.text } : rest;
               })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             : contentParts.map((p: any) => p.text).join('');
 
-          return {
+          // Skip messages with empty content (API validation requires non-empty content)
+          const isEmpty = Array.isArray(content) ? content.length === 0 : content === '';
+          if (isEmpty) {
+            console.warn('[perplexity-agent] Skipping message with empty content at index', messages.length);
+            continue;
+          }
+
+          messages.push({
             type: 'message' as const,
             role: msg.role as 'user' | 'assistant',
             content,
-          };
-        });
+          });
+        }
+
+        // Use the top-level instructions field for system content
+        const instructions = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
 
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
+          ...(instructions ? { instructions } : {}),
           max_output_tokens: settings.maxOutputTokens,
           temperature: settings.temperature,
           stream: true,
+          tools: [{ type: 'web_search' }],
         };
+
+        console.log('[perplexity-agent] Stream request:', {
+          model: modelId,
+          messageCount: messages.length,
+          hasInstructions: !!instructions,
+          instructionsLength: instructions?.length || 0,
+          instructionsPreview: instructions?.substring(0, 200),
+        });
 
         const response = await fetch(`${baseURL}/v1/responses`, {
           method: 'POST',
@@ -249,6 +355,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         let buffer = '';
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
+        let citations: Array<{ id: number; title: string; url: string; snippet?: string }> = [];
 
         const textPartId = `text-${Date.now()}`;
 
@@ -275,8 +382,14 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                     try {
                       const parsed = JSON.parse(data);
 
-                      // Handle delta events
-                      if (parsed.type === 'response.output_text.delta') {
+                      // Check for errors
+                      if (parsed.error) {
+                        console.error('[perplexity-agent] API error in stream:', parsed.error);
+                        throw new Error(`Perplexity Agent API error: ${JSON.stringify(parsed.error)}`);
+                      }
+
+                      // Handle delta events - check multiple possible formats
+                      if (parsed.type === 'response.output_text.delta' || parsed.type === 'content.delta' || parsed.delta) {
                         // V3 protocol requires text-start before any text-delta
                         if (!textStartSent) {
                           controller.enqueue({
@@ -286,17 +399,59 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                           textStartSent = true;
                         }
 
-                        controller.enqueue({
-                          type: 'text-delta' as const,
-                          id: textPartId,
-                          delta: parsed.delta || '',
-                        });
+                        const deltaText = parsed.delta || parsed.text || '';
+                        if (deltaText) {
+                          controller.enqueue({
+                            type: 'text-delta' as const,
+                            id: textPartId,
+                            delta: deltaText,
+                          });
+                        }
                       }
 
-                      // Handle completion event
-                      if (parsed.type === 'response.completed') {
-                        totalInputTokens = parsed.response?.usage?.input_tokens || 0;
-                        totalOutputTokens = parsed.response?.usage?.output_tokens || 0;
+                      // Handle completion event - check multiple possible formats
+                      if (parsed.type === 'response.completed' || parsed.type === 'done' || parsed.finish_reason) {
+                        totalInputTokens = parsed.response?.usage?.input_tokens || parsed.usage?.input_tokens || 0;
+                        totalOutputTokens = parsed.response?.usage?.output_tokens || parsed.usage?.output_tokens || 0;
+                        
+                        // Extract citations from output array (both search_results and annotations)
+                        if (parsed.response?.output && Array.isArray(parsed.response.output)) {
+                          const seenUrls = new Set<string>();
+                          
+                          for (const item of parsed.response.output) {
+                            // Extract from search_results items
+                            if (item.type === 'search_results' && item.results) {
+                              for (const result of item.results) {
+                                if (!seenUrls.has(result.url)) {
+                                  citations.push({
+                                    id: result.id,
+                                    title: result.title,
+                                    url: result.url,
+                                    snippet: result.snippet,
+                                  });
+                                  seenUrls.add(result.url);
+                                }
+                              }
+                            }
+                            // Extract from annotations within message content
+                            else if (item.type === 'message' && item.content) {
+                              for (const content of item.content) {
+                                if (content.annotations) {
+                                  for (const annotation of content.annotations) {
+                                    if (!seenUrls.has(annotation.url)) {
+                                      citations.push({
+                                        id: citations.length + 1,
+                                        title: annotation.title,
+                                        url: annotation.url,
+                                      });
+                                      seenUrls.add(annotation.url);
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
                       }
                     } catch (e) {
                       console.warn('[PerplexityAgent] Failed to parse SSE event:', e);
@@ -306,6 +461,18 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
                 // Close the text part if we opened one
                 if (textStartSent) {
+                  // Append citations as markdown if available
+                  if (citations.length > 0) {
+                    const citationText = '\n\n---\n\n**Sources:**\n\n' + 
+                      citations.map((c, i) => `${i + 1}. [${c.title}](${c.url})`).join('\n');
+                    
+                    controller.enqueue({
+                      type: 'text-delta' as const,
+                      id: textPartId,
+                      delta: citationText,
+                    });
+                  }
+                  
                   controller.enqueue({
                     type: 'text-end' as const,
                     id: textPartId,

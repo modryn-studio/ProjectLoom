@@ -173,6 +173,17 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
     const { messages, model, apiKey, attachments, canvasContext } = body;
+    
+    console.log('[chat/route] Request received:', {
+      model,
+      messageCount: messages?.length || 0,
+      hasCanvasContext: !!canvasContext,
+      canvasContextKeys: canvasContext ? Object.keys(canvasContext) : [],
+      hasInstructions: !!canvasContext?.instructions,
+      hasKnowledgeBase: !!canvasContext?.knowledgeBase,
+      instructionsPreview: canvasContext?.instructions?.substring(0, 50),
+      knowledgeBasePreview: canvasContext?.knowledgeBase?.substring(0, 100)
+    });
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -236,7 +247,13 @@ export async function POST(req: Request): Promise<Response> {
           if (att.url.startsWith('data:')) {
             const base64Data = att.url.split(',')[1];
             if (base64Data) {
-              const textContent = decodeURIComponent(escape(atob(base64Data)));
+              // Properly decode base64 with Unicode support
+              const binaryString = atob(base64Data);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              const textContent = new TextDecoder('utf-8').decode(bytes);
               textParts.push(`[Attached file: ${att.name}]\n\n${textContent}`);
             }
           }
@@ -258,14 +275,21 @@ export async function POST(req: Request): Promise<Response> {
     const modelInfo = getModelById(model);
     if (modelInfo) {
       systemMessageParts.push(`You are ${modelInfo.name} (model ID: ${model}), ${modelInfo.description}`);
+      console.log('[chat/route] Model identity injected:', { model, name: modelInfo.name });
+    } else {
+      console.warn('[chat/route] Model not found in registry:', model);
     }
     
     // Add canvas context to system prompt
     if (canvasContext?.instructions?.trim()) {
-      systemMessageParts.push(`[Workspace Instructions]\n\n${canvasContext.instructions.trim()}`);
+      systemMessageParts.push(`## Workspace Instructions\n\n${canvasContext.instructions.trim()}`);
+      console.log('[chat/route] Instructions added, length:', canvasContext.instructions.length);
     }
     if (canvasContext?.knowledgeBase?.trim()) {
-      systemMessageParts.push(`[Knowledge Base]\n\n${canvasContext.knowledgeBase.trim()}`);
+      systemMessageParts.push(`## Knowledge Base Context\n\nYou have been provided with the following workspace files and content. These files ARE available to you - reference them directly in your responses:\n\n${canvasContext.knowledgeBase.trim()}`);
+      console.log('[chat/route] Knowledge base content added, length:', canvasContext.knowledgeBase.length);
+    } else {
+      console.log('[chat/route] No knowledge base content in request');
     }
 
     // Extract system messages from conversation and only keep user/assistant messages
@@ -332,8 +356,11 @@ export async function POST(req: Request): Promise<Response> {
     // Combine all system messages into ONE system prompt
     // This ensures Anthropic compatibility (requires single system parameter)
     const combinedSystemPrompt = systemMessageParts.length > 0
-      ? systemMessageParts.join('\n\n---\n\n')
+      ? systemMessageParts.join('\n\n')
       : modelConfig.systemPrompt;
+
+    console.log('[chat/route] Final system prompt length:', combinedSystemPrompt?.length || 0);
+    console.log('[chat/route] System prompt preview:', combinedSystemPrompt?.substring(0, 200) || 'none');
 
     // Token config — use maxTokens uniformly through Perplexity gateway
     const tokenConfig = { maxOutputTokens: modelConfig.maxTokens };
@@ -376,12 +403,12 @@ export async function POST(req: Request): Promise<Response> {
       // Send usage data as message metadata so the client can track costs
       messageMetadata: ({ part }) => {
         if (part.type === 'finish') {
-          return {
-            usage: {
-              inputTokens: part.totalUsage.inputTokens ?? 0,
-              outputTokens: part.totalUsage.outputTokens ?? 0,
-            },
+          const usage = {
+            inputTokens: part.totalUsage.inputTokens ?? 0,
+            outputTokens: part.totalUsage.outputTokens ?? 0,
           };
+          console.log('[chat/route] Sending usage metadata:', usage);
+          return { usage };
         }
         return undefined;
       },

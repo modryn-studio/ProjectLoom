@@ -70,6 +70,17 @@ interface UsageState {
 // =============================================================================
 
 export function formatUsd(value: number): string {
+  // For very small amounts (< $0.01), show more decimal places
+  if (value > 0 && value < 0.01) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 4,
+    }).format(value);
+  }
+  
+  // For larger amounts, use standard 2 decimal places
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
