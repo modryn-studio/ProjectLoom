@@ -400,9 +400,18 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     return result.toUIMessageStreamResponse({
-      // Extract and pass citations via metadata for dropdown UI display
-      messageMetadata: ({ message, part }) => {
+      // Extract and pass citations via metadata for dropdown UI display.
+      // Note: messageMetadata only receives { part }, not { message }.
+      // We accumulate text from text-delta parts and extract citations on finish.
+      messageMetadata: (() => {
+        let accumulatedText = '';
+        return ({ part }: { part: any }) => {
         const metadata: Record<string, unknown> = {};
+
+        // Accumulate text from text-delta parts
+        if (part.type === 'text-delta' && typeof part.textDelta === 'string') {
+          accumulatedText += part.textDelta;
+        }
 
         if (part.type === 'finish') {
           const usage = {
@@ -412,23 +421,11 @@ export async function POST(req: Request): Promise<Response> {
           console.log('[chat/route] Sending usage metadata:', usage);
           metadata.usage = usage;
 
-          // Guard: Ensure message and content exist before extraction
-          if (!message || !message.content) {
-            return Object.keys(metadata).length > 0 ? metadata : undefined;
-          }
-
-          // Extract citations from message text (markdown format from Sonar)
+          // Extract citations from accumulated text (markdown format from Sonar)
           // Only extract links that appear after the "---\n\n**Sources:**" section
           // to avoid treating normal user markdown links as citations
-          const messageText = message.content
-            .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-            .map(p => p.text)
-            .join('');
-
-          // Check if there's a Sources section
-          const sourcesMatch = messageText.match(/\n\n---\n\n\*\*Sources:\*\*\n\n([\s\S]+)$/);
+          const sourcesMatch = accumulatedText.match(/\n\n---\n\n\*\*Sources:\*\*\n\n([\s\S]+)$/);
           if (sourcesMatch && sourcesMatch[1]) {
-            // Extract only links from the Sources section
             const sourcesSection = sourcesMatch[1];
             const citationMatches = sourcesSection.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g);
             
@@ -453,7 +450,8 @@ export async function POST(req: Request): Promise<Response> {
         }
 
         return Object.keys(metadata).length > 0 ? metadata : undefined;
-      },
+        };
+      })(),
       onError: (error) => {
         console.error('[Chat API Stream Error]', error);
         return error instanceof Error ? error.message : 'An error occurred';
