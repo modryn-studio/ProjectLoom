@@ -73,23 +73,37 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         
         // Convert Vercel AI SDK messages to Perplexity Agent API format
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => ({
-          type: 'message' as const,
-          role: msg.role as 'system' | 'user' | 'assistant',
+        const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          content: msg.content.map((part: any) => {
+          const contentParts = msg.content.map((part: any) => {
             if (part.type === 'text') {
-              return part.text;
+              return { _isText: true, text: part.text };
             } else if (part.type === 'image') {
               return {
+                _isText: false,
                 type: 'image',
                 image: part.image.toString(),
                 mimeType: part.mimeType,
               };
             }
-            return '';
-          }).filter(Boolean).join(''),
-        }));
+            return null;
+          }).filter(Boolean);
+
+          // If only text parts, join into a single string. Otherwise, keep as array for multimodal.
+          const hasNonText = contentParts.some((p: any) => !p._isText);
+          const content = hasNonText 
+            ? contentParts.map((p: any) => {
+                const { _isText, ...rest } = p;
+                return _isText ? { type: 'text', text: rest.text } : rest;
+              })
+            : contentParts.map((p: any) => p.text).join('');
+
+          return {
+            type: 'message' as const,
+            role: msg.role as 'system' | 'user' | 'assistant',
+            content,
+          };
+        });
 
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
@@ -152,23 +166,37 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         
         // Convert Vercel AI SDK messages to Perplexity Agent API format
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => ({
-          type: 'message' as const,
-          role: msg.role as 'system' | 'user' | 'assistant',
+        const messages: PerplexityAgentMessage[] = prompt.map((msg: any) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          content: msg.content.map((part: any) => {
+          const contentParts = msg.content.map((part: any) => {
             if (part.type === 'text') {
-              return part.text;
+              return { _isText: true, text: part.text };
             } else if (part.type === 'image') {
               return {
+                _isText: false,
                 type: 'image',
                 image: part.image.toString(),
                 mimeType: part.mimeType,
               };
             }
-            return '';
-          }).filter(Boolean).join(''),
-        }));
+            return null;
+          }).filter(Boolean);
+
+          // If only text parts, join into a single string. Otherwise, keep as array for multimodal.
+          const hasNonText = contentParts.some((p: any) => !p._isText);
+          const content = hasNonText 
+            ? contentParts.map((p: any) => {
+                const { _isText, ...rest } = p;
+                return _isText ? { type: 'text', text: rest.text } : rest;
+              })
+            : contentParts.map((p: any) => p.text).join('');
+
+          return {
+            type: 'message' as const,
+            role: msg.role as 'system' | 'user' | 'assistant',
+            content,
+          };
+        });
 
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,

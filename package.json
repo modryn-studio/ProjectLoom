@@ -11,7 +11,6 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/perplexity": "^3.0.19",
     "@ai-sdk/react": "^3.0.88",
     "@huggingface/transformers": "^3.8.1",
     "@radix-ui/react-alert-dialog": "^1.1.15",
