@@ -18,7 +18,7 @@ import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
 import { SidePanel } from './SidePanel';
-import type { MessageAttachment } from '@/types';
+import type { MessageAttachment, MessageMetadata } from '@/types';
 
 // =============================================================================
 // CONSTANTS
@@ -261,7 +261,13 @@ export function ChatPanel() {
       const messageText = getMessageText(message);
 
       // Persist AI message to store using CAPTURED conversationId and model
-      addAIMessage(metadata.conversationId, messageText, metadata.model);
+      // Pass message metadata to preserve sources/citations for dropdown display
+      addAIMessage(
+        metadata.conversationId, 
+        messageText, 
+        metadata.model,
+        message.metadata as MessageMetadata | undefined
+      );
 
       // Track usage from message metadata (sent by server via messageMetadata)
       const msgMetadata = message.metadata as { usage?: { inputTokens: number; outputTokens: number } } | undefined;

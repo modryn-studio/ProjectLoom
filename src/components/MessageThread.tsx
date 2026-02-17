@@ -468,8 +468,11 @@ const MessageBubble = memo(function MessageBubble({
     }
 
     if (webSearchMetadata) {
+      // Strip the inline citation section from display text since we show it in dropdown
+      const cleanedContent = message.content.replace(/\n\n---\n\n\*\*Sources:\*\*[\s\S]*$/, '');
+      
       return {
-        content: message.content,
+        content: cleanedContent,
         sources: webSearchMetadata.sources,
         used: webSearchMetadata.used,
       };
