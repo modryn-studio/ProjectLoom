@@ -412,6 +412,11 @@ export async function POST(req: Request): Promise<Response> {
           console.log('[chat/route] Sending usage metadata:', usage);
           metadata.usage = usage;
 
+          // Guard: Ensure message and content exist before extraction
+          if (!message || !message.content) {
+            return Object.keys(metadata).length > 0 ? metadata : undefined;
+          }
+
           // Extract citations from message text (markdown format from Sonar)
           // Only extract links that appear after the "---\n\n**Sources:**" section
           // to avoid treating normal user markdown links as citations
