@@ -81,6 +81,16 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '128K context. Fast and affordable for straightforward tasks. Good for shallow branches with focused conversations.',
   },
   {
+    id: 'openai/gpt-5.1',
+    name: 'GPT-5.1',
+    provider: 'openai',
+    maxTokens: 128000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: '128K context. Previous generation flagship. Balanced for 2-3 parent merges with moderate message history.',
+  },
+  {
     id: 'openai/gpt-5.2',
     name: 'GPT-5.2',
     provider: 'openai',
@@ -103,14 +113,34 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '1M context. Excellent price-performance for deep branching. Handles 4-5 parent merges with 30+ messages each at low cost.',
   },
   {
-    id: 'google/gemini-3-flash',
-    name: 'Gemini 3 Flash',
+    id: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    provider: 'google',
+    maxTokens: 1000000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: '1M context. Enhanced reasoning and quality. Better for complex multi-parent merge scenarios.',
+  },
+  {
+    id: 'google/gemini-3-flash-preview',
+    name: 'Gemini 3 Flash (Preview)',
     provider: 'google',
     maxTokens: 2000000,
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'medium',
-    description: '2M context. Largest context window available. Ideal for maximum branching depth—5 parents with 50+ messages each. FREE tier available.',
+    description: '2M context. Largest context window available. Ideal for maximum branching depth—5 parents with 50+ messages each.',
+  },
+  {
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro (Preview)',
+    provider: 'google',
+    maxTokens: 2000000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'high',
+    description: '2M context. Most capable Gemini model. Best-in-class for deep reasoning across massive conversation trees.',
   },
 
   // Perplexity Sonar Models (native, built-in web search)
@@ -297,15 +327,19 @@ export const MODEL_PRICING = {
   // Anthropic Claude (via Perplexity Agent API)
   'anthropic/claude-haiku-4-5': { input: 1, output: 5 },
   'anthropic/claude-sonnet-4-5': { input: 3, output: 15 },
+  'anthropic/claude-opus-4-5': { input: 5, output: 25 },
   'anthropic/claude-opus-4-6': { input: 5, output: 25 },
 
   // OpenAI (via Perplexity Agent API)
   'openai/gpt-5-mini': { input: 0.25, output: 2 },
+  'openai/gpt-5.1': { input: 1.25, output: 10 },
   'openai/gpt-5.2': { input: 1.75, output: 14 },
 
   // Google Gemini (via Perplexity Agent API) — 90% cache discount available
   'google/gemini-2.5-flash': { input: 0.30, output: 2.50 },
-  'google/gemini-3-flash': { input: 0.50, output: 3.00 },
+  'google/gemini-2.5-pro': { input: 1.25, output: 10.00 },
+  'google/gemini-3-flash-preview': { input: 0.50, output: 3.00 },
+  'google/gemini-3-pro-preview': { input: 2.00, output: 12.00 },
 
   // Perplexity Sonar (native — built-in web search, +$0.005/search not included)
   'sonar': { input: 1, output: 1 },

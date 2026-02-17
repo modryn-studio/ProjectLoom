@@ -253,6 +253,13 @@ export async function POST(req: Request): Promise<Response> {
     // Anthropic requires all system content in a single system parameter
     const systemMessageParts: string[] = [];
     
+    // Add model identity so the AI can answer correctly about itself
+    const { getModelById } = await import('@/lib/vercel-ai-integration');
+    const modelInfo = getModelById(model);
+    if (modelInfo) {
+      systemMessageParts.push(`You are ${modelInfo.name} (model ID: ${model}), ${modelInfo.description}`);
+    }
+    
     // Add canvas context to system prompt
     if (canvasContext?.instructions?.trim()) {
       systemMessageParts.push(`[Workspace Instructions]\n\n${canvasContext.instructions.trim()}`);
