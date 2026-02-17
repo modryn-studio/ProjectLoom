@@ -413,29 +413,37 @@ export async function POST(req: Request): Promise<Response> {
           metadata.usage = usage;
 
           // Extract citations from message text (markdown format from Sonar)
-          // Convert from: "... text\n\n---\n\n**Sources:**\n\n1. [Title](url)\n2. ..."
+          // Only extract links that appear after the "---\n\n**Sources:**" section
+          // to avoid treating normal user markdown links as citations
           const messageText = message.content
             .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
             .map(p => p.text)
             .join('');
 
-          const citationMatches = messageText.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g);
-          if (citationMatches && citationMatches.length > 0) {
-            const sources = citationMatches.map(match => {
-              const titleMatch = match.match(/\[([^\]]+)\]/);
-              const urlMatch = match.match(/\((https?:\/\/[^\)]+)\)/);
-              return {
-                title: titleMatch ? titleMatch[1] : 'Unknown',
-                url: urlMatch ? urlMatch[1] : '',
-              };
-            });
+          // Check if there's a Sources section
+          const sourcesMatch = messageText.match(/\n\n---\n\n\*\*Sources:\*\*\n\n([\s\S]+)$/);
+          if (sourcesMatch && sourcesMatch[1]) {
+            // Extract only links from the Sources section
+            const sourcesSection = sourcesMatch[1];
+            const citationMatches = sourcesSection.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g);
+            
+            if (citationMatches && citationMatches.length > 0) {
+              const sources = citationMatches.map(match => {
+                const titleMatch = match.match(/\[([^\]]+)\]/);
+                const urlMatch = match.match(/\((https?:\/\/[^\)]+)\)/);
+                return {
+                  title: titleMatch ? titleMatch[1] : 'Unknown',
+                  url: urlMatch ? urlMatch[1] : '',
+                };
+              });
 
-            metadata.custom = {
-              webSearch: {
-                used: true,
-                sources,
-              },
-            };
+              metadata.custom = {
+                webSearch: {
+                  used: true,
+                  sources,
+                },
+              };
+            }
           }
         }
 
