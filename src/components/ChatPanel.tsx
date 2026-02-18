@@ -495,6 +495,24 @@ export function ChatPanel() {
     
     console.log('[ChatPanel] Request body:', body);
 
+    // MessageInput calls store.sendMessage (persists to store) BEFORE calling onSubmit,
+    // and the await between those two calls lets React re-render and run the sync effect,
+    // which loads the new user message into chatMessages. If we then let useChat.sendMessage
+    // append the user message again, Perplexity receives two consecutive user turns → 500.
+    // Fix: reset chatMessages to the prior context (store messages minus the trailing user
+    // message) so useChat.sendMessage appends it exactly once.
+    const fullContext = getConversationMessages(activeConversationId);
+    const lastMsg = fullContext[fullContext.length - 1];
+    const contextBeforeSend =
+      lastMsg?.role === 'user' && lastMsg?.content === userMessage
+        ? fullContext.slice(0, -1)
+        : fullContext;
+    setMessages(contextBeforeSend.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
+
     // Use sendMessage to programmatically add the message (doesn't rely on input field)
     await sendMessage(
       {
@@ -504,7 +522,7 @@ export function ChatPanel() {
         body,
       }
     );
-  }, [input, setInput, buildCanvasContextPayload, chatBody, sendMessage, isStreaming, activeConversationId, currentModel, setStreamingConversationId]);
+  }, [input, setInput, buildCanvasContextPayload, chatBody, sendMessage, isStreaming, activeConversationId, currentModel, setStreamingConversationId, getConversationMessages, setMessages]);
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {
