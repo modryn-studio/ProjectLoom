@@ -418,10 +418,14 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                   const lines = buffer.split('\n');
                   buffer = lines.pop() || '';
 
-                  for (const line of lines) {
+                  for (const rawLine of lines) {
+                    // Strip \r to handle both \n and \r\n SSE line endings.
+                    // Without this, JSON.parse throws on trailing \r and events
+                    // are silently dropped via the catch block.
+                    const line = rawLine.replace(/\r$/, '');
                     if (!line.trim() || !line.startsWith('data: ')) continue;
                     
-                    const data = line.slice(6);
+                    const data = line.slice(6).trim();
                     if (data === '[DONE]') continue;
 
                     try {
