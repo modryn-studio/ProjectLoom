@@ -529,10 +529,18 @@ export function ChatPanel() {
     updateConversation(activeConversation.id, {
       content: truncatedMessages,
     });
-    
-    // Truncate useChat messages to sync state
-    const chatMessagesUpToTarget = chatMessages.slice(0, messageIndex + 1);
-    setMessages(chatMessagesUpToTarget);
+
+    // Sync useChat state with the full context (inherited + prior turns) but WITHOUT
+    // the retry target — sendMessage() will append it as the new user turn.
+    // Using getConversationMessages gives us the complete inherited context; we strip
+    // the last entry (the retry user turn) to avoid two consecutive user messages.
+    const fullContextForRetry = getConversationMessages(activeConversation.id);
+    const contextBeforeRetry = fullContextForRetry.slice(0, -1); // drop the trailing user message
+    setMessages(contextBeforeRetry.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
     
     // Capture conversation metadata for the retry request
     if (!activeConversationId || !currentModel) {
@@ -585,7 +593,7 @@ export function ChatPanel() {
     );
     
     console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
-  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments, setStreamingConversationId]);
+  }, [activeConversation, isStreaming, stop, updateConversation, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments, setStreamingConversationId, getConversationMessages]);
 
   // Handle edit message click
   const handleEditClick = useCallback((messageIndex: number) => {
@@ -628,8 +636,13 @@ export function ChatPanel() {
     ];
     updateConversation(activeConversation.id, { content: truncatedMessages });
 
-    // Sync useChat state
-    setMessages(truncatedMessages.map((msg, idx) => ({
+    // Sync useChat state with the full context (inherited + prior turns) but WITHOUT
+    // the edited message itself — sendMessage() will append it as the new user turn.
+    // Using getConversationMessages gives us the complete inherited context; we strip
+    // the last entry (the edited user turn) to avoid two consecutive user messages.
+    const fullContextForEdit = getConversationMessages(activeConversation.id);
+    const contextBeforeEdit = fullContextForEdit.slice(0, -1); // drop the trailing user message
+    setMessages(contextBeforeEdit.map((msg, idx) => ({
       id: `msg-${idx}`,
       role: msg.role as 'user' | 'assistant' | 'system',
       parts: [{ type: 'text' as const, text: msg.content }],
@@ -667,7 +680,7 @@ export function ChatPanel() {
     }
 
     await sendMessage({ text: content.trim() }, { body });
-  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage, setStreamingConversationId]);
+  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage, setStreamingConversationId, getConversationMessages]);
 
   // Handle edit cancel
   const handleEditCancel = useCallback(() => {
