@@ -37,7 +37,8 @@ export interface ModelDefinition {
  * Updated for Feb 2026 model lineup
  */
 export const AVAILABLE_MODELS: ModelDefinition[] = [
-  // Anthropic Claude Models (routed via Perplexity Agent API)
+  // ── Anthropic Claude (via Perplexity Agent API) ─────────────────────────
+  // Source: https://docs.perplexity.ai/docs/agent-api/models
   {
     id: 'anthropic/claude-haiku-4-5',
     name: 'Claude Haiku 4.5',
@@ -46,11 +47,18 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: true,
     costTier: 'low',
-    description: '200K context. Fastest and most affordable Claude. Great for quick tasks.',
+    description: '200K context. Fastest and most affordable Claude.',
   },
-  // NOTE: claude-sonnet-4-5 returns 500 from Perplexity Agent API (backend issue).
-  // NOTE: claude-sonnet-4-6 returns 400 "not supported" — not yet in Perplexity's catalog.
-  // Both Sonnet models are omitted until Perplexity fixes/adds support.
+  {
+    id: 'anthropic/claude-sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
+    provider: 'anthropic',
+    maxTokens: 200000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: '200K context. Best balance of speed, intelligence, and cost.',
+  },
   {
     id: 'anthropic/claude-opus-4-6',
     name: 'Claude Opus 4.6',
@@ -62,7 +70,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K context. Most capable Claude for complex reasoning.',
   },
 
-  // OpenAI Models (routed via Perplexity Agent API)
+  // ── OpenAI (via Perplexity Agent API) ───────────────────────────────────
   {
     id: 'openai/gpt-5-mini',
     name: 'GPT-5 Mini',
@@ -80,21 +88,11 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     maxTokens: 128000,
     supportsStreaming: true,
     supportsVision: true,
-    costTier: 'medium',
+    costTier: 'high',
     description: '128K context. Latest OpenAI flagship model.',
   },
 
-  // Google Gemini Models (routed via Perplexity Agent API)
-  {
-    id: 'google/gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    provider: 'google',
-    maxTokens: 1000000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'low',
-    description: '1M context. Excellent speed and value.',
-  },
+  // ── Google Gemini (via Perplexity Agent API) ────────────────────────────
   {
     id: 'google/gemini-3-flash-preview',
     name: 'Gemini 3 Flash',
@@ -102,11 +100,21 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     maxTokens: 2000000,
     supportsStreaming: true,
     supportsVision: true,
+    costTier: 'low',
+    description: '2M context. Fast and affordable with the largest context window.',
+  },
+  {
+    id: 'google/gemini-3-pro-preview',
+    name: 'Gemini 3 Pro',
+    provider: 'google',
+    maxTokens: 2000000,
+    supportsStreaming: true,
+    supportsVision: true,
     costTier: 'medium',
-    description: '2M context. Largest context window available.',
+    description: '2M context. Most capable Google model for complex tasks.',
   },
 
-  // Perplexity Sonar Model (native, built-in web search)
+  // ── Perplexity Sonar (native, built-in web search) ─────────────────────
   {
     id: 'perplexity/sonar',
     name: 'Sonar',
@@ -269,7 +277,6 @@ export const MODEL_PRICING = {
   // Anthropic Claude (via Perplexity Agent API)
   'anthropic/claude-haiku-4-5': { input: 1, output: 5 },
   'anthropic/claude-sonnet-4-5': { input: 3, output: 15 },
-  'anthropic/claude-sonnet-4-6': { input: 3, output: 15 },
   'anthropic/claude-opus-4-6': { input: 5, output: 25 },
 
   // OpenAI (via Perplexity Agent API)
@@ -277,8 +284,8 @@ export const MODEL_PRICING = {
   'openai/gpt-5.2': { input: 1.75, output: 14 },
 
   // Google Gemini (via Perplexity Agent API) — 90% cache discount available
-  'google/gemini-2.5-flash': { input: 0.30, output: 2.50 },
   'google/gemini-3-flash-preview': { input: 0.50, output: 3.00 },
+  'google/gemini-3-pro-preview': { input: 2.00, output: 12.00 },
 
   // Perplexity Sonar (native — built-in web search)
   'perplexity/sonar': { input: 0.25, output: 2.50 },

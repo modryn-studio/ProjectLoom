@@ -34,12 +34,15 @@ export interface ModelConfig {
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   // ── Anthropic Models (via Perplexity Agent API) ───────────────────────────
   'anthropic/claude-haiku-4-5': {
-    temperature: 1.0,         // Anthropic's default
+    temperature: 1.0,
     maxTokens: 8192,
-    systemPrompt: undefined,  // Let Claude be Claude
+    systemPrompt: undefined,
   },
-  // claude-sonnet-4-5: 500 on Perplexity Agent API (backend issue)
-  // claude-sonnet-4-6: 400 "not supported" — not yet in Perplexity's catalog
+  'anthropic/claude-sonnet-4-5': {
+    temperature: 1.0,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
   'anthropic/claude-opus-4-6': {
     temperature: 1.0,
     maxTokens: 8192,
@@ -48,49 +51,32 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
 
   // ── OpenAI Models (via Perplexity Agent API) ──────────────────────────────
   'openai/gpt-5-mini': {
-    temperature: 1.0,         // Only temperature: 1 supported for this model
+    temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },
   'openai/gpt-5.2': {
-    temperature: 0.7,         // OpenAI's balanced default
+    temperature: 0.7,
     maxTokens: 16384,
     systemPrompt: undefined,
   },
 
   // ── Google Gemini Models (via Perplexity Agent API) ───────────────────────
-  'google/gemini-2.5-flash': {
-    temperature: 1.0,         // Google's default
-    maxTokens: 8192,
-    systemPrompt: undefined,
-  },
   'google/gemini-3-flash-preview': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-
-  // ── Perplexity Sonar Models (native) ──────────────────────────────────────
-  // Model IDs use the 'perplexity/' prefix as exposed via the Agent API
-  'perplexity/sonar': {
-    temperature: 0.7,
-    maxTokens: 4096,
-    systemPrompt: undefined,  // Sonar handles search context internally
-  },
-  // Legacy bare-name aliases (kept for backwards-compat with stored state)
-  'sonar': {
-    temperature: 0.7,
-    maxTokens: 4096,
-    systemPrompt: undefined,  // Sonar handles search context internally
-  },
-  'sonar-pro': {
-    temperature: 0.7,
+  'google/gemini-3-pro-preview': {
+    temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'sonar-reasoning-pro': {
+
+  // ── Perplexity Sonar (native, built-in web search) ────────────────────────
+  'perplexity/sonar': {
     temperature: 0.7,
-    maxTokens: 8192,
+    maxTokens: 4096,
     systemPrompt: undefined,
   },
 };
