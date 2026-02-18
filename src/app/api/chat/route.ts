@@ -218,13 +218,13 @@ export async function POST(req: Request): Promise<Response> {
     const providerType = detectProvider(model);
     
     // All models route through Perplexity Agent API.
-    // web_search is enabled for all models — the LLM decides when to invoke the tool.
-    // It will only call it when the query requires current/real-time information,
-    // not on every message. This covers knowledge cutoff gaps without wasteful cost.
-    // Sonar always searches (it's a search-first product).
-    // Claude/GPT/Gemini search selectively based on the prompt.
+    // web_search is enabled for Anthropic and OpenAI models — they invoke it selectively.
+    // Google/Gemini models do NOT support web_search tool through the Perplexity Agent API
+    // (produces zero text output despite charging tokens — confirmed incompatible).
+    // Sonar always searches (search-first product).
     const perplexity = createPerplexityAgent({ apiKey });
-    const aiModel = perplexity(model, { webSearch: true });
+    const supportsWebSearch = !model.startsWith('google/');
+    const aiModel = perplexity(model, { webSearch: supportsWebSearch });
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
