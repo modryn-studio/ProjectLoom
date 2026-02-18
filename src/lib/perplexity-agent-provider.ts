@@ -28,6 +28,8 @@ interface PerplexityAgentRequestBody {
   // Sending it causes in-stream 500 errors when forwarded to upstream providers.
   stream?: boolean;
   tools?: Array<{ type: string; user_location?: { latitude: number; longitude: number; country?: string; city?: string; region?: string } }>;
+  /** Reasoning effort — only honoured by thinking-capable models (Gemini 3.x, 2.5.x, Claude Opus, o-series). */
+  reasoning?: { effort: 'low' | 'medium' | 'high' };
 }
 
 interface PerplexityAgentResponse {
@@ -174,6 +176,10 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           ? WEB_SEARCH_INSTRUCTIONS.trim()
           : baseInstructions;
 
+        // Google thinking models (Gemini 3.x, 2.5.x) consume the vast majority of the
+        // max_output_tokens budget on internal reasoning before generating visible text.
+        // Setting effort:'low' caps the thinking budget, freeing tokens for visible output.
+        const isGoogleModel = modelId.startsWith('google/');
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
@@ -181,6 +187,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           max_output_tokens: settings.maxOutputTokens,
           stream: false,
           ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
+          ...(isGoogleModel ? { reasoning: { effort: 'low' } } : {}),
         };
 
         console.log('[perplexity-agent] Generate request:', {
@@ -355,6 +362,10 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           ? WEB_SEARCH_INSTRUCTIONS.trim()
           : baseInstructions;
 
+        // Google thinking models (Gemini 3.x, 2.5.x) consume the vast majority of the
+        // max_output_tokens budget on internal reasoning before generating visible text.
+        // Setting effort:'low' caps the thinking budget, freeing tokens for visible output.
+        const isGoogleModel = modelId.startsWith('google/');
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
@@ -362,6 +373,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           max_output_tokens: settings.maxOutputTokens,
           stream: true,
           ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
+          ...(isGoogleModel ? { reasoning: { effort: 'low' } } : {}),
         };
 
         console.log('[perplexity-agent] Stream request:', {
