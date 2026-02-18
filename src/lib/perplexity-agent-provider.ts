@@ -24,7 +24,8 @@ interface PerplexityAgentRequestBody {
   input: Array<PerplexityAgentMessage> | string;
   instructions?: string;
   max_output_tokens?: number;
-  temperature?: number;
+  // Note: the /v1/responses endpoint does NOT support a temperature parameter.
+  // Sending it causes in-stream 500 errors when forwarded to upstream providers.
   stream?: boolean;
   tools?: Array<{ type: string; user_location?: { latitude: number; longitude: number; country?: string; city?: string; region?: string } }>;
 }
@@ -153,7 +154,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           input: messages,
           ...(instructions ? { instructions } : {}),
           max_output_tokens: settings.maxOutputTokens,
-          temperature: settings.temperature,
           stream: false,
           ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
         };
@@ -321,7 +321,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           input: messages,
           ...(instructions ? { instructions } : {}),
           max_output_tokens: settings.maxOutputTokens,
-          temperature: settings.temperature,
           stream: true,
           ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
         };
