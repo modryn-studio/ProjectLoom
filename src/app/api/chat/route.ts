@@ -83,6 +83,7 @@ function detectProvider(model: string): ProviderType {
   if (model.startsWith('anthropic/')) return 'anthropic';
   if (model.startsWith('openai/')) return 'openai';
   if (model.startsWith('google/')) return 'google';
+  if (model.startsWith('perplexity/')) return 'perplexity';
   if (model.startsWith('sonar')) return 'perplexity';
   // Legacy bare model IDs
   if (model.startsWith('claude')) return 'anthropic';

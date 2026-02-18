@@ -43,7 +43,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     maxTokens: 8192,
     systemPrompt: undefined,
   },
-  'anthropic/claude-sonnet-4-6': {
+  'anthropic/claude-opus-4-5': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
@@ -79,6 +79,13 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
 
   // ── Perplexity Sonar Models (native) ──────────────────────────────────────
+  // Model IDs use the 'perplexity/' prefix as exposed via the Agent API
+  'perplexity/sonar': {
+    temperature: 0.7,
+    maxTokens: 4096,
+    systemPrompt: undefined,  // Sonar handles search context internally
+  },
+  // Legacy bare-name aliases (kept for backwards-compat with stored state)
   'sonar': {
     temperature: 0.7,
     maxTokens: 4096,

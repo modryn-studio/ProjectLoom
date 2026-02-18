@@ -387,10 +387,25 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                       const parsed = JSON.parse(data);
 
                       // Check for errors — rethrow so the outer catch surfaces them
-                      // rather than letting the stream silently terminate
-                      if (parsed.error) {
-                        console.error('[perplexity-agent] API error in stream:', parsed.error);
-                        throw new Error(`Perplexity Agent API error: ${JSON.stringify(parsed.error)}`);
+                      // rather than letting the stream silently terminate.
+                      // Perplexity uses multiple error formats:
+                      //   { error: { message, type, code } }
+                      //   { message, type: "internal_error", code: 500 }
+                      //   { type: "response.failed", response: { status: "failed", error: {...} } }
+                      const isError =
+                        parsed.error != null ||
+                        parsed.type === 'error' ||
+                        parsed.type === 'internal_error' ||
+                        (parsed.type === 'response.failed') ||
+                        (typeof parsed.code === 'number' && parsed.code >= 400);
+                      if (isError) {
+                        const errorDetail =
+                          parsed.error?.message ||
+                          parsed.response?.error?.message ||
+                          parsed.message ||
+                          JSON.stringify(parsed);
+                        console.error('[perplexity-agent] API error in stream:', parsed);
+                        throw new Error(`Perplexity Agent API error: ${errorDetail}`);
                       }
 
                       // Handle delta events - check multiple possible formats
