@@ -34,10 +34,12 @@ import type {
 /**
  * All models route through the Perplexity Agent API gateway.
  * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-6', etc.
+ * Disable web_search because agents define their own tool set — mixing the two
+ * causes API 500s on some model/tool combinations.
  */
 function createModel(modelId: string, apiKey: string): LanguageModel {
   const provider = createPerplexityAgent({ apiKey });
-  return provider(modelId);
+  return provider(modelId, { webSearch: false });
 }
 
 // =============================================================================

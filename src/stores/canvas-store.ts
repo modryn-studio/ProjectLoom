@@ -2178,7 +2178,10 @@ export const useCanvasStore = create<WorkspaceState>()(
     sendMessage: async (content: string, attachments?: import('@/types').MessageAttachment[]) => {
       const { activeConversationId, conversations, draftMessages, workspaces, activeWorkspaceId } = get();
       
-      if (!activeConversationId || !content.trim()) {
+      // Allow send when there are attachments even with no text
+      const hasText = content.trim().length > 0;
+      const hasAttachments = attachments && attachments.length > 0;
+      if (!activeConversationId || (!hasText && !hasAttachments)) {
         return;
       }
 
@@ -2632,7 +2635,15 @@ export const useCanvasStore = create<WorkspaceState>()(
       }
 
       // --- Add current conversation's own messages ---
+      // Skip UI-only system notices (e.g. inherited-context banners) — they are
+      // display artifacts stored in content but should not be sent to the LLM.
       for (const msg of conversation.content) {
+        const isUiNotice =
+          msg.role === 'system' &&
+          typeof msg.metadata?.custom === 'object' &&
+          msg.metadata.custom !== null &&
+          'inheritedFrom' in (msg.metadata.custom as Record<string, unknown>);
+        if (isUiNotice) continue;
         result.push({ role: msg.role, content: msg.content });
       }
 

@@ -182,9 +182,11 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     // Create provider model instance — all models route through Perplexity Agent API
+    // Disable web_search for summarization; it's pure text processing and web_search
+    // can cause 500 errors on some model/tool combinations.
     const providerType = detectProvider(model);
     const perplexity = createPerplexityAgent({ apiKey });
-    const aiModel = perplexity(model);
+    const aiModel = perplexity(model, { webSearch: false });
 
     // Get per-model temperature
     const modelConfig = getModelConfig(model);

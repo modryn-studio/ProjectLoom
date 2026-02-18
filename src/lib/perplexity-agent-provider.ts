@@ -79,7 +79,8 @@ interface PerplexityAgentResponse {
 export function createPerplexityAgent(config: { apiKey: string; baseURL?: string }) {
   const baseURL = config.baseURL || 'https://api.perplexity.ai';
   
-  return (modelId: string): LanguageModelV3 => {
+  return (modelId: string, modelOptions?: { webSearch?: boolean }): LanguageModelV3 => {
+    const enableWebSearch = modelOptions?.webSearch ?? true;
     return {
       specificationVersion: 'v3',
       provider: 'perplexity-agent',
@@ -154,7 +155,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           max_output_tokens: settings.maxOutputTokens,
           temperature: settings.temperature,
           stream: false,
-          tools: [{ type: 'web_search' }],
+          ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
         };
 
         console.log('[perplexity-agent] Generate request:', {
@@ -322,7 +323,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           max_output_tokens: settings.maxOutputTokens,
           temperature: settings.temperature,
           stream: true,
-          tools: [{ type: 'web_search' }],
+          ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
         };
 
         console.log('[perplexity-agent] Stream request:', {
@@ -386,7 +387,8 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                     try {
                       const parsed = JSON.parse(data);
 
-                      // Check for errors
+                      // Check for errors — rethrow so the outer catch surfaces them
+                      // rather than letting the stream silently terminate
                       if (parsed.error) {
                         console.error('[perplexity-agent] API error in stream:', parsed.error);
                         throw new Error(`Perplexity Agent API error: ${JSON.stringify(parsed.error)}`);

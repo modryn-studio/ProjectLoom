@@ -97,6 +97,8 @@ Examples:
       : `USER: ${userMessage.slice(0, 500)}\n\nGenerate a concise title (3-5 words):`;
 
     // All models route through Perplexity Agent API
+    // Disable web_search for title generation — it's a simple text task and
+    // web_search causes 500 errors on some model/tool combinations.
     const perplexity = createPerplexityAgent({ apiKey });
     const modelConfig = getModelConfig(titleModel);
 
@@ -107,7 +109,7 @@ Examples:
       : modelConfig.temperature;
 
     const result = await generateText({
-      model: perplexity(titleModel),
+      model: perplexity(titleModel, { webSearch: false }),
       system: systemPrompt,
       prompt: userPrompt,
       temperature,
