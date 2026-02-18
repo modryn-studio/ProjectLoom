@@ -94,8 +94,10 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
   const baseURL = config.baseURL || 'https://api.perplexity.ai';
   
   return (modelId: string, modelOptions?: { webSearch?: boolean }): LanguageModelV3 => {
-    // Default to false — only Sonar has built-in web search and benefits from the tool.
-    // Enabling for Claude/GPT/Gemini adds per-search cost and latency with no benefit.
+    // Default to false — callers opt in explicitly.
+    // The chat route passes { webSearch: true } for all models so the LLM can
+    // invoke the tool when it needs current information (training cutoff coverage).
+    // generate-title keeps it false since that is a simple deterministic task.
     const enableWebSearch = modelOptions?.webSearch ?? false;
     return {
       specificationVersion: 'v3',

@@ -217,12 +217,14 @@ export async function POST(req: Request): Promise<Response> {
     // Detect underlying provider for config adjustments
     const providerType = detectProvider(model);
     
-    // All models route through Perplexity Agent API
-    // Only enable web_search for Sonar models — they are designed for web grounding.
-    // Enabling it for Claude/GPT/Gemini adds per-search cost & latency with no benefit.
+    // All models route through Perplexity Agent API.
+    // web_search is enabled for all models — the LLM decides when to invoke the tool.
+    // It will only call it when the query requires current/real-time information,
+    // not on every message. This covers knowledge cutoff gaps without wasteful cost.
+    // Sonar always searches (it's a search-first product).
+    // Claude/GPT/Gemini search selectively based on the prompt.
     const perplexity = createPerplexityAgent({ apiKey });
-    const isSonar = model.startsWith('perplexity/') || model.startsWith('sonar');
-    const aiModel = perplexity(model, { webSearch: isSonar });
+    const aiModel = perplexity(model, { webSearch: true });
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
