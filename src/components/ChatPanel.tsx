@@ -271,6 +271,15 @@ export function ChatPanel() {
       // Extract text content from UIMessage parts
       const messageText = getMessageText(message);
 
+      // Don't persist an empty assistant message — it would poison future API calls
+      // (providers like Perplexity reject conversations containing empty-content turns).
+      if (!messageText.trim()) {
+        console.warn('[ChatPanel] onFinish: empty assistant message, skipping addAIMessage');
+        streamingRequestMetadataRef.current = null;
+        setPendingAttachments([]);
+        return;
+      }
+
       // Persist AI message to store using CAPTURED conversationId and model
       // Pass message metadata to preserve sources/citations for dropdown display
       addAIMessage(

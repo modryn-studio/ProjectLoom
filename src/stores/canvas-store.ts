@@ -2635,8 +2635,11 @@ export const useCanvasStore = create<WorkspaceState>()(
       }
 
       // --- Add current conversation's own messages ---
-      // Skip UI-only system notices (e.g. inherited-context banners) — they are
-      // display artifacts stored in content but should not be sent to the LLM.
+      // Exclusions:
+      //   1. UI-only system notices (inherited-context banners) — display artifacts
+      //      that must not be sent to the LLM.
+      //   2. Empty-content messages — an empty assistant turn causes 500 errors on
+      //      providers like Perplexity (can happen when a previous stream failed).
       for (const msg of conversation.content) {
         const isUiNotice =
           msg.role === 'system' &&
@@ -2644,6 +2647,10 @@ export const useCanvasStore = create<WorkspaceState>()(
           msg.metadata.custom !== null &&
           'inheritedFrom' in (msg.metadata.custom as Record<string, unknown>);
         if (isUiNotice) continue;
+
+        // Skip messages with no meaningful content
+        if (!msg.content?.trim()) continue;
+
         result.push({ role: msg.role, content: msg.content });
       }
 
