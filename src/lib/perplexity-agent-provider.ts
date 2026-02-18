@@ -411,6 +411,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
             async start(controller) {
               try {
                 let textStartSent = false;
+                let streamedText = ''; // track what's been sent as deltas
 
                 while (true) {
                   const { done, value } = await reader.read();
@@ -464,6 +465,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
                         const deltaText = parsed.delta || parsed.text || '';
                         if (deltaText) {
+                          streamedText += deltaText;
                           controller.enqueue({
                             type: 'text-delta' as const,
                             id: textPartId,
@@ -478,6 +480,33 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                         totalOutputTokens = parsed.response?.usage?.output_tokens || parsed.usage?.output_tokens || 0;
                         costData = parsed.response?.usage?.cost || parsed.usage?.cost || null;
                         inputTokensDetails = parsed.response?.usage?.input_tokens_details || parsed.usage?.input_tokens_details || null;
+
+                        // After a web_search tool call, Perplexity does NOT stream
+                        // the post-search synthesis as output_text.delta events —
+                        // the full response arrives only in the response.completed payload.
+                        // Detect this gap and emit the missing text as a delta now.
+                        const fullOutputText: string = parsed.response?.output_text ||
+                          parsed.response?.output
+                            ?.filter((o: {type: string}) => o.type === 'message')
+                            ?.flatMap((o: {content: Array<{type: string; text?: string}>}) =>
+                              o.content?.filter(c => c.type === 'output_text').map(c => c.text ?? '')
+                            )
+                            ?.join('') || '';
+
+                        if (fullOutputText.length > streamedText.length) {
+                          const missingText = fullOutputText.slice(streamedText.length);
+                          if (!textStartSent) {
+                            controller.enqueue({ type: 'text-start' as const, id: textPartId });
+                            textStartSent = true;
+                          }
+                          controller.enqueue({
+                            type: 'text-delta' as const,
+                            id: textPartId,
+                            delta: missingText,
+                          });
+                          streamedText = fullOutputText;
+                          console.log(`[perplexity-agent] Emitted ${missingText.length} chars of post-search text from response.completed`);
+                        }
                         
                         // Extract citations from output array (both search_results and annotations)
                         if (parsed.response?.output && Array.isArray(parsed.response.output)) {
