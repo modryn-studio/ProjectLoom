@@ -53,6 +53,13 @@ export function ChatPanel() {
     timestamp: number;
     requestId: string;
   } | null>(null);
+
+  // Stable ID for useChat — must NOT change when the user switches conversation cards.
+  // If we passed `activeConversationId` as the id, useChat would abort the in-flight
+  // HTTP request and wipe chatMessages every time the user switches cards mid-stream.
+  // The streamingRequestMetadataRef already tracks which conversation owns the response.
+  // Using useState with no-op setter so it is valid to read during render (unlike a ref).
+  const [stableChatId] = useState('chat-panel-stable');
   
   // State from stores — use targeted selector to only re-render when active conversation changes
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
@@ -235,7 +242,7 @@ export function ChatPanel() {
     error: chatError,
     setMessages,
   } = useChat({
-    id: activeConversationId || undefined,
+    id: stableChatId,
     onFinish: ({ message }) => {
       console.log('[ChatPanel] onFinish called', { 
         messageId: message.id, 
@@ -642,8 +649,14 @@ export function ChatPanel() {
     setEditingMessageIndex(null);
   }, []);
 
-  // Sync store messages to useChat when conversation changes
+  // Sync store messages to useChat when conversation changes.
+  // Guard: skip the sync while a stream is active so we don't wipe the in-flight
+  // assistant response when the user switches cards mid-stream and then switches back.
   useEffect(() => {
+    // If a stream is running, leave chatMessages alone — onFinish will persist
+    // the result to the store and the next switch-away will pick it up correctly.
+    if (isStreaming) return;
+
     if (activeConversationId) {
       const storeMessages = getConversationMessages(activeConversationId);
       // Convert to useChat UIMessage format (v6 uses parts instead of content)
@@ -656,7 +669,7 @@ export function ChatPanel() {
     } else {
       setMessages([]);
     }
-  }, [activeConversationId, getConversationMessages, setMessages]);
+  }, [activeConversationId, isStreaming, getConversationMessages, setMessages]);
 
   // Save partial message when streaming stops (e.g., user clicks stop button)
   const prevIsStreamingRef = useRef(isStreaming);
