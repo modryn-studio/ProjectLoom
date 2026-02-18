@@ -345,6 +345,19 @@ export function ChatPanel() {
   // Derived streaming state from chat status
   const isStreaming = chatStatus === 'streaming' || chatStatus === 'submitted';
 
+  // Track which conversationId owns the current/most-recent stream as React state
+  // (refs cannot be read during render — this mirrors streamingRequestMetadataRef for JSX).
+  const [streamingConversationId, setStreamingConversationId] = useState<string | null>(null);
+
+  // Keep streamingConversationId in sync: set when a stream starts, clear when it ends.
+  useEffect(() => {
+    if (isStreaming && streamingRequestMetadataRef.current?.conversationId) {
+      setStreamingConversationId(streamingRequestMetadataRef.current.conversationId);
+    } else if (!isStreaming) {
+      setStreamingConversationId(null);
+    }
+  }, [isStreaming]);
+
   const getRagQuery = useCallback((explicitMessage?: string) => {
     if (explicitMessage) return explicitMessage;
     if (input.trim()) return input.trim();
@@ -459,6 +472,7 @@ export function ChatPanel() {
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
     };
+    setStreamingConversationId(activeConversationId);
 
     // Build canvas context (pass explicit message since input is now cleared)
     const canvasContextPayload = await buildCanvasContextPayload(userMessage);
@@ -481,7 +495,7 @@ export function ChatPanel() {
         body,
       }
     );
-  }, [input, setInput, buildCanvasContextPayload, chatBody, sendMessage, isStreaming, activeConversationId, currentModel]);
+  }, [input, setInput, buildCanvasContextPayload, chatBody, sendMessage, isStreaming, activeConversationId, currentModel, setStreamingConversationId]);
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {
@@ -523,6 +537,7 @@ export function ChatPanel() {
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
     };
+    setStreamingConversationId(activeConversationId);
     
     // Build canvas context for retry
     const canvasContextPayload = await buildCanvasContextPayload(targetMessage.content);
@@ -561,7 +576,7 @@ export function ChatPanel() {
     );
     
     console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
-  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments]);
+  }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments, setStreamingConversationId]);
 
   // Handle edit message click
   const handleEditClick = useCallback((messageIndex: number) => {
@@ -621,6 +636,7 @@ export function ChatPanel() {
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
     };
+    setStreamingConversationId(activeConversationId);
 
     // Build canvas context and re-send
     const canvasContextPayload = await buildCanvasContextPayload(content.trim());
@@ -642,7 +658,7 @@ export function ChatPanel() {
     }
 
     await sendMessage({ text: content.trim() }, { body });
-  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage]);
+  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage, setStreamingConversationId]);
 
   // Handle edit cancel
   const handleEditCancel = useCallback(() => {
@@ -650,12 +666,14 @@ export function ChatPanel() {
   }, []);
 
   // Sync store messages to useChat when conversation changes.
-  // Guard: skip the sync while a stream is active so we don't wipe the in-flight
-  // assistant response when the user switches cards mid-stream and then switches back.
+  // Guard: skip the sync only when the viewed card IS the one currently streaming —
+  // in that case chatMessages already has the live in-flight content and we must not
+  // overwrite it. For every other card (including switching away) we always sync so
+  // the panel shows the correct stored conversation.
   useEffect(() => {
-    // If a stream is running, leave chatMessages alone — onFinish will persist
-    // the result to the store and the next switch-away will pick it up correctly.
-    if (isStreaming) return;
+    const viewingStreamingCard = isStreaming && activeConversationId === streamingConversationId;
+
+    if (viewingStreamingCard) return;
 
     if (activeConversationId) {
       const storeMessages = getConversationMessages(activeConversationId);
@@ -669,7 +687,7 @@ export function ChatPanel() {
     } else {
       setMessages([]);
     }
-  }, [activeConversationId, isStreaming, getConversationMessages, setMessages]);
+  }, [activeConversationId, isStreaming, streamingConversationId, getConversationMessages, setMessages]);
 
   // Save partial message when streaming stops (e.g., user clicks stop button)
   const prevIsStreamingRef = useRef(isStreaming);
@@ -873,11 +891,18 @@ export function ChatPanel() {
             onMaximize={handleMaximize}
           />
 
-          {/* Message Thread */}
+          {/* Message Thread
+              Only pass live streamingMessages + isStreaming when the currently
+              viewed card is the one that owns the active stream. If the user
+              has switched to a different card, show that card's stored
+              messages without any streaming overlay so the background stream
+              doesn't bleed through to an unrelated conversation view. */}
           <MessageThread
             conversation={activeConversation}
-            streamingMessages={chatMessages}
-            isStreaming={isStreaming}
+            streamingMessages={
+              activeConversationId === streamingConversationId ? chatMessages : []
+            }
+            isStreaming={isStreaming && activeConversationId === streamingConversationId}
             onHeightChange={setMessageListHeight}
             isMaximized={isMaximized}
             onRetry={handleRetry}
@@ -893,7 +918,7 @@ export function ChatPanel() {
             input={input}
             setInput={setInput}
             onSubmit={handleSubmit}
-            isStreaming={isStreaming}
+            isStreaming={isStreaming && activeConversationId === streamingConversationId}
             onStop={stop}
             hasApiKey={hasAnyApiKey}
             error={chatError}
