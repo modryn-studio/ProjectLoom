@@ -372,9 +372,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           instructionsPreview: instructions?.substring(0, 200),
         });
 
-        // Debug: Log full request body to diagnose 500 errors
-        console.log('[perplexity-agent] Full request body:', JSON.stringify(requestBody, null, 2));
-
         const response = await fetch(`${baseURL}/v1/responses`, {
           method: 'POST',
           headers: {
