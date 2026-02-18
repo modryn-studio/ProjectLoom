@@ -175,6 +175,9 @@ export function getUsageTotals(records: UsageRecord[], range: UsageRange, now = 
     
     totals.totalCostUsd += record.costUsd;
     totals.totalTokens += record.totalTokens;
+    // Guard: skip records whose provider no longer exists in byProvider
+    // (e.g. legacy 'google' records from before Gemini was removed).
+    if (!totals.byProvider[record.provider]) continue;
     totals.byProvider[record.provider].costUsd += record.costUsd;
     totals.byProvider[record.provider].totalTokens += record.totalTokens;
     totals.byProvider[record.provider].recordCount += 1;
@@ -245,14 +248,17 @@ export const useUsageStore = create<UsageState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ records: state.records }),
       onRehydrateStorage: () => (state) => {
-        // Clean up invalid records on load (e.g., records with NaN costs)
+        // Clean up invalid records on load, and purge legacy providers that
+        // have been removed (e.g. 'google' after Gemini was dropped).
+        const VALID_PROVIDERS: UsageProvider[] = ['anthropic', 'openai', 'perplexity'];
         if (state?.records) {
           const validRecords = state.records.filter(
             (record) =>
               Number.isFinite(record.costUsd) &&
               Number.isFinite(record.totalTokens) &&
               Number.isFinite(record.inputTokens) &&
-              Number.isFinite(record.outputTokens)
+              Number.isFinite(record.outputTokens) &&
+              VALID_PROVIDERS.includes(record.provider)
           );
           
           // Only update state if we filtered out invalid records
