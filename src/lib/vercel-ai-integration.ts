@@ -28,8 +28,6 @@ export interface ModelDefinition {
   costTier: 'low' | 'medium' | 'high';
   /** Brief description for UI */
   description: string;
-  /** Whether the model has built-in web search */
-  hasWebSearch?: boolean;
 }
 
 /**
@@ -123,7 +121,6 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsStreaming: true,
     supportsVision: false,
     costTier: 'low',
-    hasWebSearch: true,
     description: 'Real-time web search with AI synthesis.',
   },
 ];
