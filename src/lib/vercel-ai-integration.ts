@@ -49,8 +49,8 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K context. Fastest and most affordable Claude. Great for quick tasks.',
   },
   {
-    id: 'anthropic/claude-sonnet-4-6',
-    name: 'Claude Sonnet 4.6',
+    id: 'anthropic/claude-sonnet-4-5',
+    name: 'Claude Sonnet 4.5',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
@@ -275,7 +275,7 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
 export const MODEL_PRICING = {
   // Anthropic Claude (via Perplexity Agent API)
   'anthropic/claude-haiku-4-5': { input: 1, output: 5 },
-  'anthropic/claude-sonnet-4-6': { input: 3, output: 15 },
+  'anthropic/claude-sonnet-4-5': { input: 3, output: 15 },
   'anthropic/claude-opus-4-6': { input: 5, output: 25 },
 
   // OpenAI (via Perplexity Agent API)

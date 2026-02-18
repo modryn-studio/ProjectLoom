@@ -113,7 +113,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
   const [steps, setSteps] = useState<AgentStep[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [usedModelId, setUsedModelId] = useState<string>('anthropic/claude-sonnet-4-6');
+  const [usedModelId, setUsedModelId] = useState<string>('anthropic/claude-sonnet-4-5');
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const overlayMouseDownRef = useRef(false);
@@ -161,7 +161,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
     setSteps([]);
     setError(null);
     setShowConfirmation(false);
-    setUsedModelId('anthropic/claude-sonnet-4-6');
+    setUsedModelId('anthropic/claude-sonnet-4-5');
   }, []);
 
   // Handle close
@@ -187,7 +187,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
 
     // Check API key — all models route through Perplexity Agent API
     const apiKey = apiKeyManager.getKey('perplexity');
-    const modelId = 'anthropic/claude-sonnet-4-6'; // Default agent model
+    const modelId = 'anthropic/claude-sonnet-4-5'; // Default agent model
 
     if (!apiKey) {
       setError('No API key configured. Add one in Settings.');

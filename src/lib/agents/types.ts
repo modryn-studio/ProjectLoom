@@ -157,7 +157,7 @@ export const DEFAULT_AGENT_CONFIG: AgentRunnerConfig = {
   maxSteps: 10,
   timeoutMs: 60_000,
   maxCostUsd: 0.50,
-  modelId: 'anthropic/claude-sonnet-4-6',
+  modelId: 'anthropic/claude-sonnet-4-5',
   apiKey: '',
 };
 
