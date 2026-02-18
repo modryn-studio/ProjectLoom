@@ -5,18 +5,21 @@
 
 ## Setup
 
-**API Keys:**
+**API Key (BYOK — Bring Your Own Key):**
 - Click gear icon → API Keys tab
-- Add Anthropic key for Claude models (Opus, Sonnet, Haiku)
-- Add OpenAI key for GPT models (GPT-4o, GPT-4o Mini)
+- Add your Perplexity API key (single key unlocks all models)
+- Get your key at: https://perplexity.ai/account/api
 - Keys stored in browser localStorage only
 
 **Choose a model:**
-- **Claude Sonnet 4** - Best default (balanced quality/speed/cost)
-- **Claude Haiku 4** - Fast and cheap for simple tasks
-- **Claude Opus 4** - Highest quality for complex reasoning
-- **GPT-4o** - OpenAI's flagship model
-- **GPT-4o Mini** - OpenAI's efficient model
+- **Claude Sonnet 4.5** — Best default (balanced quality/speed/cost)
+- **Claude Haiku 4.5** — Fast and cheap for simple tasks
+- **Claude Opus 4.6** — Highest quality for complex reasoning
+- **GPT-5.2** — OpenAI's flagship model
+- **GPT-5 Mini** — OpenAI's efficient model
+- **Gemini 3 Flash** — Largest context window (2M tokens)
+- **Gemini 3 Pro** — Google's most capable model
+- **Sonar** — Real-time web search with AI synthesis
 
 ## Navigation
 

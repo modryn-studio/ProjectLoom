@@ -66,6 +66,19 @@ interface PerplexityAgentResponse {
     input_tokens: number;
     output_tokens: number;
     total_tokens: number;
+    cost?: {
+      currency: string;
+      input_cost: number;
+      output_cost: number;
+      total_cost: number;
+      cache_creation_cost?: number;
+      cache_read_cost?: number;
+      tool_calls_cost?: number;
+    };
+    input_tokens_details?: {
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
   error?: {
     message: string;
@@ -252,6 +265,12 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           request: {
             body: JSON.stringify(requestBody),
           },
+          providerMetadata: {
+            perplexity: {
+              cost: data.usage?.cost ?? null,
+              inputTokensDetails: data.usage?.input_tokens_details ?? null,
+            },
+          },
         };
       },
 
@@ -359,6 +378,10 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         let buffer = '';
         let totalInputTokens = 0;
         let totalOutputTokens = 0;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let costData: any = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let inputTokensDetails: any = null;
         const citations: Array<{ id: number; title: string; url: string; snippet?: string }> = [];
 
         const textPartId = `text-${Date.now()}`;
@@ -433,6 +456,8 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                       if (parsed.type === 'response.completed' || parsed.type === 'done' || parsed.finish_reason) {
                         totalInputTokens = parsed.response?.usage?.input_tokens || parsed.usage?.input_tokens || 0;
                         totalOutputTokens = parsed.response?.usage?.output_tokens || parsed.usage?.output_tokens || 0;
+                        costData = parsed.response?.usage?.cost || parsed.usage?.cost || null;
+                        inputTokensDetails = parsed.response?.usage?.input_tokens_details || parsed.usage?.input_tokens_details || null;
                         
                         // Extract citations from output array (both search_results and annotations)
                         if (parsed.response?.output && Array.isArray(parsed.response.output)) {
@@ -512,6 +537,12 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                   usage: {
                     inputTokens: { total: totalInputTokens, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
                     outputTokens: { total: totalOutputTokens, text: undefined, reasoning: undefined },
+                  },
+                  providerMetadata: {
+                    perplexity: {
+                      cost: costData,
+                      inputTokensDetails: inputTokensDetails,
+                    },
                   },
                 });
 

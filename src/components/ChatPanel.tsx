@@ -275,7 +275,22 @@ export function ChatPanel() {
       );
 
       // Track usage from message metadata (sent by server via messageMetadata)
-      const msgMetadata = message.metadata as { usage?: { inputTokens: number; outputTokens: number } } | undefined;
+      const msgMetadata = message.metadata as { 
+        usage?: { inputTokens: number; outputTokens: number };
+        actualCost?: {
+          inputCost: number;
+          outputCost: number;
+          totalCost: number;
+          cacheCreationCost?: number;
+          cacheReadCost?: number;
+          toolCallsCost?: number;
+          currency: string;
+        };
+        tokenDetails?: {
+          cacheCreationInputTokens?: number;
+          cacheReadInputTokens?: number;
+        };
+      } | undefined;
       const usage = msgMetadata?.usage;
 
       if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0)) {
@@ -284,6 +299,8 @@ export function ChatPanel() {
           provider: detectProvider(metadata.model),
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
+          hasActualCost: !!msgMetadata?.actualCost,
+          actualCost: msgMetadata?.actualCost?.totalCost,
           conversationId: metadata.conversationId,
         });
         addUsage({
@@ -293,6 +310,8 @@ export function ChatPanel() {
           outputTokens: usage.outputTokens,
           conversationId: metadata.conversationId,
           source: 'chat',
+          actualCost: msgMetadata?.actualCost,
+          tokenDetails: msgMetadata?.tokenDetails,
         });
       } else {
         // Fallback: estimate tokens when SDK doesn't provide usage data

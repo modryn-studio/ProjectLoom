@@ -406,7 +406,8 @@ export async function POST(req: Request): Promise<Response> {
       // We accumulate text from text-delta parts and extract citations on finish.
       messageMetadata: (() => {
         let accumulatedText = '';
-        return ({ part }: { part: { type: string; text?: string; totalUsage?: { inputTokens?: number; outputTokens?: number } } }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return ({ part }: { part: { type: string; text?: string; totalUsage?: { inputTokens?: number; outputTokens?: number }; providerMetadata?: any } }) => {
         const metadata: Record<string, unknown> = {};
 
         // Accumulate text from text-delta parts
@@ -421,6 +422,27 @@ export async function POST(req: Request): Promise<Response> {
           };
           console.log('[chat/route] Sending usage metadata:', usage);
           metadata.usage = usage;
+
+          // Pass through actual cost breakdown from Perplexity API
+          const perplexityMeta = part.providerMetadata?.perplexity;
+          if (perplexityMeta?.cost) {
+            metadata.actualCost = {
+              inputCost: perplexityMeta.cost.input_cost ?? 0,
+              outputCost: perplexityMeta.cost.output_cost ?? 0,
+              totalCost: perplexityMeta.cost.total_cost ?? 0,
+              cacheCreationCost: perplexityMeta.cost.cache_creation_cost,
+              cacheReadCost: perplexityMeta.cost.cache_read_cost,
+              toolCallsCost: perplexityMeta.cost.tool_calls_cost,
+              currency: perplexityMeta.cost.currency ?? 'USD',
+            };
+            console.log('[chat/route] Actual cost from Perplexity API:', metadata.actualCost);
+          }
+          if (perplexityMeta?.inputTokensDetails) {
+            metadata.tokenDetails = {
+              cacheCreationInputTokens: perplexityMeta.inputTokensDetails.cache_creation_input_tokens,
+              cacheReadInputTokens: perplexityMeta.inputTokensDetails.cache_read_input_tokens,
+            };
+          }
 
           // Extract citations from accumulated text (markdown format from Sonar)
           // Only extract links that appear after the "---\n\n**Sources:**" section

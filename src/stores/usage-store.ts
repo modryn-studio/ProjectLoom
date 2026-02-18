@@ -33,9 +33,26 @@ export interface UsageRecord {
   outputTokens: number;
   totalTokens: number;
   costUsd: number;
+  /** Whether costUsd came from the API (true) or was estimated from pricing tables (false) */
+  costIsActual: boolean;
   createdAt: number;
   conversationId?: string;
   source?: UsageSource;
+  /** Detailed cost breakdown from Perplexity API (when available) */
+  costBreakdown?: {
+    inputCost: number;
+    outputCost: number;
+    totalCost: number;
+    cacheCreationCost?: number;
+    cacheReadCost?: number;
+    toolCallsCost?: number;
+    currency: string;
+  };
+  /** Token details from Perplexity API (when available) */
+  tokenDetails?: {
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
+  };
 }
 
 export interface UsageInput {
@@ -46,6 +63,21 @@ export interface UsageInput {
   conversationId?: string;
   source?: UsageSource;
   createdAt?: number;
+  /** Actual cost data from Perplexity API response (preferred over estimation) */
+  actualCost?: {
+    inputCost: number;
+    outputCost: number;
+    totalCost: number;
+    cacheCreationCost?: number;
+    cacheReadCost?: number;
+    toolCallsCost?: number;
+    currency: string;
+  };
+  /** Token details from Perplexity API response */
+  tokenDetails?: {
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
+  };
 }
 
 export interface UsageTotals {
@@ -185,10 +217,22 @@ export const useUsageStore = create<UsageState>()(
           inputTokens,
           outputTokens,
           totalTokens,
-          costUsd: calculateCost(input.model, inputTokens, outputTokens),
+          // Prefer actual cost from Perplexity API over local estimation
+          costUsd: input.actualCost ? input.actualCost.totalCost : calculateCost(input.model, inputTokens, outputTokens),
+          costIsActual: !!input.actualCost,
           createdAt: input.createdAt ?? Date.now(),
           conversationId: input.conversationId,
           source: input.source,
+          costBreakdown: input.actualCost ? {
+            inputCost: input.actualCost.inputCost,
+            outputCost: input.actualCost.outputCost,
+            totalCost: input.actualCost.totalCost,
+            cacheCreationCost: input.actualCost.cacheCreationCost,
+            cacheReadCost: input.actualCost.cacheReadCost,
+            toolCallsCost: input.actualCost.toolCallsCost,
+            currency: input.actualCost.currency,
+          } : undefined,
+          tokenDetails: input.tokenDetails,
         };
 
         set((state) => ({
