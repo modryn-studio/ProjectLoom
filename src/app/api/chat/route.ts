@@ -218,8 +218,11 @@ export async function POST(req: Request): Promise<Response> {
     const providerType = detectProvider(model);
     
     // All models route through Perplexity Agent API
+    // Only enable web_search for Sonar models — they are designed for web grounding.
+    // Enabling it for Claude/GPT/Gemini adds per-search cost & latency with no benefit.
     const perplexity = createPerplexityAgent({ apiKey });
-    const aiModel = perplexity(model);
+    const isSonar = model.startsWith('perplexity/') || model.startsWith('sonar');
+    const aiModel = perplexity(model, { webSearch: isSonar });
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
@@ -406,13 +409,42 @@ export async function POST(req: Request): Promise<Response> {
       // We accumulate text from text-delta parts and extract citations on finish.
       messageMetadata: (() => {
         let accumulatedText = '';
+        // Captured from 'finish-step' — the only part that carries providerMetadata.
+        // The 'finish' part only has totalUsage; providerMetadata is absent there.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return ({ part }: { part: { type: string; text?: string; totalUsage?: { inputTokens?: number; outputTokens?: number }; providerMetadata?: any } }) => {
+        let capturedCost: any = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let capturedTokenDetails: any = null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return ({ part }: { part: { type: string; text?: string; totalUsage?: { inputTokens?: number; outputTokens?: number }; usage?: { inputTokens?: number; outputTokens?: number }; providerMetadata?: any } }) => {
         const metadata: Record<string, unknown> = {};
 
         // Accumulate text from text-delta parts
         if (part.type === 'text-delta' && typeof part.text === 'string') {
           accumulatedText += part.text;
+        }
+
+        // 'finish-step' carries providerMetadata — capture cost here for use on 'finish'
+        if (part.type === 'finish-step') {
+          const perplexityMeta = part.providerMetadata?.perplexity;
+          if (perplexityMeta?.cost) {
+            capturedCost = {
+              inputCost: perplexityMeta.cost.input_cost ?? 0,
+              outputCost: perplexityMeta.cost.output_cost ?? 0,
+              totalCost: perplexityMeta.cost.total_cost ?? 0,
+              cacheCreationCost: perplexityMeta.cost.cache_creation_cost,
+              cacheReadCost: perplexityMeta.cost.cache_read_cost,
+              toolCallsCost: perplexityMeta.cost.tool_calls_cost,
+              currency: perplexityMeta.cost.currency ?? 'USD',
+            };
+            console.log('[chat/route] Actual cost captured from finish-step:', capturedCost);
+          }
+          if (perplexityMeta?.inputTokensDetails) {
+            capturedTokenDetails = {
+              cacheCreationInputTokens: perplexityMeta.inputTokensDetails.cache_creation_input_tokens,
+              cacheReadInputTokens: perplexityMeta.inputTokensDetails.cache_read_input_tokens,
+            };
+          }
         }
 
         if (part.type === 'finish') {
@@ -423,25 +455,11 @@ export async function POST(req: Request): Promise<Response> {
           console.log('[chat/route] Sending usage metadata:', usage);
           metadata.usage = usage;
 
-          // Pass through actual cost breakdown from Perplexity API
-          const perplexityMeta = part.providerMetadata?.perplexity;
-          if (perplexityMeta?.cost) {
-            metadata.actualCost = {
-              inputCost: perplexityMeta.cost.input_cost ?? 0,
-              outputCost: perplexityMeta.cost.output_cost ?? 0,
-              totalCost: perplexityMeta.cost.total_cost ?? 0,
-              cacheCreationCost: perplexityMeta.cost.cache_creation_cost,
-              cacheReadCost: perplexityMeta.cost.cache_read_cost,
-              toolCallsCost: perplexityMeta.cost.tool_calls_cost,
-              currency: perplexityMeta.cost.currency ?? 'USD',
-            };
-            console.log('[chat/route] Actual cost from Perplexity API:', metadata.actualCost);
+          if (capturedCost) {
+            metadata.actualCost = capturedCost;
           }
-          if (perplexityMeta?.inputTokensDetails) {
-            metadata.tokenDetails = {
-              cacheCreationInputTokens: perplexityMeta.inputTokensDetails.cache_creation_input_tokens,
-              cacheReadInputTokens: perplexityMeta.inputTokensDetails.cache_read_input_tokens,
-            };
+          if (capturedTokenDetails) {
+            metadata.tokenDetails = capturedTokenDetails;
           }
 
           // Extract citations from accumulated text (markdown format from Sonar)
