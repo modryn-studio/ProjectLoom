@@ -128,7 +128,7 @@ export class ClaudeProvider implements AIProvider {
 
   constructor(config?: Partial<ProviderConfig>) {
     this.config = {
-      defaultModel: config?.defaultModel ?? 'claude-sonnet-4-5',
+      defaultModel: config?.defaultModel ?? 'claude-sonnet-4-6',
       maxTokens: config?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: config?.temperature ?? DEFAULT_TEMPERATURE,
       baseUrl: config?.baseUrl ?? ANTHROPIC_API_URL,
@@ -304,8 +304,8 @@ export class ClaudeProvider implements AIProvider {
         supportsStreaming: true,
       },
       {
-        id: 'claude-sonnet-4-5',
-        name: 'Claude Sonnet 4.5',
+        id: 'claude-sonnet-4-6',
+        name: 'Claude Sonnet 4.6',
         maxTokens: 200000,
         supportsStreaming: true,
       },

@@ -3,7 +3,7 @@
  * 
  * Streaming chat endpoint using Vercel AI SDK.
  * All models route through the Perplexity Agent API gateway with a single API key.
- * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-5', 'openai/gpt-5.2', etc.
+ * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2', etc.
  * Sonar models include built-in web search — no external search orchestration needed.
  * 
  * @version 3.0.0
@@ -31,7 +31,7 @@ interface ChatRequestBody {
     instructions?: string;
     knowledgeBase?: string;
   };
-  /** Model identifier (e.g., 'anthropic/claude-sonnet-4-5', 'openai/gpt-5.2', 'sonar-pro') */
+  /** Model identifier (e.g., 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2', 'sonar-pro') */
   model: string;
   /** User's API key for the provider */
   apiKey: string;

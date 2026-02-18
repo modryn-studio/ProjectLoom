@@ -38,7 +38,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     maxTokens: 8192,
     systemPrompt: undefined,  // Let Claude be Claude
   },
-  'anthropic/claude-sonnet-4-5': {
+  'anthropic/claude-sonnet-4-6': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
