@@ -89,6 +89,16 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     costTier: 'high',
     description: '128K context. Latest OpenAI flagship model.',
   },
+  {
+    id: 'openai/gpt-5.1',
+    name: 'GPT-5.1',
+    provider: 'openai',
+    maxTokens: 128000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: '128K context. Balanced OpenAI model between mini and flagship.',
+  },
 
   // ── Google Gemini (via Perplexity Agent API) ────────────────────────────
   {
@@ -110,6 +120,26 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     supportsVision: true,
     costTier: 'medium',
     description: '2M context. Most capable Google model for complex tasks.',
+  },
+  {
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    provider: 'google',
+    maxTokens: 1000000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'low',
+    description: '1M context. Fast and cost-efficient Gemini 2.5.',
+  },
+  {
+    id: 'google/gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    provider: 'google',
+    maxTokens: 2000000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: '2M context. Highly capable Gemini 2.5 with large context.',
   },
 
   // ── Perplexity Sonar (native, built-in web search) ─────────────────────

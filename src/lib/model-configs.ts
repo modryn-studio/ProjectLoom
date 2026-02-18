@@ -60,6 +60,11 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     maxTokens: 16384,
     systemPrompt: undefined,
   },
+  'openai/gpt-5.1': {
+    temperature: 0.7,
+    maxTokens: 16384,
+    systemPrompt: undefined,
+  },
 
   // ── Google Gemini Models (via Perplexity Agent API) ───────────────────────
   'google/gemini-3-flash-preview': {
@@ -68,6 +73,16 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     systemPrompt: undefined,
   },
   'google/gemini-3-pro-preview': {
+    temperature: 1.0,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
+  'google/gemini-2.5-flash': {
+    temperature: 1.0,
+    maxTokens: 8192,
+    systemPrompt: undefined,
+  },
+  'google/gemini-2.5-pro': {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,

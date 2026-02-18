@@ -163,8 +163,16 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           });
         }
 
-        // Use the top-level instructions field for system content
-        const instructions = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+        // Use the top-level instructions field for system content.
+        // When web_search is enabled, append Perplexity-recommended tool usage guidance
+        // so the model knows when and how to invoke the tool (per docs recommendation).
+        const WEB_SEARCH_INSTRUCTIONS = `\n\n## Tool Usage\nYou have access to a web_search tool. Use it when the query requires current information, recent events, real-time data, or anything that may have changed since your training cutoff. Use 1 query for simple questions. Keep queries brief: 2-5 words. NEVER ask permission to search — just search when appropriate. After searching, provide a full, detailed response synthesizing the results.`;
+        const baseInstructions = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+        const instructions = enableWebSearch && baseInstructions
+          ? baseInstructions + WEB_SEARCH_INSTRUCTIONS
+          : enableWebSearch
+          ? WEB_SEARCH_INSTRUCTIONS.trim()
+          : baseInstructions;
 
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
@@ -336,8 +344,16 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           });
         }
 
-        // Use the top-level instructions field for system content
-        const instructions = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+        // Use the top-level instructions field for system content.
+        // When web_search is enabled, append Perplexity-recommended tool usage guidance
+        // so the model knows when and how to invoke the tool (per docs recommendation).
+        const WEB_SEARCH_INSTRUCTIONS = `\n\n## Tool Usage\nYou have access to a web_search tool. Use it when the query requires current information, recent events, real-time data, or anything that may have changed since your training cutoff. Use 1 query for simple questions. Keep queries brief: 2-5 words. NEVER ask permission to search — just search when appropriate. After searching, provide a full, detailed response synthesizing the results.`;
+        const baseInstructions = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+        const instructions = enableWebSearch && baseInstructions
+          ? baseInstructions + WEB_SEARCH_INSTRUCTIONS
+          : enableWebSearch
+          ? WEB_SEARCH_INSTRUCTIONS.trim()
+          : baseInstructions;
 
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
