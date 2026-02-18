@@ -33,7 +33,7 @@ import type {
 
 /**
  * All models route through the Perplexity Agent API gateway.
- * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-5', etc.
+ * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-6', etc.
  */
 function createModel(modelId: string, apiKey: string): LanguageModel {
   const provider = createPerplexityAgent({ apiKey });
