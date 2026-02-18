@@ -163,7 +163,6 @@ export function ChatPanel() {
   }, [activeWorkspaceId, knowledgeBaseKey, chatPanelOpen]);
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
     if (contextLoadKey === 'closed') {
       setRagIndex(null);
       return;
@@ -217,7 +216,6 @@ export function ChatPanel() {
       isCancelled = true;
       abortController.abort();
     };
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [contextLoadKey, activeWorkspaceId]);
 
   // useChat hook for streaming AI responses
@@ -748,7 +746,6 @@ export function ChatPanel() {
         
         if (!metadata) {
           console.warn('[ChatPanel] Partial save: No request metadata found');
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setPendingAttachments([]);
           return;
         }
