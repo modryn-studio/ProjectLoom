@@ -178,8 +178,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
         // Google thinking models (Gemini 3.x, 2.5.x) consume the vast majority of the
         // max_output_tokens budget on internal reasoning before generating visible text.
-        // Setting effort:'low' caps the thinking budget, freeing tokens for visible output.
-        const isGoogleModel = modelId.startsWith('google/');
+        // Note: reasoning effort param tested but did not improve visible output ratio.
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
@@ -187,7 +186,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           max_output_tokens: settings.maxOutputTokens,
           stream: false,
           ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
-          ...(isGoogleModel ? { reasoning: { effort: 'low' } } : {}),
         };
 
         console.log('[perplexity-agent] Generate request:', {
@@ -364,8 +362,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
 
         // Google thinking models (Gemini 3.x, 2.5.x) consume the vast majority of the
         // max_output_tokens budget on internal reasoning before generating visible text.
-        // Setting effort:'low' caps the thinking budget, freeing tokens for visible output.
-        const isGoogleModel = modelId.startsWith('google/');
+        // Note: reasoning effort param tested but did not improve visible output ratio.
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
@@ -373,7 +370,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           max_output_tokens: settings.maxOutputTokens,
           stream: true,
           ...(enableWebSearch ? { tools: [{ type: 'web_search' }] } : {}),
-          ...(isGoogleModel ? { reasoning: { effort: 'low' } } : {}),
         };
 
         console.log('[perplexity-agent] Stream request:', {
