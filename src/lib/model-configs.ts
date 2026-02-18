@@ -40,11 +40,6 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
   // claude-sonnet-4-5: 500 on Perplexity Agent API (backend issue)
   // claude-sonnet-4-6: 400 "not supported" — not yet in Perplexity's catalog
-  'anthropic/claude-opus-4-5': {
-    temperature: 1.0,
-    maxTokens: 8192,
-    systemPrompt: undefined,
-  },
   'anthropic/claude-opus-4-6': {
     temperature: 1.0,
     maxTokens: 8192,

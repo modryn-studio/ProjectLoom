@@ -52,16 +52,6 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
   // NOTE: claude-sonnet-4-6 returns 400 "not supported" — not yet in Perplexity's catalog.
   // Both Sonnet models are omitted until Perplexity fixes/adds support.
   {
-    id: 'anthropic/claude-opus-4-5',
-    name: 'Claude Opus 4.5',
-    provider: 'anthropic',
-    maxTokens: 200000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'high',
-    description: '200K context. Previous Opus generation. High-quality reasoning.',
-  },
-  {
     id: 'anthropic/claude-opus-4-6',
     name: 'Claude Opus 4.6',
     provider: 'anthropic',
