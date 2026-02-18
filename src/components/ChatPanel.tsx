@@ -548,18 +548,6 @@ export function ChatPanel() {
       content: truncatedMessages,
     });
 
-    // Sync useChat state with the full context (inherited + prior turns) but WITHOUT
-    // the retry target — sendMessage() will append it as the new user turn.
-    // Using getConversationMessages gives us the complete inherited context; we strip
-    // the last entry (the retry user turn) to avoid two consecutive user messages.
-    const fullContextForRetry = getConversationMessages(activeConversation.id);
-    const contextBeforeRetry = fullContextForRetry.slice(0, -1); // drop the trailing user message
-    setMessages(contextBeforeRetry.map((msg, idx) => ({
-      id: `msg-${idx}`,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
-    })));
-    
     // Capture conversation metadata for the retry request
     if (!activeConversationId || !currentModel) {
       console.warn('[ChatPanel] Cannot retry: missing conversationId or model');
@@ -574,7 +562,8 @@ export function ChatPanel() {
     };
     setStreamingConversationId(activeConversationId);
     
-    // Build canvas context for retry
+    // Build canvas context FIRST (async — yields thread, sync effect may fire here and
+    // reload the trailing user message into chatMessages from the store).
     const canvasContextPayload = await buildCanvasContextPayload(targetMessage.content);
     
     // Re-send the user message
@@ -599,6 +588,17 @@ export function ChatPanel() {
     if (messageAttachments.length > 0) {
       setPendingAttachments(messageAttachments);
     }
+
+    // Sync useChat state AFTER the async gap — the sync effect fires during the await
+    // above and reloads the store's trailing user message back into chatMessages.
+    // Resetting here (just before sendMessage) ensures useChat appends it exactly once.
+    const fullContextForRetry = getConversationMessages(activeConversation.id);
+    const contextBeforeRetry = fullContextForRetry.slice(0, -1);
+    setMessages(contextBeforeRetry.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
     
     // Use sendMessage to re-send (this will trigger onFinish and add AI response)
     await sendMessage(
@@ -654,18 +654,6 @@ export function ChatPanel() {
     ];
     updateConversation(activeConversation.id, { content: truncatedMessages });
 
-    // Sync useChat state with the full context (inherited + prior turns) but WITHOUT
-    // the edited message itself — sendMessage() will append it as the new user turn.
-    // Using getConversationMessages gives us the complete inherited context; we strip
-    // the last entry (the edited user turn) to avoid two consecutive user messages.
-    const fullContextForEdit = getConversationMessages(activeConversation.id);
-    const contextBeforeEdit = fullContextForEdit.slice(0, -1); // drop the trailing user message
-    setMessages(contextBeforeEdit.map((msg, idx) => ({
-      id: `msg-${idx}`,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
-    })));
-
     // Clear edit state
     setEditingMessageIndex(null);
 
@@ -678,7 +666,8 @@ export function ChatPanel() {
     };
     setStreamingConversationId(activeConversationId);
 
-    // Build canvas context and re-send
+    // Build canvas context FIRST (async — yields thread, sync effect may fire here and
+    // reload the trailing user message into chatMessages from the store).
     const canvasContextPayload = await buildCanvasContextPayload(content.trim());
     const body = {
       model: currentModel,
@@ -696,6 +685,17 @@ export function ChatPanel() {
     if (attachments.length > 0) {
       setPendingAttachments(attachments);
     }
+
+    // Sync useChat state AFTER the async gap — the sync effect fires during the await
+    // above and reloads the store's trailing user message back into chatMessages.
+    // Resetting here (just before sendMessage) ensures useChat appends it exactly once.
+    const fullContextForEdit = getConversationMessages(activeConversation.id);
+    const contextBeforeEdit = fullContextForEdit.slice(0, -1);
+    setMessages(contextBeforeEdit.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
 
     await sendMessage({ text: content.trim() }, { body });
   }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage, setStreamingConversationId, getConversationMessages]);
