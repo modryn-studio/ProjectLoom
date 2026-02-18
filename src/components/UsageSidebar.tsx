@@ -21,6 +21,7 @@ export function UsageSidebar() {
 
   const panelStyles = useMemo<React.CSSProperties>(() => ({
     position: 'relative',
+    width: usagePanelOpen ? PANEL_WIDTH : 0,
     backgroundColor: colors.bg.secondary,
     borderLeft: usagePanelOpen ? `1px solid ${colors.border.default}` : 'none',
     display: 'flex',
@@ -29,7 +30,7 @@ export function UsageSidebar() {
     overflow: 'hidden',
     zIndex: zIndex.ui.usageSidebar,
     flexShrink: 0,
-    minWidth: 0,
+    minWidth: usagePanelOpen ? PANEL_WIDTH : 0,
     maxWidth: PANEL_WIDTH,
     pointerEvents: usagePanelOpen ? 'auto' : 'none',
   }), [usagePanelOpen]);

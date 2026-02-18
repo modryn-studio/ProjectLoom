@@ -1598,6 +1598,10 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     navigateToWorkspace: (workspaceId: string) => {
       const { workspaces, activeWorkspaceId, conversations: currentConversations, edges: currentEdges } = get();
+
+      // Already on this workspace — do nothing to preserve live canvas state
+      if (activeWorkspaceId === workspaceId) return;
+
       const workspace = workspaces.find(w => w.id === workspaceId);
       if (!workspace) {
         logger.warn(`Workspace ${workspaceId} not found`);
@@ -1681,6 +1685,8 @@ export const useCanvasStore = create<WorkspaceState>()(
             ? { 
                 ...w, 
                 ...updates, 
+                // Keep top-level title in sync with metadata.title
+                title: updates.metadata?.title ?? updates.title ?? w.title,
                 metadata: { 
                   ...w.metadata, 
                   ...(updates.metadata || {}),

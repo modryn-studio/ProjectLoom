@@ -795,7 +795,7 @@ export function ChatPanel() {
     overflow: 'hidden',
     userSelect: isResizing ? 'none' : 'auto',
     zIndex: isMaximized ? zIndex.ui.sidePanelMaximized : zIndex.ui.sidePanel,
-    flexShrink: 0,
+    flexShrink: 1,
     pointerEvents: chatPanelOpen ? 'auto' : 'none',
   }), [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen]);
 

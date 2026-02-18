@@ -152,10 +152,15 @@ const emptyCardStyles: React.CSSProperties = {
 // INFINITE CANVAS COMPONENT
 // =============================================================================
 
+// Height of the full top overlay (breadcrumb + gap + header controls + padding), measured at runtime
+const OVERLAY_HEIGHT_FALLBACK = 120; // px — 12px pad + 56px breadcrumb + 8px gap + 28px controls + 12px pad
+
 export function InfiniteCanvas() {
   const reactFlowInstance = useRef<ReactFlowInstance<Node<ConversationNodeData>, Edge> | null>(null);
   const suppressNextPaneClickRef = useRef(false);
   const hasFitInitialView = useRef(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // Settings panel state
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -380,18 +385,30 @@ export function InfiniteCanvas() {
     }
   }, [openSettings]);
 
+  // Compute fitView padding that accounts for the full top overlay (breadcrumb + header controls).
+  // top padding is expressed as a ratio of the canvas container height.
+  const getFitViewOptions = useCallback((overrides: Parameters<ReactFlowInstance['fitView']>[0] = {}) => {
+    const overlayHeight = overlayRef.current?.offsetHeight ?? OVERLAY_HEIGHT_FALLBACK;
+    const canvasHeight = canvasContainerRef.current?.clientHeight ?? window.innerHeight;
+    // Clear the overlay, then add the same 8% breathing room used on the other three sides
+    const topRatio = Math.min((overlayHeight / canvasHeight) + 0.08, 0.55);
+    return {
+      padding: { top: topRatio, right: 0.08, bottom: 0.08, left: 0.08 },
+      ...overrides,
+    };
+  }, []);
+
   // Force fitView once when nodes are initially loaded
   useEffect(() => {
     if (!hasFitInitialView.current && nodes.length > 0 && reactFlowInstance.current) {
       hasFitInitialView.current = true;
       setTimeout(() => {
-        reactFlowInstance.current?.fitView({
-          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
-          duration: 800,
-        });
+        reactFlowInstance.current?.fitView(
+          getFitViewOptions({ duration: 800 })
+        );
       }, 300);
     }
-  }, [nodes.length]);
+  }, [nodes.length, getFitViewOptions]);
 
   // Adjust canvas view when chat panel is opened/closed
   // This ensures the active card stays in view when the viewport changes
@@ -405,16 +422,14 @@ export function InfiniteCanvas() {
     const timer = setTimeout(() => {
       if (reactFlowInstance.current) {
         const selectedId = Array.from(currentSelectedIds)[0];
-        reactFlowInstance.current.fitView({
-          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
-          duration: 600,
-          nodes: [{ id: selectedId }],
-        });
+        reactFlowInstance.current.fitView(
+          getFitViewOptions({ duration: 600, nodes: [{ id: selectedId }] })
+        );
       }
     }, 350); // Match panel animation duration
     
     return () => clearTimeout(timer);
-  }, [chatPanelOpen]);
+  }, [chatPanelOpen, getFitViewOptions]);
 
   // Persist sidebar state to preferences when toggled
   const handleSidebarToggle = useCallback((open: boolean) => {
@@ -433,16 +448,14 @@ export function InfiniteCanvas() {
     const timer = setTimeout(() => {
       if (reactFlowInstance.current) {
         const selectedId = Array.from(currentSelectedIds)[0];
-        reactFlowInstance.current.fitView({
-          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
-          duration: 600,
-          nodes: [{ id: selectedId }],
-        });
+        reactFlowInstance.current.fitView(
+          getFitViewOptions({ duration: 600, nodes: [{ id: selectedId }] })
+        );
       }
     }, 350);
     
     return () => clearTimeout(timer);
-  }, [isSidebarOpen]);
+  }, [isSidebarOpen, getFitViewOptions]);
 
   // Handle node changes (position updates)
   const handleNodesChange: OnNodesChange<Node<ConversationNodeData>> = useCallback(
@@ -716,12 +729,11 @@ export function InfiniteCanvas() {
 
     // Fit view on mount with padding and animation
     setTimeout(() => {
-      instance.fitView({
-        padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
-        duration: animation.duration.slow,
-      });
+      instance.fitView(
+        getFitViewOptions({ duration: animation.duration.slow })
+      );
     }, 100);
-  }, []);
+  }, [getFitViewOptions]);
 
   // Handle node drag start
   const handleNodeDragStart = useCallback(() => {
@@ -841,10 +853,9 @@ export function InfiniteCanvas() {
         reactFlowInstance.current?.zoomOut({ duration: 200 });
       },
       onFitView: () => {
-        reactFlowInstance.current?.fitView({
-          padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
-          duration: 400,
-        });
+        reactFlowInstance.current?.fitView(
+          getFitViewOptions({ duration: 400 })
+        );
       },
       onResetZoom: () => {
         reactFlowInstance.current?.setViewport(
@@ -896,13 +907,11 @@ export function InfiniteCanvas() {
   // Focus on a specific node with smooth animation
   const focusOnNode = useCallback((nodeId: string) => {
     if (reactFlowInstance.current) {
-      reactFlowInstance.current.fitView({
-        padding: { top: 0.15, right: 0.1, bottom: 0.1, left: 0.1 },
-        duration: 800,
-        nodes: [{ id: nodeId }],
-      });
+      reactFlowInstance.current.fitView(
+        getFitViewOptions({ duration: 800, nodes: [{ id: nodeId }] })
+      );
     }
-  }, []);
+  }, [getFitViewOptions]);
 
   useEffect(() => {
     if (focusNodeId) {
@@ -976,7 +985,7 @@ export function InfiniteCanvas() {
         ) : (
           <>
             {/* Top overlay for breadcrumb and canvas context */}
-            <div style={topOverlayStyles}>
+            <div ref={overlayRef} style={topOverlayStyles}>
               <div style={pointerEventsAutoStyle}>
                 <CanvasBreadcrumb 
                   onFocusNode={focusOnNode}
@@ -990,7 +999,7 @@ export function InfiniteCanvas() {
               </div>
             </div>
 
-            <div style={canvasStyles}>
+            <div ref={canvasContainerRef} style={canvasStyles}>
               <ReactFlow<Node<ConversationNodeData>, Edge>
                 nodes={nodes}
                 edges={edges}
@@ -1051,6 +1060,8 @@ export function InfiniteCanvas() {
                   showFitView={true}
                   showInteractive={false}
                   style={controlsStyle}
+                  // eslint-disable-next-line react-hooks/refs
+                  fitViewOptions={getFitViewOptions()}
                 />
 
                 {/* Canvas Search */}

@@ -32,7 +32,7 @@ export function InlineMessageEditor({
       textarea.style.height = 'auto';
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
-  }, [content]);
+  }, [content, content.length]);
 
   // Auto-focus on mount, cursor at end — runs once using initialContent length
   useEffect(() => {
