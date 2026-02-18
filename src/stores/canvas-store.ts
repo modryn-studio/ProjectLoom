@@ -188,6 +188,9 @@ function collectInheritedMessages(
         if (msg.id && seenMessageIds.has(msg.id)) continue;
         if (msg.id) seenMessageIds.add(msg.id);
 
+        // Skip empty-content messages — they cause 500s on providers like Perplexity
+        if (!msg.content?.trim()) continue;
+
         result.push({ role: msg.role, content: msg.content });
       }
     }
@@ -2536,8 +2539,9 @@ export const useCanvasStore = create<WorkspaceState>()(
                 content: `--- Messages from parent: "${parentName}" ---`,
               });
 
-              // Add parent's messages
+              // Add parent's messages (skip empty-content turns)
               for (const msg of inheritedEntry.messages) {
+                if (!msg.content?.trim()) continue;
                 allInheritedMessages.push({ role: msg.role, content: msg.content });
               }
             }
