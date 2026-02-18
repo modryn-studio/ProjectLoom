@@ -484,12 +484,15 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                         // After a web_search tool call, Perplexity does NOT stream
                         // the post-search synthesis as output_text.delta events —
                         // the full response arrives only in the response.completed payload.
-                        // Detect this gap and emit the missing text as a delta now.
-                        const fullOutputText: string = parsed.response?.output_text ||
+                        // Structure: response.output[] -> { type: 'message', content: [{ type: 'output_text', text }] }
+                        // Detect the gap between what was streamed and the full text, emit the remainder.
+                        const fullOutputText: string =
                           parsed.response?.output
                             ?.filter((o: {type: string}) => o.type === 'message')
                             ?.flatMap((o: {content: Array<{type: string; text?: string}>}) =>
-                              o.content?.filter(c => c.type === 'output_text').map(c => c.text ?? '')
+                              o.content
+                                ?.filter(c => c.type === 'output_text' || c.type === 'text')
+                                .map(c => c.text ?? '')
                             )
                             ?.join('') || '';
 
