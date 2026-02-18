@@ -202,7 +202,7 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
         for (const item of data.output) {
           // Extract from search_results items
           if (item.type === 'search_results') {
-            for (const result of item.results) {
+            for (const result of (item.results ?? [])) {
               if (!seenUrls.has(result.url)) {
                 citations.push({ title: result.title, url: result.url });
                 seenUrls.add(result.url);
