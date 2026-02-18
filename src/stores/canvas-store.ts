@@ -2435,7 +2435,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         content: updatedMessages,
       });
 
-      logger.debubug(`Message ${messageIndex} edited in conversation ${conversationId}`);
+      logger.debug(`Message ${messageIndex} edited in conversation ${conversationId}`);
     },
 
     setConversationModel: (conversationId: string, model: string) => {

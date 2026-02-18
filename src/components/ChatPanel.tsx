@@ -63,7 +63,6 @@ export function ChatPanel() {
   const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
   const addAIMessage = useCanvasStore((s) => s.addAIMessage);
   const updateConversation = useCanvasStore((s) => s.updateConversation);
-  const editMessage = useCanvasStore((s) => s.editMessage);
   const addUsage = useUsageStore((s) => s.addUsage);
   const getConversationMessages = useCanvasStore((s) => s.getConversationMessages);
   const conversationModel = useCanvasStore(
@@ -90,7 +89,6 @@ export function ChatPanel() {
 
   // Edit message state
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState<{ content: string; attachments: MessageAttachment[] }>({ content: '', attachments: [] });
 
   const effectivePanelWidth = !isResizing && uiPrefs.chatPanelWidth
     ? uiPrefs.chatPanelWidth
@@ -561,34 +559,87 @@ export function ChatPanel() {
   // Handle edit message click
   const handleEditClick = useCallback((messageIndex: number) => {
     if (!activeConversation || isStreaming) return;
-
     const message = activeConversation.content[messageIndex];
     if (!message || message.role !== 'user') return;
-
-    // Enter edit mode
     setEditingMessageIndex(messageIndex);
-    setEditDraft({
-      content: message.content,
-      attachments: message.attachments || [],
-    });
   }, [activeConversation, isStreaming]);
 
-  // Handle edit save
-  const handleEditSave = useCallback((content: string, attachments: MessageAttachment[]) => {
-    if (!activeConversationId || editingMessageIndex === null) return;
+  // Handle edit save — truncates history after the edited message and re-sends
+  const handleEditSave = useCallback(async (content: string, attachments: MessageAttachment[]) => {
+    if (!activeConversation || editingMessageIndex === null || !activeConversationId || !currentModel) return;
 
-    // Update message in store
-    editMessage(activeConversationId, editingMessageIndex, content, attachments);
+    // Stop any ongoing streaming
+    if (isStreaming) {
+      stop();
+    }
+
+    // Build the updated message
+    const originalMessage = activeConversation.content[editingMessageIndex];
+    const updatedMessage = {
+      ...originalMessage,
+      content: content.trim(),
+      attachments: attachments.length > 0 ? attachments : undefined,
+      timestamp: new Date(),
+      metadata: {
+        ...originalMessage?.metadata,
+        edited: true,
+        editedAt: new Date(),
+        originalContent: originalMessage?.metadata?.edited
+          ? originalMessage.metadata.originalContent
+          : originalMessage?.content,
+      },
+    };
+
+    // Truncate conversation to only messages up to (and including) the edited message
+    const truncatedMessages = [
+      ...activeConversation.content.slice(0, editingMessageIndex),
+      updatedMessage,
+    ];
+    updateConversation(activeConversation.id, { content: truncatedMessages });
+
+    // Sync useChat state
+    setMessages(truncatedMessages.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
 
     // Clear edit state
     setEditingMessageIndex(null);
-    setEditDraft({ content: '', attachments: [] });
-  }, [activeConversationId, editingMessageIndex, editMessage]);
+
+    // Set up streaming metadata
+    streamingRequestMetadataRef.current = {
+      conversationId: activeConversationId,
+      model: currentModel,
+      timestamp: Date.now(),
+      requestId: crypto.randomUUID(),
+    };
+
+    // Build canvas context and re-send
+    const canvasContextPayload = await buildCanvasContextPayload(content.trim());
+    const body = {
+      model: currentModel,
+      apiKey: currentApiKey,
+      ...(attachments.length > 0 ? {
+        attachments: attachments.map(a => ({
+          contentType: a.contentType,
+          name: a.name,
+          url: a.url,
+        })),
+      } : {}),
+      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
+    };
+
+    if (attachments.length > 0) {
+      setPendingAttachments(attachments);
+    }
+
+    await sendMessage({ text: content.trim() }, { body });
+  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage]);
 
   // Handle edit cancel
   const handleEditCancel = useCallback(() => {
     setEditingMessageIndex(null);
-    setEditDraft({ content: '', attachments: [] });
   }, []);
 
   // Sync store messages to useChat when conversation changes

@@ -607,7 +607,7 @@ const MessageBubble = memo(function MessageBubble({
         <div
           style={{
             ...bubbleStyles.content,
-            color: isUser ? colors.fg.primary : colors.fg.secondary,
+            color: colors.fg.primary,
             fontFamily: textStyles.fontFamily,
             direction: textStyles.direction,
             textAlign: textStyles.textAlign,

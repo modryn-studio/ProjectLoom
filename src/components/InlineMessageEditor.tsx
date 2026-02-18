@@ -34,12 +34,11 @@ export function InlineMessageEditor({
     }
   }, [content]);
 
-  // Auto-focus on mount
+  // Auto-focus on mount, cursor at end — runs once using initialContent length
   useEffect(() => {
     textareaRef.current?.focus();
-    // Place cursor at end
-    const len = content.length;
-    textareaRef.current?.setSelectionRange(len, len);
+    textareaRef.current?.setSelectionRange(initialContent.length, initialContent.length);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = useCallback(() => {
@@ -111,6 +110,7 @@ export function InlineMessageEditor({
         <div style={styles.attachmentsContainer}>
           {attachments.map(attachment => (
             <div key={attachment.id} style={styles.attachmentPreview}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- base64 data URLs not supported by next/image */}
               <img 
                 src={attachment.url} 
                 alt={attachment.name}
@@ -174,12 +174,12 @@ export function InlineMessageEditor({
           <button
             onClick={handleSave}
             style={styles.saveButton}
-            title="Save changes (Ctrl+Enter)"
+            title="Send (Ctrl+Enter)"
             disabled={!content.trim()}
             type="button"
           >
             <Check size={16} />
-            Save
+            Send
           </button>
         </div>
       </div>
