@@ -2,7 +2,7 @@
  * Custom Perplexity Agent API Provider for Vercel AI SDK
  * 
  * Wraps the Perplexity Agent API to work with Vercel AI SDK's streamText and generateText.
- * The Agent API supports third-party models (Claude, GPT, Gemini) unlike the regular
+ * The Agent API supports third-party models (Claude, GPT) unlike the regular
  * Perplexity API which only supports Sonar models.
  * 
  * API Endpoint: https://api.perplexity.ai/v1/responses
@@ -28,7 +28,7 @@ interface PerplexityAgentRequestBody {
   // Sending it causes in-stream 500 errors when forwarded to upstream providers.
   stream?: boolean;
   tools?: Array<{ type: string; user_location?: { latitude: number; longitude: number; country?: string; city?: string; region?: string } }>;
-  /** Reasoning effort — only honoured by thinking-capable models (Gemini 3.x, 2.5.x, Claude Opus, o-series). */
+  /** Reasoning effort — only honoured by models with reasoning capabilities (Claude Opus, o-series). */
   reasoning?: { effort: 'low' | 'medium' | 'high' };
 }
 
@@ -176,9 +176,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           ? WEB_SEARCH_INSTRUCTIONS.trim()
           : baseInstructions;
 
-        // Google thinking models (Gemini 3.x, 2.5.x) consume the vast majority of the
-        // max_output_tokens budget on internal reasoning before generating visible text.
-        // Note: reasoning effort param tested but did not improve visible output ratio.
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,
@@ -360,9 +357,6 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
           ? WEB_SEARCH_INSTRUCTIONS.trim()
           : baseInstructions;
 
-        // Google thinking models (Gemini 3.x, 2.5.x) consume the vast majority of the
-        // max_output_tokens budget on internal reasoning before generating visible text.
-        // Note: reasoning effort param tested but did not improve visible output ratio.
         const requestBody: PerplexityAgentRequestBody = {
           model: modelId,
           input: messages,

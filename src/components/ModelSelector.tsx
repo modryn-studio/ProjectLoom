@@ -162,27 +162,6 @@ export function ModelSelector({
               <div style={styles.divider} />
             )}
 
-            {/* Google Models */}
-            {hasPerplexityKey && (
-              <>
-                {AVAILABLE_MODELS
-                  .filter(m => m.provider === 'google')
-                  .map(model => (
-                    <ModelOption
-                      key={model.id}
-                      model={model}
-                      isSelected={model.id === currentModel}
-                      onSelect={handleSelect}
-                    />
-                  ))}
-              </>
-            )}
-
-            {/* Divider between providers */}
-            {hasPerplexityKey && (
-              <div style={styles.divider} />
-            )}
-
             {/* Perplexity Sonar Models (native, built-in web search) */}
             {hasPerplexityKey && (
               <>

@@ -16,8 +16,8 @@ export interface ModelDefinition {
   id: string;
   /** Human-readable display name */
   name: string;
-  /** Provider (anthropic/openai/google/perplexity) */
-  provider: 'anthropic' | 'openai' | 'google' | 'perplexity';
+  /** Provider (anthropic/openai/perplexity) */
+  provider: 'anthropic' | 'openai' | 'perplexity';
   /** Maximum context tokens */
   maxTokens: number;
   /** Whether streaming is supported */
@@ -100,48 +100,6 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '128K context. Balanced OpenAI model between mini and flagship.',
   },
 
-  // ── Google Gemini (via Perplexity Agent API) ────────────────────────────
-  {
-    id: 'google/gemini-3-flash-preview',
-    name: 'Gemini 3 Flash',
-    provider: 'google',
-    maxTokens: 2000000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'low',
-    description: '2M context. Fast and affordable with the largest context window.',
-  },
-  {
-    id: 'google/gemini-3-pro-preview',
-    name: 'Gemini 3 Pro',
-    provider: 'google',
-    maxTokens: 2000000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'medium',
-    description: '2M context. Most capable Google model for complex tasks.',
-  },
-  {
-    id: 'google/gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    provider: 'google',
-    maxTokens: 1000000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'low',
-    description: '1M context. Fast and cost-efficient Gemini 2.5.',
-  },
-  {
-    id: 'google/gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    provider: 'google',
-    maxTokens: 2000000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'medium',
-    description: '2M context. Highly capable Gemini 2.5 with large context.',
-  },
-
   // ── Perplexity Sonar (native, built-in web search) ─────────────────────
   {
     id: 'perplexity/sonar',
@@ -175,7 +133,7 @@ export function getModelById(id: string): ModelDefinition | undefined {
 /**
  * Get the default model for a provider
  */
-export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google' | 'perplexity'): ModelDefinition {
+export function getDefaultModel(provider: 'anthropic' | 'openai' | 'perplexity'): ModelDefinition {
   const models = AVAILABLE_MODELS.filter((m) => m.provider === provider);
   if (models.length === 0) {
     if (AVAILABLE_MODELS.length === 0) {
@@ -193,18 +151,16 @@ export function getDefaultModel(provider: 'anthropic' | 'openai' | 'google' | 'p
  * Model IDs use the Perplexity Agent API prefix format: 'provider/model-name'.
  * Sonar models are native Perplexity and use bare names.
  */
-export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'google' | 'perplexity' {
-  // Prefixed format: 'anthropic/claude-...', 'openai/gpt-...', 'google/gemini-...', 'perplexity/sonar'
+export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'perplexity' {
+  // Prefixed format: 'anthropic/claude-...', 'openai/gpt-...', 'perplexity/sonar'
   if (modelId.startsWith('anthropic/')) return 'anthropic';
   if (modelId.startsWith('openai/')) return 'openai';
-  if (modelId.startsWith('google/')) return 'google';
   if (modelId.startsWith('perplexity/')) return 'perplexity';
   // Sonar models are native Perplexity (bare name - legacy)
   if (modelId.startsWith('sonar')) return 'perplexity';
   // Legacy bare model IDs (backwards compat)
   if (modelId.startsWith('claude')) return 'anthropic';
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai';
-  if (modelId.startsWith('gemini')) return 'google';
   return 'perplexity';
 }
 
@@ -309,10 +265,6 @@ export const MODEL_PRICING = {
   // OpenAI (via Perplexity Agent API)
   'openai/gpt-5-mini': { input: 0.25, output: 2 },
   'openai/gpt-5.2': { input: 1.75, output: 14 },
-
-  // Google Gemini (via Perplexity Agent API) — 90% cache discount available
-  'google/gemini-3-flash-preview': { input: 0.50, output: 3.00 },
-  'google/gemini-3-pro-preview': { input: 2.00, output: 12.00 },
 
   // Perplexity Sonar (native — built-in web search)
   'perplexity/sonar': { input: 0.25, output: 2.50 },

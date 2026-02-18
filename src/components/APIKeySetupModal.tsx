@@ -65,10 +65,6 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       if (!key.startsWith('sk-')) {
         return 'OpenAI keys start with "sk-"';
       }
-    } else if (provider === 'google') {
-      if (!key.startsWith('AIza')) {
-        return 'Google keys start with "AIza"';
-      }
     } else if (provider === 'perplexity') {
       if (!key.startsWith('pplx-')) {
         return 'Perplexity keys start with "pplx-"';
@@ -226,7 +222,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
             {/* Info banner */}
             <div style={styles.infoBanner}>
               <p style={styles.infoText}>
-                Get your API key from Perplexity — one key unlocks Claude, GPT, Gemini, and Sonar models:
+                Get your API key from Perplexity — one key unlocks Claude, GPT, and Sonar models with built-in web search:
               </p>
               <p style={{ ...styles.infoText, fontSize: typography.sizes.xs, marginTop: spacing[1], color: colors.fg.tertiary }}>
                 (Optional: Add OpenAI key later in Settings for embeddings/knowledge base features)

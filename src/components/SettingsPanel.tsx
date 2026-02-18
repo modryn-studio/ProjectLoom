@@ -496,7 +496,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     )}
                   </div>
                   <p style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary, marginTop: spacing[1] }}>
-                    One key for all models — Claude, GPT, Gemini, and Sonar with built-in web search.
+                    One key for all models — Claude, GPT, and Sonar with built-in web search.
                   </p>
                 </div>
               </div>

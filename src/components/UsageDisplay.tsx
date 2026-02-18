@@ -97,19 +97,6 @@ export function UsageDisplay() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
-            Gemini (Google)
-            {usageTotals.byProvider.google.recordCount > 0 && (
-              <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>
-                ({usageTotals.byProvider.google.recordCount})
-              </span>
-            )}
-          </span>
-          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
-            {formatUsd(usageTotals.byProvider.google.costUsd)}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
             Sonar (Perplexity)
             {usageTotals.byProvider.perplexity.recordCount > 0 && (
               <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>

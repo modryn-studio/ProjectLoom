@@ -66,33 +66,6 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     systemPrompt: undefined,
   },
 
-  // ── Google Gemini Models (via Perplexity Agent API) ───────────────────────
-  // NOTE: Gemini 3.x and 2.5.x are thinking models — they consume a large
-  // internal reasoning budget (thinking tokens) before generating visible text.
-  // maxTokens covers BOTH thinking and visible output, so 8192 gets almost
-  // entirely consumed by reasoning, leaving barely any visible response.
-  // 32768 gives ~8-24k thinking tokens + substantial visible output room.
-  'google/gemini-3-flash-preview': {
-    temperature: 1.0,
-    maxTokens: 32768,
-    systemPrompt: undefined,
-  },
-  'google/gemini-3-pro-preview': {
-    temperature: 1.0,
-    maxTokens: 32768,
-    systemPrompt: undefined,
-  },
-  'google/gemini-2.5-flash': {
-    temperature: 1.0,
-    maxTokens: 32768,
-    systemPrompt: undefined,
-  },
-  'google/gemini-2.5-pro': {
-    temperature: 1.0,
-    maxTokens: 32768,
-    systemPrompt: undefined,
-  },
-
   // ── Perplexity Sonar (native, built-in web search) ────────────────────────
   'perplexity/sonar': {
     temperature: 0.7,

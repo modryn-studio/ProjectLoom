@@ -12,7 +12,7 @@
 // TYPES
 // =============================================================================
 
-export type ProviderType = 'anthropic' | 'openai' | 'google' | 'perplexity';
+export type ProviderType = 'anthropic' | 'openai' | 'perplexity';
 export type StorageType = 'localStorage' | 'sessionStorage';
 
 export interface APIKeyInfo {
@@ -39,7 +39,6 @@ const STORAGE_PREF_KEY = 'projectloom:storage-preference';
 const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI',
-  google: 'Google (Gemini)',
   perplexity: 'Perplexity (All Models)',
 };
 
@@ -279,7 +278,6 @@ class APIKeyManager {
       providers: {
         anthropic: this.getKeyInfo('anthropic'),
         openai: this.getKeyInfo('openai'),
-        google: this.getKeyInfo('google'),
         perplexity: this.getKeyInfo('perplexity'),
       },
     };
@@ -325,11 +323,6 @@ class APIKeyManager {
       case 'openai':
         if (!key.startsWith('sk-')) {
           return { valid: false, error: 'OpenAI API keys should start with "sk-"' };
-        }
-        break;
-      case 'google':
-        if (!key.startsWith('AIza')) {
-          return { valid: false, error: 'Google API keys should start with "AIza"' };
         }
         break;
       case 'perplexity':

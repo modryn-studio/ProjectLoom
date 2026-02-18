@@ -14,7 +14,7 @@ import { getModelConfig } from '@/lib/model-configs';
 export const runtime = 'edge';
 export const maxDuration = 30;
 
-type ProviderType = 'anthropic' | 'openai' | 'google' | 'perplexity';
+type ProviderType = 'anthropic' | 'openai' | 'perplexity';
 
 interface GenerateTitleRequest {
   userMessage: string;
@@ -29,11 +29,9 @@ interface GenerateTitleRequest {
 function detectProvider(model: string): ProviderType {
   if (model.startsWith('anthropic/')) return 'anthropic';
   if (model.startsWith('openai/')) return 'openai';
-  if (model.startsWith('google/')) return 'google';
   if (model.startsWith('sonar')) return 'perplexity';
   if (model.startsWith('claude')) return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
-  if (model.startsWith('gemini')) return 'google';
   return 'perplexity';
 }
 

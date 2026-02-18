@@ -77,18 +77,16 @@ function extractMessageText(message: ChatRequestBody['messages'][number]): strin
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai' | 'google' | 'perplexity';
+type ProviderType = 'anthropic' | 'openai' | 'perplexity';
 
 function detectProvider(model: string): ProviderType {
   if (model.startsWith('anthropic/')) return 'anthropic';
   if (model.startsWith('openai/')) return 'openai';
-  if (model.startsWith('google/')) return 'google';
   if (model.startsWith('perplexity/')) return 'perplexity';
   if (model.startsWith('sonar')) return 'perplexity';
   // Legacy bare model IDs
   if (model.startsWith('claude')) return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
-  if (model.startsWith('gemini')) return 'google';
   return 'perplexity';
 }
 
@@ -218,13 +216,10 @@ export async function POST(req: Request): Promise<Response> {
     const providerType = detectProvider(model);
     
     // All models route through Perplexity Agent API.
-    // web_search is enabled for Anthropic and OpenAI models — they invoke it selectively.
-    // Google/Gemini models do NOT support web_search tool through the Perplexity Agent API
-    // (produces zero text output despite charging tokens — confirmed incompatible).
+    // web_search is enabled for all models — Anthropic/OpenAI invoke it selectively,
     // Sonar always searches (search-first product).
     const perplexity = createPerplexityAgent({ apiKey });
-    const supportsWebSearch = !model.startsWith('google/');
-    const aiModel = perplexity(model, { webSearch: supportsWebSearch });
+    const aiModel = perplexity(model, { webSearch: true });
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
