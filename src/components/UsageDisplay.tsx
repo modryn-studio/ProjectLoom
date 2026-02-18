@@ -140,16 +140,6 @@ export function UsageDisplay() {
           }}>
             💡 Estimated costs based on token usage. Actual charges may vary. Check your Perplexity dashboard for exact billing.
           </p>
-          {usageTotals.byProvider.google.recordCount > 0 && (
-            <p style={{
-              fontSize: typography.sizes.xs,
-              color: colors.fg.tertiary,
-              margin: `${spacing[1]} 0 0 0`,
-              fontFamily: typography.fonts.body,
-            }}>
-              📊 Gemini has a free tier with rate limits. Costs shown are paid tier rates.
-            </p>
-          )}
         </div>
       )}
 
