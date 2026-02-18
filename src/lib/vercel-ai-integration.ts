@@ -49,6 +49,16 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K context. Fastest and most affordable Claude. Great for quick tasks.',
   },
   {
+    id: 'anthropic/claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
+    provider: 'anthropic',
+    maxTokens: 200000,
+    supportsStreaming: true,
+    supportsVision: true,
+    costTier: 'medium',
+    description: '200K context. Latest Sonnet. Ideal balance of speed and intelligence.',
+  },
+  {
     id: 'anthropic/claude-sonnet-4-5',
     name: 'Claude Sonnet 4.5',
     provider: 'anthropic',
