@@ -25,8 +25,8 @@ interface MessageInputProps {
   input?: string;
   /** Set input value from useChat */
   setInput?: (value: string) => void;
-  /** Submit handler from useChat */
-  onSubmit?: (e: React.FormEvent) => void;
+  /** Submit handler — passes message text and optional attachments to parent for orchestration */
+  onSubmit?: (text: string, attachments?: MessageAttachment[]) => void;
   /** Whether AI is currently streaming */
   isStreaming?: boolean;
   /** Stop streaming handler */
@@ -262,14 +262,9 @@ export function MessageInput({
     const messageContent = inputValue.trim() || (attachments.length > 0 ? '[Image]' : '');
 
     if (onSubmit) {
-      // Use useChat's submit
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-      
-      // First, add user message to store (with attachments if any)
-      await sendMessage(messageContent, attachments.length > 0 ? attachments : undefined);
-      
-      // Then trigger AI response via useChat
-      onSubmit(fakeEvent);
+      // Let parent (ChatPanel) orchestrate: persist to store + trigger AI request
+      // in a single code path to eliminate timing races between dual state systems
+      onSubmit(messageContent, attachments.length > 0 ? attachments : undefined);
       
       // Clear draft and attachments
       setDraftMessage(conversationId, '');

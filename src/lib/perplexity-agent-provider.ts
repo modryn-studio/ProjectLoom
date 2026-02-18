@@ -460,6 +460,11 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                         }
                       }
                     } catch (e) {
+                      // Re-throw intentional API errors so they surface to the client.
+                      // Only swallow benign JSON parse failures for malformed SSE lines.
+                      if (e instanceof Error && e.message.includes('Perplexity Agent API error:')) {
+                        throw e;
+                      }
                       console.warn('[PerplexityAgent] Failed to parse SSE event:', e);
                     }
                   }

@@ -221,19 +221,6 @@ export function ChatPanel() {
   }, [contextLoadKey, activeWorkspaceId]);
 
   // useChat hook for streaming AI responses
-  const chatBody = useMemo(() => ({
-    model: currentModel,
-    apiKey: currentApiKey,
-    // Pass image attachments for vision
-    ...(pendingAttachments.length > 0 ? {
-      attachments: pendingAttachments.map(a => ({
-        contentType: a.contentType,
-        name: a.name,
-        url: a.url,
-      })),
-    } : {}),
-  }), [currentModel, currentApiKey, pendingAttachments]);
-
   const {
     messages: chatMessages,
     sendMessage,
@@ -452,12 +439,21 @@ export function ChatPanel() {
   }, [activeWorkspace, ragIndex, getRagQuery]);
 
   // Handle message submission
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  // =========================================================================
+  // SINGLE-SEND ARCHITECTURE
+  // =========================================================================
+  // All three send paths (submit, retry, edit) follow the same pattern:
+  //   1. Set streamingRequestMetadataRef FIRST (blocks sync effect immediately)
+  //   2. Persist changes to Zustand store (set() is synchronous)
+  //   3. Build canvas context (async — safe because sync effect is blocked)
+  //   4. Load full conversation from store → setMessages (single source of truth)
+  //   5. sendMessage(null) — triggers API with current messages, NO duplicate user msg
+  //   6. onFinish/onError clears the ref, re-enabling sync effect
+  // =========================================================================
 
-    // Get user message and clear input immediately for better UX
-    const userMessage = input.trim();
-    if (!userMessage) return;
+  const handleSubmit = useCallback(async (text: string, attachments?: MessageAttachment[]) => {
+    // Validate input
+    if (!text.trim() && !(attachments?.length)) return;
     
     // Prevent concurrent requests
     if (isStreaming) {
@@ -468,13 +464,12 @@ export function ChatPanel() {
     // Clear input immediately so user sees instant feedback
     setInput('');
 
-    // Capture conversation metadata BEFORE starting the request to prevent race conditions
-    // when user switches cards during streaming
     if (!activeConversationId || !currentModel) {
       console.warn('[ChatPanel] Cannot start request: missing conversationId or model');
       return;
     }
     
+    // 1. Lock sync effect — MUST be first to prevent races during setup
     streamingRequestMetadataRef.current = {
       conversationId: activeConversationId,
       model: currentModel,
@@ -483,46 +478,55 @@ export function ChatPanel() {
     };
     setStreamingConversationId(activeConversationId);
 
-    // Build canvas context (pass explicit message since input is now cleared)
-    const canvasContextPayload = await buildCanvasContextPayload(userMessage);
-    
-    console.log('[ChatPanel] Canvas context payload:', canvasContextPayload);
+    // 2. Persist user message to store (Zustand set() is synchronous — state is
+    //    immediately available even though saveToStorage is async background work)
+    useCanvasStore.getState().sendMessage(text, attachments).catch(err =>
+      console.error('[ChatPanel] Failed to persist user message to storage:', err)
+    );
 
-    const body = {
-      ...chatBody,
-      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
-    };
-    
-    console.log('[ChatPanel] Request body:', body);
+    // 3. Set pending attachments for body construction
+    if (attachments?.length) {
+      setPendingAttachments(attachments);
+    }
 
-    // MessageInput calls store.sendMessage (persists to store) BEFORE calling onSubmit,
-    // and the await between those two calls lets React re-render and run the sync effect,
-    // which loads the new user message into chatMessages. If we then let useChat.sendMessage
-    // append the user message again, Perplexity receives two consecutive user turns → 500.
-    // Fix: reset chatMessages to the prior context (store messages minus the trailing user
-    // message) so useChat.sendMessage appends it exactly once.
-    const fullContext = getConversationMessages(activeConversationId);
-    const lastMsg = fullContext[fullContext.length - 1];
-    const contextBeforeSend =
-      lastMsg?.role === 'user' && lastMsg?.content === userMessage
-        ? fullContext.slice(0, -1)
-        : fullContext;
-    setMessages(contextBeforeSend.map((msg, idx) => ({
+    // 4. Build canvas context (async — safe because sync effect is blocked by ref)
+    const canvasContextPayload = await buildCanvasContextPayload(text);
+
+    // 5. Load full conversation from store (includes user msg from step 2)
+    const storeMessages = getConversationMessages(activeConversationId);
+    setMessages(storeMessages.map((msg, idx) => ({
       id: `msg-${idx}`,
       role: msg.role as 'user' | 'assistant' | 'system',
       parts: [{ type: 'text' as const, text: msg.content }],
     })));
 
-    // Use sendMessage to programmatically add the message (doesn't rely on input field)
-    await sendMessage(
-      {
-        text: userMessage,
-      },
-      {
-        body,
+    // 6. Build request body (inline — don't rely on stale memoized chatBody)
+    const body = {
+      model: currentModel,
+      apiKey: currentApiKey,
+      ...(attachments?.length ? {
+        attachments: attachments.map(a => ({
+          contentType: a.contentType,
+          name: a.name,
+          url: a.url,
+        })),
+      } : {}),
+      ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
+    };
+
+    // 7. Send to API — undefined means "use current messages, don't add a new one"
+    //    This eliminates the dual-send: no second user message is appended by useChat.
+    try {
+      await sendMessage(undefined, { body });
+    } finally {
+      // Safety net: ensure ref is cleared even if sendMessage throws.
+      // onFinish/onError should have already handled this.
+      if (streamingRequestMetadataRef.current?.conversationId === activeConversationId) {
+        streamingRequestMetadataRef.current = null;
       }
-    );
-  }, [input, setInput, buildCanvasContextPayload, chatBody, sendMessage, isStreaming, activeConversationId, currentModel, setStreamingConversationId, getConversationMessages, setMessages]);
+      setPendingAttachments([]);
+    }
+  }, [setInput, buildCanvasContextPayload, sendMessage, isStreaming, activeConversationId, currentModel, currentApiKey, setStreamingConversationId, getConversationMessages, setMessages, setPendingAttachments]);
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {
@@ -541,19 +545,13 @@ export function ChatPanel() {
     if (isStreaming) {
       stop();
     }
-    
-    // Truncate conversation in store - keep messages up to and including target
-    const truncatedMessages = messages.slice(0, messageIndex + 1);
-    updateConversation(activeConversation.id, {
-      content: truncatedMessages,
-    });
 
-    // Capture conversation metadata for the retry request
     if (!activeConversationId || !currentModel) {
       console.warn('[ChatPanel] Cannot retry: missing conversationId or model');
       return;
     }
     
+    // 1. Lock sync effect — MUST be before store mutation
     streamingRequestMetadataRef.current = {
       conversationId: activeConversationId,
       model: currentModel,
@@ -561,16 +559,30 @@ export function ChatPanel() {
       requestId: crypto.randomUUID(),
     };
     setStreamingConversationId(activeConversationId);
+
+    // 2. Truncate conversation in store (set() is synchronous)
+    const truncatedMessages = messages.slice(0, messageIndex + 1);
+    updateConversation(activeConversation.id, {
+      content: truncatedMessages,
+    });
+
+    const messageAttachments = targetMessage.attachments || [];
+    if (messageAttachments.length > 0) {
+      setPendingAttachments(messageAttachments);
+    }
     
-    // Build canvas context FIRST (async — yields thread, sync effect may fire here and
-    // reload the trailing user message into chatMessages from the store).
+    // 3. Build canvas context (async — safe because sync effect is blocked)
     const canvasContextPayload = await buildCanvasContextPayload(targetMessage.content);
     
-    // Re-send the user message
-    const messageContent = targetMessage.content;
-    const messageAttachments = targetMessage.attachments || [];
+    // 4. Load full conversation from store (truncated, includes target user msg)
+    const storeMessages = getConversationMessages(activeConversation.id);
+    setMessages(storeMessages.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
     
-    // Build body with attachments for retry (don't rely on pendingAttachments state timing)
+    // 5. Build request body inline
     const body = {
       model: currentModel,
       apiKey: currentApiKey,
@@ -583,34 +595,17 @@ export function ChatPanel() {
       } : {}),
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
-    
-    // Update pendingAttachments state for UI consistency (but body already has them)
-    if (messageAttachments.length > 0) {
-      setPendingAttachments(messageAttachments);
-    }
 
-    // Sync useChat state AFTER the async gap — the sync effect fires during the await
-    // above and reloads the store's trailing user message back into chatMessages.
-    // Resetting here (just before sendMessage) ensures useChat appends it exactly once.
-    const fullContextForRetry = getConversationMessages(activeConversation.id);
-    const contextBeforeRetry = fullContextForRetry.slice(0, -1);
-    setMessages(contextBeforeRetry.map((msg, idx) => ({
-      id: `msg-${idx}`,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
-    })));
-    
-    // Use sendMessage to re-send (this will trigger onFinish and add AI response)
-    await sendMessage(
-      {
-        text: messageContent,
-      },
-      {
-        body,
+    // 6. Send to API — undefined means "use current messages, don't add a new one"
+    try {
+      await sendMessage(undefined, { body });
+    } finally {
+      if (streamingRequestMetadataRef.current?.conversationId === activeConversationId) {
+        streamingRequestMetadataRef.current = null;
       }
-    );
+    }
     
-    console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
+    console.log('[ChatPanel] Retrying message:', { messageIndex, content: targetMessage.content });
   }, [activeConversation, isStreaming, stop, updateConversation, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments, setStreamingConversationId, getConversationMessages]);
 
   // Handle edit message click
@@ -630,7 +625,16 @@ export function ChatPanel() {
       stop();
     }
 
-    // Build the updated message
+    // 1. Lock sync effect — MUST be before store mutation
+    streamingRequestMetadataRef.current = {
+      conversationId: activeConversationId,
+      model: currentModel,
+      timestamp: Date.now(),
+      requestId: crypto.randomUUID(),
+    };
+    setStreamingConversationId(activeConversationId);
+
+    // 2. Build the updated message and truncate conversation in store
     const originalMessage = activeConversation.content[editingMessageIndex];
     const updatedMessage = {
       ...originalMessage,
@@ -647,7 +651,6 @@ export function ChatPanel() {
       },
     };
 
-    // Truncate conversation to only messages up to (and including) the edited message
     const truncatedMessages = [
       ...activeConversation.content.slice(0, editingMessageIndex),
       updatedMessage,
@@ -657,18 +660,22 @@ export function ChatPanel() {
     // Clear edit state
     setEditingMessageIndex(null);
 
-    // Set up streaming metadata
-    streamingRequestMetadataRef.current = {
-      conversationId: activeConversationId,
-      model: currentModel,
-      timestamp: Date.now(),
-      requestId: crypto.randomUUID(),
-    };
-    setStreamingConversationId(activeConversationId);
+    if (attachments.length > 0) {
+      setPendingAttachments(attachments);
+    }
 
-    // Build canvas context FIRST (async — yields thread, sync effect may fire here and
-    // reload the trailing user message into chatMessages from the store).
+    // 3. Build canvas context (async — safe because sync effect is blocked)
     const canvasContextPayload = await buildCanvasContextPayload(content.trim());
+
+    // 4. Load full conversation from store (truncated, includes edited user msg)
+    const storeMessages = getConversationMessages(activeConversation.id);
+    setMessages(storeMessages.map((msg, idx) => ({
+      id: `msg-${idx}`,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts: [{ type: 'text' as const, text: msg.content }],
+    })));
+
+    // 5. Build request body inline
     const body = {
       model: currentModel,
       apiKey: currentApiKey,
@@ -682,22 +689,14 @@ export function ChatPanel() {
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
 
-    if (attachments.length > 0) {
-      setPendingAttachments(attachments);
+    // 6. Send to API — undefined means "use current messages, don't add a new one"
+    try {
+      await sendMessage(undefined, { body });
+    } finally {
+      if (streamingRequestMetadataRef.current?.conversationId === activeConversationId) {
+        streamingRequestMetadataRef.current = null;
+      }
     }
-
-    // Sync useChat state AFTER the async gap — the sync effect fires during the await
-    // above and reloads the store's trailing user message back into chatMessages.
-    // Resetting here (just before sendMessage) ensures useChat appends it exactly once.
-    const fullContextForEdit = getConversationMessages(activeConversation.id);
-    const contextBeforeEdit = fullContextForEdit.slice(0, -1);
-    setMessages(contextBeforeEdit.map((msg, idx) => ({
-      id: `msg-${idx}`,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
-    })));
-
-    await sendMessage({ text: content.trim() }, { body });
   }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage, setStreamingConversationId, getConversationMessages]);
 
   // Handle edit cancel
@@ -706,22 +705,16 @@ export function ChatPanel() {
   }, []);
 
   // Sync store messages to useChat when conversation changes.
-  // Guard: skip the sync only when the viewed card IS the one currently streaming —
-  // in that case chatMessages already has the live in-flight content and we must not
-  // overwrite it. For every other card (including switching away) we always sync so
-  // the panel shows the correct stored conversation.
+  // Guard: skip sync when this conversation has an active or pending request.
+  // The streamingRequestMetadataRef is set BEFORE any async work (store persist, context build,
+  // API call) and cleared in onFinish/onError, so it covers the ENTIRE request lifecycle —
+  // including the setup phase before isStreaming becomes true. This eliminates the race
+  // condition where the sync effect fires between store.sendMessage and useChat.sendMessage.
   //
-  // IMPORTANT: use the ref for the streaming-card check, NOT streamingConversationId state.
-  // When isStreaming flips to true, all effects run in the same React flush. The
-  // setStreamingConversationId(activeConversationId) call in the companion effect queues a
-  // state update that isn't committed until after the flush, so streamingConversationId is
-  // still null/stale here. The ref is updated synchronously in the handlers before any
-  // async operation, so it is always current and safe to read inside the effect.
+  // For other conversations (user switching cards), the guard lets the sync through normally.
   useEffect(() => {
     const streamingConvIdRef = streamingRequestMetadataRef.current?.conversationId ?? null;
-    const viewingStreamingCard = isStreaming && activeConversationId === streamingConvIdRef;
-
-    if (viewingStreamingCard) return;
+    if (activeConversationId === streamingConvIdRef) return;
 
     if (activeConversationId) {
       const storeMessages = getConversationMessages(activeConversationId);
