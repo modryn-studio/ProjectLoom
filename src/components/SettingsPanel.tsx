@@ -17,7 +17,7 @@ import { colors, spacing, effects, typography, animation } from '@/lib/design-to
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -320,7 +320,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: colors.fg.quaternary,
+                  color: colors.fg.tertiary,
                   cursor: 'pointer',
                   padding: spacing[1],
                   borderRadius: effects.border.radius.default,
@@ -466,7 +466,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           transform: 'translateY(-50%)',
                           background: 'none',
                           border: 'none',
-                          color: colors.fg.quaternary,
+                          color: colors.fg.tertiary,
                           cursor: 'pointer',
                           padding: spacing[1],
                         }}
@@ -485,7 +485,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: colors.fg.quaternary,
+                            color: colors.fg.tertiary,
                             cursor: 'pointer',
                             padding: spacing[1],
                           }}
@@ -495,7 +495,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       </>
                     )}
                   </div>
-                  <p style={{ fontSize: typography.sizes.xs, color: colors.fg.quaternary, marginTop: spacing[1] }}>
+                  <p style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary, marginTop: spacing[1] }}>
                     One key for all models — Claude, GPT, Gemini, and Sonar with built-in web search.
                   </p>
                 </div>
@@ -562,7 +562,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   backgroundColor: 'transparent',
                   border: `1px solid var(--border-primary)`,
                   borderRadius: effects.border.radius.default,
-                  color: colors.fg.quaternary,
+                  color: colors.fg.tertiary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   cursor: 'pointer',

@@ -91,6 +91,12 @@ export interface MessageMetadata {
   language?: LanguageCode;
   /** Custom key-value metadata */
   custom?: Record<string, unknown>;
+  /** Whether this message has been edited */
+  edited?: boolean;
+  /** When the message was last edited */
+  editedAt?: Date;
+  /** Original content before edit (for history/undo) */
+  originalContent?: string;
 }
 
 /**

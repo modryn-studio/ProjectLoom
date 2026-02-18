@@ -11,6 +11,7 @@ import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useToast } from '@/stores/toast-store';
 import type { Conversation, InheritedContextEntry, Message, MessageAttachment } from '@/types';
+import { InlineMessageEditor } from './InlineMessageEditor';
 
 /** Extract text content from a UIMessage (v6 uses parts instead of content) */
 function getStreamingMessageText(message: UIMessage): string {
@@ -147,6 +148,14 @@ interface MessageThreadProps {
   isMaximized?: boolean;
   /** Callback to retry a user message (removes subsequent messages and re-sends) */
   onRetry?: (messageIndex: number) => void;
+  /** Callback to edit a user message */
+  onEditClick?: (messageIndex: number) => void;
+  /** Index of message currently being edited */
+  editingMessageIndex?: number | null;
+  /** Callback when edit is saved */
+  onEditSave?: (content: string, attachments: MessageAttachment[]) => void;
+  /** Callback when edit is cancelled */
+  onEditCancel?: () => void;
 }
 
 export function MessageThread({
@@ -156,6 +165,10 @@ export function MessageThread({
   onHeightChange,
   isMaximized = false,
   onRetry,
+  onEditClick,
+  editingMessageIndex = null,
+  onEditSave,
+  onEditCancel,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
@@ -341,6 +354,14 @@ export function MessageThread({
     }
   }, [onRetry]);
 
+  // Handle edit message
+  const handleEditClickLocal = useCallback((messageIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEditClick) {
+      onEditClick(messageIndex);
+    }
+  }, [onEditClick]);
+
   // Memoized handlers to prevent child re-renders
   const handleMouseEnter = useCallback((index: number) => {
     setHoveredMessageIndex(index);
@@ -370,6 +391,24 @@ export function MessageThread({
             item.message.role !== 'system'
           )
           .map(({ message, originalIndex }) => {
+            // If this message is being edited, show the inline editor
+            if (editingMessageIndex === originalIndex && message.role === 'user' && onEditClick) {
+              return (
+                <div key={`editing-${message.id}`} style={{ padding: `${spacing[2]} ${spacing[3]}` }}>
+                  <InlineMessageEditor
+                    initialContent={message.content}
+                    initialAttachments={message.attachments || []}
+                    onSave={(content, attachments) => {
+                      onEditSave?.(content, attachments);
+                    }}
+                    onCancel={() => {
+                      onEditCancel?.();
+                    }}
+                  />
+                </div>
+              );
+            }
+
             return (
               <MessageBubble
                 key={message.id}
@@ -382,6 +421,7 @@ export function MessageThread({
                 onMouseLeave={handleMouseLeave}
                 onBranchClick={handleBranchClick}
                 onRetryClick={handleRetryClick}
+                onEditClick={handleEditClickLocal}
               />
             );
           })}
@@ -423,6 +463,7 @@ interface MessageBubbleProps {
   onMouseLeave: () => void;
   onBranchClick: (index: number, e: React.MouseEvent) => void;
   onRetryClick: (index: number, e: React.MouseEvent) => void;
+  onEditClick: (index: number, e: React.MouseEvent) => void;
 }
 
 const MessageBubble = memo(function MessageBubble({
@@ -435,6 +476,7 @@ const MessageBubble = memo(function MessageBubble({
   onMouseLeave,
   onBranchClick,
   onRetryClick,
+  onEditClick,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -524,8 +566,10 @@ const MessageBubble = memo(function MessageBubble({
 
   const handleEditClickLocal = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    toast.info('Edit feature coming soon');
-  }, [toast]);
+    if (onEditClick) {
+      onEditClick(index, e);
+    }
+  }, [onEditClick, index]);
 
   const handleRetryClickLocal = useCallback((e: React.MouseEvent) => {
     onRetryClick(index, e);
@@ -563,6 +607,7 @@ const MessageBubble = memo(function MessageBubble({
         <div
           style={{
             ...bubbleStyles.content,
+            color: isUser ? colors.fg.primary : colors.fg.secondary,
             fontFamily: textStyles.fontFamily,
             direction: textStyles.direction,
             textAlign: textStyles.textAlign,
@@ -684,7 +729,14 @@ const MessageBubble = memo(function MessageBubble({
         >
           {/* Timestamp - only shown for user messages */}
           {isUser && (
-            <span style={bubbleStyles.timestamp}>{timestamp}</span>
+            <span style={bubbleStyles.timestamp}>
+              {timestamp}
+              {message.metadata?.edited && (
+                <span style={bubbleStyles.editedBadge} title={`Edited ${message.metadata.editedAt ? new Date(message.metadata.editedAt).toLocaleString() : ''}`}>
+                  {' '}(edited)
+                </span>
+              )}
+            </span>
           )}
 
           {/* Action buttons - always rendered to preserve space */}
@@ -818,7 +870,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
     gap: spacing[2],
     // Discrete scrollbar
     scrollbarWidth: 'thin',
-    scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent',
+    scrollbarColor: 'var(--fg-quaternary) transparent',
   } as React.CSSProperties,
 
   maximizedContent: {
@@ -866,7 +918,7 @@ const threadStyles: Record<string, React.CSSProperties> = {
   emptyStateDisclaimer: {
     margin: 0,
     fontSize: typography.sizes.xs,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
   },
 };
 
@@ -993,45 +1045,39 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   // Headings
   markdownH1: {
     fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    fontWeight: typography.weights.semibold,
     margin: `${spacing[4]} 0 ${spacing[3]} 0`,
     lineHeight: 1.3,
-    color: colors.fg.primary,
   },
   markdownH2: {
     fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    fontWeight: typography.weights.semibold,
     margin: `${spacing[4]} 0 ${spacing[2]} 0`,
     lineHeight: 1.3,
-    color: colors.fg.primary,
   },
   markdownH3: {
     fontSize: typography.sizes.base,
-    fontWeight: typography.weights.bold,
+    fontWeight: typography.weights.semibold,
     margin: `${spacing[3]} 0 ${spacing[2]} 0`,
     lineHeight: 1.3,
-    color: colors.fg.primary,
   },
   markdownH4: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
+    fontWeight: typography.weights.semibold,
     margin: `${spacing[3]} 0 ${spacing[2]} 0`,
     lineHeight: 1.3,
-    color: colors.fg.primary,
   },
   markdownH5: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
     margin: `${spacing[2]} 0 ${spacing[1]} 0`,
     lineHeight: 1.3,
-    color: colors.fg.secondary,
   },
   markdownH6: {
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.medium,
     margin: `${spacing[2]} 0 ${spacing[1]} 0`,
     lineHeight: 1.3,
-    color: colors.fg.secondary,
   },
 
   // Blockquote
@@ -1089,6 +1135,13 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.xs,
     color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
+  } as React.CSSProperties,
+
+  editedBadge: {
+    fontSize: typography.sizes.xs,
+    color: colors.fg.tertiary,
+    fontFamily: typography.fonts.body,
+    marginLeft: spacing[1],
   } as React.CSSProperties,
 
   timestampRow: {
@@ -1179,13 +1232,13 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
   citationsEmpty: {
     marginTop: '6px',
     fontSize: typography.sizes.xs,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
   },
 
   citationsTitle: {
     fontSize: typography.sizes.xs,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
     marginBottom: spacing[1],
     textTransform: 'uppercase',

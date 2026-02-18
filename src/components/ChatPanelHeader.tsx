@@ -310,7 +310,7 @@ const headerStyles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },

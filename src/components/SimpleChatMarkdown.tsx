@@ -60,7 +60,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
         const text = headerMatch[2];
         // Chat-friendly sizes (not as dramatic as documents)
         const sizes = [typography.sizes.lg, typography.sizes.base, '15px', typography.sizes.sm, typography.sizes.xs, typography.sizes.xs];
-        const weights = [typography.weights.bold, typography.weights.bold, typography.weights.semibold, typography.weights.semibold, typography.weights.semibold, typography.weights.medium];
+        const weights = [typography.weights.semibold, typography.weights.semibold, typography.weights.semibold, typography.weights.semibold, typography.weights.semibold, typography.weights.medium];
         const topMargins = [spacing[4], spacing[3], spacing[3], spacing[2], spacing[2], spacing[2]];
         const bottomMargins = [spacing[2], spacing[2], spacing[1], spacing[1], spacing[1], spacing[1]];
         
@@ -183,7 +183,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
                       <th key={idx} style={{
                         padding: `${spacing[2]} ${spacing[3]}`,
                         textAlign: 'left',
-                        fontWeight: typography.weights.bold,
+                        fontWeight: typography.weights.semibold,
                         color: colors.fg.primary,
                       }}>
                         {formatInline(cell)}
@@ -199,7 +199,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
                       {row.map((cell, cellIdx) => (
                         <td key={cellIdx} style={{
                           padding: `${spacing[2]} ${spacing[3]}`,
-                          color: colors.fg.primary,
+                          color: colors.fg.secondary,
                         }}>
                           {formatInline(cell)}
                         </td>

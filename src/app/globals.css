@@ -69,13 +69,13 @@
 
 :root {
   /* Base theme (light mode) */
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #FAFAFA;
-  --bg-tertiary: #F4F4F5;
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #F4F4F5;
+  --bg-tertiary: #EFEFEF;
   --bg-inset: #E4E4E7;
   --bg-overlay: rgba(0, 0, 0, 0.5);
 
-  --fg-primary: #09090B;
+  --fg-primary: #18181B;
   --fg-secondary: #3F3F46;
   --fg-tertiary: #71717A;
   --fg-quaternary: #A1A1AA;
@@ -131,24 +131,24 @@
 
 /* Dark theme */
 [data-theme="dark"] {
-  --bg-primary: #09090B;
-  --bg-secondary: #18181B;
-  --bg-tertiary: #27272A;
-  --bg-inset: #3F3F46;
-  --bg-overlay: rgba(0, 0, 0, 0.8);
+  --bg-primary: #111113;
+  --bg-secondary: #1C1C1F;
+  --bg-tertiary: #252528;
+  --bg-inset: #3C3C42;
+  --bg-overlay: rgba(0, 0, 0, 0.75);
 
-  --fg-primary: #FAFAFA;
+  --fg-primary: #D4D4D8;
   --fg-secondary: #A1A1AA;
-  --fg-tertiary: #9CA3AF;
-  --fg-quaternary: #8B8B94;
+  --fg-tertiary: #71717A;
+  --fg-quaternary: #52525B;
 
-  --border-default: #27272A;
-  --border-muted: #18181B;
-  --border-strong: #3F3F46;
+  --border-default: #2A2A2E;
+  --border-muted: #1C1C1F;
+  --border-strong: #3C3C42;
   
   /* Border aliases for component consistency */
-  --border-primary: #27272A;
-  --border-secondary: #18181B;
+  --border-primary: #2A2A2E;
+  --border-secondary: #1C1C1F;
 
   /* Accent - brighter in dark mode */
   --accent-primary: #60A5FA;
@@ -190,24 +190,24 @@
 /* System preference detection (default to dark if no data-theme set) */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --bg-primary: #09090B;
-    --bg-secondary: #18181B;
-    --bg-tertiary: #27272A;
-    --bg-inset: #3F3F46;
-    --bg-overlay: rgba(0, 0, 0, 0.8);
+    --bg-primary: #111113;
+    --bg-secondary: #1C1C1F;
+    --bg-tertiary: #252528;
+    --bg-inset: #3C3C42;
+    --bg-overlay: rgba(0, 0, 0, 0.75);
 
-    --fg-primary: #FAFAFA;
+    --fg-primary: #D4D4D8;
     --fg-secondary: #A1A1AA;
-    --fg-tertiary: #9CA3AF;
-    --fg-quaternary: #8B8B94;
+    --fg-tertiary: #71717A;
+    --fg-quaternary: #52525B;
 
-    --border-default: #27272A;
-    --border-muted: #18181B;
-    --border-strong: #3F3F46;
+    --border-default: #2A2A2E;
+    --border-muted: #1C1C1F;
+    --border-strong: #3C3C42;
     
     /* Border aliases for component consistency */
-    --border-primary: #27272A;
-    --border-secondary: #18181B;
+    --border-primary: #2A2A2E;
+    --border-secondary: #1C1C1F;
 
     --accent-primary: #60A5FA;
     --accent-secondary: #3B82F6;

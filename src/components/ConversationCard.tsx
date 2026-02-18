@@ -454,7 +454,7 @@ const cardStyles: Record<string, React.CSSProperties> = {
 
   timestamp: {
     fontSize: typography.sizes.xs,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     fontFamily: typography.fonts.body,
   },
 

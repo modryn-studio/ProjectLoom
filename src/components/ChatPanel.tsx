@@ -6,6 +6,7 @@ import type { UIMessage } from 'ai';
 import { PanelRightClose } from 'lucide-react';
 
 import { colors, typography, spacing } from '@/lib/design-tokens';
+import { zIndex } from '@/constants/zIndex';
 import { useCanvasStore, selectChatPanelOpen, selectActiveConversationId } from '@/stores/canvas-store';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
@@ -62,6 +63,7 @@ export function ChatPanel() {
   const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
   const addAIMessage = useCanvasStore((s) => s.addAIMessage);
   const updateConversation = useCanvasStore((s) => s.updateConversation);
+  const editMessage = useCanvasStore((s) => s.editMessage);
   const addUsage = useUsageStore((s) => s.addUsage);
   const getConversationMessages = useCanvasStore((s) => s.getConversationMessages);
   const conversationModel = useCanvasStore(
@@ -85,6 +87,10 @@ export function ChatPanel() {
   const [isResizeHovered, setIsResizeHovered] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [messageListHeight, setMessageListHeight] = useState(0);
+
+  // Edit message state
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<{ content: string; attachments: MessageAttachment[] }>({ content: '', attachments: [] });
 
   const effectivePanelWidth = !isResizing && uiPrefs.chatPanelWidth
     ? uiPrefs.chatPanelWidth
@@ -552,6 +558,39 @@ export function ChatPanel() {
     console.log('[ChatPanel] Retrying message:', { messageIndex, content: messageContent });
   }, [activeConversation, isStreaming, stop, updateConversation, chatMessages, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments]);
 
+  // Handle edit message click
+  const handleEditClick = useCallback((messageIndex: number) => {
+    if (!activeConversation || isStreaming) return;
+
+    const message = activeConversation.content[messageIndex];
+    if (!message || message.role !== 'user') return;
+
+    // Enter edit mode
+    setEditingMessageIndex(messageIndex);
+    setEditDraft({
+      content: message.content,
+      attachments: message.attachments || [],
+    });
+  }, [activeConversation, isStreaming]);
+
+  // Handle edit save
+  const handleEditSave = useCallback((content: string, attachments: MessageAttachment[]) => {
+    if (!activeConversationId || editingMessageIndex === null) return;
+
+    // Update message in store
+    editMessage(activeConversationId, editingMessageIndex, content, attachments);
+
+    // Clear edit state
+    setEditingMessageIndex(null);
+    setEditDraft({ content: '', attachments: [] });
+  }, [activeConversationId, editingMessageIndex, editMessage]);
+
+  // Handle edit cancel
+  const handleEditCancel = useCallback(() => {
+    setEditingMessageIndex(null);
+    setEditDraft({ content: '', attachments: [] });
+  }, []);
+
   // Sync store messages to useChat when conversation changes
   useEffect(() => {
     if (activeConversationId) {
@@ -704,7 +743,7 @@ export function ChatPanel() {
     maxHeight: isMaximized ? '100vh' : '100%',
     overflow: 'hidden',
     userSelect: isResizing ? 'none' : 'auto',
-    zIndex: isMaximized ? 200 : 1,
+    zIndex: isMaximized ? zIndex.ui.sidePanelMaximized : zIndex.ui.sidePanel,
     flexShrink: 0,
     pointerEvents: chatPanelOpen ? 'auto' : 'none',
   }), [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen]);
@@ -778,6 +817,10 @@ export function ChatPanel() {
             onHeightChange={setMessageListHeight}
             isMaximized={isMaximized}
             onRetry={handleRetry}
+            onEditClick={handleEditClick}
+            editingMessageIndex={editingMessageIndex}
+            onEditSave={handleEditSave}
+            onEditCancel={handleEditCancel}
           />
 
           {/* Message Input */}
@@ -827,7 +870,7 @@ const emptyStateStyles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     flex: 1,
     padding: spacing[6],
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     textAlign: 'center',
   } as React.CSSProperties,
   icon: {

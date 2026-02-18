@@ -479,6 +479,7 @@ interface WorkspaceState {
   setDraftMessage: (conversationId: string, content: string) => void;
   getDraftMessage: (conversationId: string) => string;
   sendMessage: (content: string, attachments?: import('@/types').MessageAttachment[]) => Promise<void>;
+  editMessage: (conversationId: string, messageIndex: number, newContent: string, newAttachments?: import('@/types').MessageAttachment[]) => void;
   // Actions - Usage Panel
   openUsagePanel: () => void;
   closeUsagePanel: () => void;
@@ -2379,6 +2380,62 @@ export const useCanvasStore = create<WorkspaceState>()(
           logger.error('Failed to generate AI title:', err);
         });
       }
+    },
+
+    editMessage: (conversationId: string, messageIndex: number, newContent: string, newAttachments?: import('@/types').MessageAttachment[]) => {
+      const { conversations, updateConversation } = get();
+      
+      const conversation = conversations.get(conversationId);
+      if (!conversation) {
+        logger.warn(`Conversation ${conversationId} not found for edit`);
+        return;
+      }
+
+      // Validate message index
+      if (messageIndex < 0 || messageIndex >= conversation.content.length) {
+        logger.warn(`Invalid message index ${messageIndex} for conversation ${conversationId}`);
+        return;
+      }
+
+      const message = conversation.content[messageIndex];
+
+      // Only allow editing user messages
+      if (message.role !== 'user') {
+        logger.warn(`Cannot edit ${message.role} message`);
+        return;
+      }
+
+      // Validate new content
+      if (!newContent.trim()) {
+        logger.warn('Cannot save empty message');
+        return;
+      }
+
+      // Create updated message with edit metadata
+      const updatedMessage: Message = {
+        ...message,
+        content: newContent.trim(),
+        attachments: newAttachments,
+        timestamp: new Date(), // Update timestamp to reflect edit time
+        metadata: {
+          ...message.metadata,
+          edited: true,
+          editedAt: new Date(),
+          // Store original content only on first edit
+          originalContent: message.metadata?.edited ? message.metadata.originalContent : message.content,
+        },
+      };
+
+      // Create updated messages array
+      const updatedMessages = [...conversation.content];
+      updatedMessages[messageIndex] = updatedMessage;
+
+      // Update conversation
+      updateConversation(conversationId, {
+        content: updatedMessages,
+      });
+
+      logger.debubug(`Message ${messageIndex} edited in conversation ${conversationId}`);
     },
 
     setConversationModel: (conversationId: string, model: string) => {

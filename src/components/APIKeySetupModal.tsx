@@ -228,7 +228,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
               <p style={styles.infoText}>
                 Get your API key from Perplexity — one key unlocks Claude, GPT, Gemini, and Sonar models:
               </p>
-              <p style={{ ...styles.infoText, fontSize: typography.sizes.xs, marginTop: spacing[1], color: colors.fg.quaternary }}>
+              <p style={{ ...styles.infoText, fontSize: typography.sizes.xs, marginTop: spacing[1], color: colors.fg.tertiary }}>
                 (Optional: Add OpenAI key later in Settings for embeddings/knowledge base features)
               </p>
               <div style={styles.links}>
@@ -391,7 +391,7 @@ const styles: Record<string, React.CSSProperties> = {
   overlay: {
     position: 'fixed',
     inset: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'var(--bg-overlay)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -405,7 +405,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: colors.bg.secondary,
     borderRadius: effects.border.radius.lg,
     border: '1px solid var(--border-primary)',
-    boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4)',
+    boxShadow: '0 24px 48px rgba(0, 0, 0, 0.3)',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
@@ -456,7 +456,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: 'none',
     borderRadius: effects.border.radius.default,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     cursor: 'pointer',
   },
 

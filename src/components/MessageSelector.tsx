@@ -42,7 +42,7 @@ const quickButtonStyles: React.CSSProperties = {
   backgroundColor: colors.bg.inset,
   border: `1px solid var(--border-primary)`,
   borderRadius: effects.border.radius.default,
-  color: colors.fg.quaternary,
+  color: colors.fg.tertiary,
   fontSize: typography.sizes.xs,
   fontFamily: typography.fonts.body,
   cursor: 'pointer',
@@ -65,7 +65,7 @@ const statsStyles: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   fontSize: typography.sizes.xs,
-  color: colors.fg.quaternary,
+  color: colors.fg.tertiary,
   fontFamily: typography.fonts.body,
   padding: `${spacing[1]} 0`,
 };
@@ -188,7 +188,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
               backgroundColor: colors.bg.primary,
               borderRadius: 4,
               fontSize: typography.sizes.xs,
-              color: colors.fg.quaternary,
+              color: colors.fg.tertiary,
               fontFamily: typography.fonts.code,
             }}>
               <Code size={10} />
@@ -202,7 +202,7 @@ function MessageItem({ message, isSelected, onToggle, index }: MessageItemProps)
               backgroundColor: colors.bg.primary,
               borderRadius: 4,
               fontSize: typography.sizes.xs,
-              color: colors.fg.quaternary,
+              color: colors.fg.tertiary,
               fontFamily: typography.fonts.body,
             }}>
               long

@@ -1101,7 +1101,7 @@ export function InfiniteCanvas() {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'var(--bg-overlay)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -1242,7 +1242,7 @@ export function InfiniteCanvas() {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'var(--bg-overlay)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',

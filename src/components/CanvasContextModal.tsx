@@ -55,7 +55,7 @@ const SUPPORTED_EXTENSIONS = [
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -107,7 +107,7 @@ const sectionTitleStyles: React.CSSProperties = {
 
 const descriptionStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
-  color: colors.fg.tertiary,
+  color: colors.fg.secondary,
   marginTop: spacing[1],
   fontFamily: typography.fonts.body,
 };
@@ -130,7 +130,7 @@ const usageBarFillStyles: React.CSSProperties = {
 
 const usagePercentStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
-  color: colors.fg.quaternary,
+  color: colors.fg.tertiary,
   marginTop: spacing[1],
   fontFamily: typography.fonts.body,
 };
@@ -706,7 +706,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: colors.fg.quaternary,
+                  color: colors.fg.tertiary,
                   cursor: 'pointer',
                   padding: spacing[1],
                   borderRadius: effects.border.radius.default,
@@ -895,7 +895,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                             : 0;
                           return (
                             <>
-                              <span style={{ fontSize: typography.sizes.xs, color: colors.fg.quaternary }}>
+                              <span style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary }}>
                                 {progress.status === 'saving' ? 'Saving' : 'Uploading'} {percent}%
                               </span>
                               <div style={uploadBarTrackStyles} aria-hidden="true">
@@ -927,7 +927,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: colors.fg.quaternary,
+                                color: colors.fg.tertiary,
                                 cursor: 'pointer',
                                 fontSize: typography.sizes.xs,
                               }}
@@ -943,7 +943,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: colors.fg.quaternary,
+                                color: colors.fg.tertiary,
                                 cursor: 'pointer',
                                 fontSize: typography.sizes.xs,
                               }}
@@ -956,7 +956,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: colors.fg.quaternary,
+                                color: colors.fg.tertiary,
                                 cursor: 'pointer',
                                 fontSize: typography.sizes.xs,
                               }}
@@ -969,7 +969,7 @@ export function CanvasContextModal({ isOpen, onClose }: CanvasContextModalProps)
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: colors.fg.quaternary,
+                                color: colors.fg.tertiary,
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',

@@ -176,7 +176,7 @@ export function UsageDisplay() {
               backgroundColor: 'transparent',
               border: `1px solid ${colors.border.default}`,
               borderRadius: effects.border.radius.default,
-              color: usageTotals.recordCount === 0 ? colors.fg.tertiary : colors.fg.quaternary,
+              color: usageTotals.recordCount === 0 ? colors.fg.tertiary : colors.fg.secondary,
               fontSize: typography.sizes.sm,
               fontFamily: typography.fonts.body,
               cursor: usageTotals.recordCount === 0 ? 'not-allowed' : 'pointer',

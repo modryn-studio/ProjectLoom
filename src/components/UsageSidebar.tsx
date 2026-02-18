@@ -4,6 +4,7 @@ import React, { useMemo, useCallback } from 'react';
 import { BarChart3, X } from 'lucide-react';
 
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
+import { zIndex } from '@/constants/zIndex';
 import { useCanvasStore, selectUsagePanelOpen } from '@/stores/canvas-store';
 import { UsageDisplay } from '@/components/UsageDisplay';
 import { SidePanel } from '@/components/SidePanel';
@@ -26,7 +27,7 @@ export function UsageSidebar() {
     flexDirection: 'column',
     height: '100%',
     overflow: 'hidden',
-    zIndex: 2,
+    zIndex: zIndex.ui.usageSidebar,
     flexShrink: 0,
     minWidth: 0,
     maxWidth: PANEL_WIDTH,
@@ -75,7 +76,7 @@ export function UsageSidebar() {
           style={{
             background: 'none',
             border: 'none',
-            color: colors.fg.quaternary,
+            color: colors.fg.tertiary,
             cursor: 'pointer',
             padding: spacing[1],
             borderRadius: effects.border.radius.default,

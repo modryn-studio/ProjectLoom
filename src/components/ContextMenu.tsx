@@ -293,7 +293,7 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
               >
                 {item.icon && (
                   <span style={{
-                    color: item.danger ? colors.semantic.error : colors.fg.quaternary,
+                    color: item.danger ? colors.semantic.error : colors.fg.tertiary,
                   }}>
                     {item.icon}
                   </span>
@@ -301,7 +301,7 @@ export function ContextMenu({ isOpen, position, items, onClose }: ContextMenuPro
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.shortcut && (
                   <span style={{
-                    color: colors.fg.quaternary,
+                    color: colors.fg.tertiary,
                     fontSize: typography.sizes.xs,
                     fontFamily: typography.fonts.code,
                   }}>

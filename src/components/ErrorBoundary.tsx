@@ -218,7 +218,7 @@ const styles: Record<string, React.CSSProperties> = {
   stackTrace: {
     fontFamily: typography.fonts.code,
     fontSize: typography.sizes.xs,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     margin: 0,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
@@ -249,7 +249,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: typography.weights.medium,
     color: colors.fg.primary,
     backgroundColor: 'transparent',
-    border: `1px solid ${colors.fg.quaternary}`,
+    border: `1px solid ${colors.border.default}`,
     borderRadius: effects.border.radius.default,
     padding: `${spacing[2]} ${spacing[5]}`,
     cursor: 'pointer',

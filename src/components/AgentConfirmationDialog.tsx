@@ -27,7 +27,7 @@ import type { AgentRunResult, AgentAction } from '@/lib/agents/types';
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -68,7 +68,7 @@ function getActionColor(type: AgentAction['type']): string {
     case 'rename': return colors.accent.primary;
     case 'create_branch': return colors.semantic.success;
     case 'create_document': return colors.accent.primary;
-    default: return colors.fg.quaternary;
+    default: return colors.fg.tertiary;
   }
 }
 
@@ -338,7 +338,7 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
           <div style={{
             padding: `${spacing[2]} ${spacing[4]}`,
             fontSize: typography.sizes.xs,
-            color: colors.fg.quaternary,
+            color: colors.fg.tertiary,
             fontFamily: typography.fonts.body,
             borderBottom: '1px solid var(--border-secondary)',
           }}>
@@ -446,7 +446,7 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                 backgroundColor: 'transparent',
                 border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.fg.quaternary,
+                color: colors.fg.tertiary,
                 fontSize: typography.sizes.xs,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',
@@ -464,7 +464,7 @@ export function AgentConfirmationDialog({ result, onComplete, onCancel }: AgentC
                 backgroundColor: 'transparent',
                 border: '1px solid var(--border-primary)',
                 borderRadius: effects.border.radius.default,
-                color: colors.fg.quaternary,
+                color: colors.fg.tertiary,
                 fontSize: typography.sizes.xs,
                 fontFamily: typography.fonts.body,
                 cursor: 'pointer',

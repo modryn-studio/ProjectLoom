@@ -44,6 +44,12 @@ export const zIndex = {
     contextMenu: 220,
     /** Dropdown menus */
     dropdown: 230,
+    /** Side panels (chat, settings) */
+    sidePanel: 240,
+    /** Maximized chat panel (fullscreen) */
+    sidePanelMaximized: 250,
+    /** Usage sidebar (should be above maximized panels) */
+    usageSidebar: 260,
   },
   
   // Overlay layers (300-399)

@@ -238,7 +238,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
             borderRadius: effects.border.radius.default,
             fontSize: typography.sizes.xs,
             fontFamily: typography.fonts.body,
-            color: colors.fg.quaternary,
+            color: colors.fg.tertiary,
             transition: 'background-color 0.15s ease',
           }}
           onContextMenu={(e) => handleConversationRightClick(conversation, e)}
@@ -267,7 +267,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                color: colors.fg.quaternary,
+                color: colors.fg.tertiary,
               }}
             >
               {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
@@ -287,7 +287,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
             ) : isBranched ? (
               <GitBranch size={12} color={colors.accent.primary} />
             ) : (
-              <MessageSquare size={12} color={colors.fg.quaternary} />
+              <MessageSquare size={12} color={colors.fg.tertiary} />
             )}
             
             {/* Title */}
@@ -638,7 +638,7 @@ function WorkspaceItem({
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            color: colors.fg.quaternary,
+            color: colors.fg.tertiary,
           }}
           title={isTreeExpanded ? 'Collapse' : 'Expand'}
         >
@@ -646,7 +646,7 @@ function WorkspaceItem({
         </button>
         
         {/* Icon */}
-        <Folder size={14} color={isActive ? colors.accent.primary : colors.fg.quaternary} />
+        <Folder size={14} color={isActive ? colors.accent.primary : colors.fg.tertiary} />
 
         {/* Name (or rename input) */}
         {isRenaming ? (
@@ -704,7 +704,7 @@ function WorkspaceItem({
                 padding: spacing[1],
                 cursor: 'pointer',
                 borderRadius: effects.border.radius.default,
-                color: colors.fg.quaternary,
+                color: colors.fg.tertiary,
                 display: 'flex',
                 alignItems: 'center',
               }}
@@ -1016,7 +1016,7 @@ export function CanvasTreeSidebar({
             }
           }}
         >
-          <Folder size={20} color={isOpen ? colors.accent.primary : colors.fg.tertiary} />
+          <Folder size={20} color={isOpen ? colors.accent.primary : colors.fg.secondary} />
         </button>
 
         {/* Spacer */}
@@ -1048,7 +1048,7 @@ export function CanvasTreeSidebar({
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            <Bot size={20} color={colors.fg.tertiary} />
+            <Bot size={20} color={colors.fg.secondary} />
           </button>
         )}
 
@@ -1077,7 +1077,7 @@ export function CanvasTreeSidebar({
             e.currentTarget.style.backgroundColor = 'transparent';
           }}
         >
-          <Settings size={20} color={colors.fg.tertiary} />
+          <Settings size={20} color={colors.fg.secondary} />
         </button>
       </div>
 
@@ -1139,7 +1139,7 @@ export function CanvasTreeSidebar({
           <div style={{
             textAlign: 'center',
             padding: spacing[4],
-            color: colors.fg.quaternary,
+            color: colors.fg.tertiary,
             fontSize: typography.sizes.sm,
             fontFamily: typography.fonts.body,
           }}>
@@ -1188,7 +1188,7 @@ export function CanvasTreeSidebar({
           padding: spacing[2],
           borderTop: '1px solid var(--border-secondary)',
           fontSize: typography.sizes.xs,
-          color: colors.fg.quaternary,
+          color: colors.fg.tertiary,
           fontFamily: typography.fonts.body,
           flexShrink: 0,
           display: 'flex',

@@ -45,7 +45,7 @@ const LightbulbIcon = () => (
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -181,7 +181,7 @@ export function HierarchicalMergeDialog() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.color = colors.fg.primary;
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.color = colors.fg.secondary;
@@ -197,7 +197,7 @@ export function HierarchicalMergeDialog() {
               {/* Explanation */}
               <p style={{ 
                 margin: `0 0 ${spacing[4]}`, 
-                color: colors.fg.tertiary,
+                color: colors.fg.secondary,
                 fontSize: typography.sizes.base,
                 lineHeight: 1.6,
               }}>
@@ -207,7 +207,7 @@ export function HierarchicalMergeDialog() {
 
               {/* Visual Example */}
               <div style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                backgroundColor: 'var(--bg-inset)',
                 borderRadius: effects.border.radius.sm,
                 padding: spacing[4],
                 marginBottom: spacing[4],
@@ -267,7 +267,7 @@ export function HierarchicalMergeDialog() {
                     display: 'block',
                     fontFamily: '"JetBrains Mono", monospace',
                     fontSize: typography.sizes.sm,
-                    color: colors.fg.tertiary,
+                    color: colors.fg.secondary,
                     backgroundColor: 'var(--success-muted)',
                     padding: `${spacing[2]} ${spacing[3]}`,
                     borderRadius: effects.border.radius.sm,
@@ -288,7 +288,7 @@ export function HierarchicalMergeDialog() {
                 color: colors.fg.secondary,
                 lineHeight: 1.6,
               }}>
-                <strong style={{ color: colors.fg.tertiary }}>Benefits:</strong>
+                <strong style={{ color: colors.fg.secondary }}>Benefits:</strong>
                 <ul style={{ margin: `${spacing[2]} 0 0`, paddingLeft: spacing[5] }}>
                   <li>Better AI response quality with focused context</li>
                   <li>Easier to understand conversation flow</li>

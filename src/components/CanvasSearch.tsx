@@ -114,13 +114,13 @@ const styles = {
   noResults: {
     padding: '24px 16px',
     textAlign: 'center' as const,
-    color: colors.fg.quaternary,
+    color: colors.fg.secondary,
     fontSize: typography.sizes.sm,
   },
   hint: {
     padding: '8px 16px',
     fontSize: typography.sizes.xs,
-    color: colors.fg.quaternary,
+    color: colors.fg.tertiary,
     backgroundColor: colors.bg.primary,
     display: 'flex',
     justifyContent: 'space-between',

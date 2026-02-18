@@ -36,7 +36,7 @@ import type {
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -397,7 +397,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                 cursor: 'pointer',
                 padding: spacing[1],
                 borderRadius: effects.border.radius.default,
-                color: colors.fg.quaternary,
+                color: colors.fg.tertiary,
                 display: 'flex',
               }}
             >
@@ -450,7 +450,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                           style={{ marginTop: '2px' }}
                         />
                         <div style={{
-                          color: selectedAgent === agent.id ? colors.accent.primary : colors.fg.quaternary,
+                          color: selectedAgent === agent.id ? colors.accent.primary : colors.fg.tertiary,
                           marginTop: '2px',
                         }}>
                           {agent.icon}
@@ -466,7 +466,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                           </div>
                           <div style={{
                             fontSize: typography.sizes.xs,
-                            color: colors.fg.quaternary,
+                            color: colors.fg.secondary,
                             fontFamily: typography.fonts.body,
                           }}>
                             {agent.description}
@@ -517,7 +517,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                   backgroundColor: colors.bg.inset,
                   borderRadius: effects.border.radius.default,
                   fontSize: typography.sizes.xs,
-                  color: colors.fg.quaternary,
+                  color: colors.fg.secondary,
                   fontFamily: typography.fonts.body,
                 }}>
                   <strong style={{ color: colors.fg.secondary }}>Workspace:</strong>{' '}
@@ -554,7 +554,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                     backgroundColor: colors.bg.inset,
                     borderRadius: effects.border.radius.default,
                     fontSize: typography.sizes.xs,
-                    color: colors.fg.quaternary,
+                    color: colors.fg.secondary,
                     fontFamily: typography.fonts.body,
                     maxHeight: 150,
                     overflowY: 'auto',
@@ -611,7 +611,7 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
                 {result.usage.totalTokens > 0 && (
                   <div style={{
                     fontSize: typography.sizes.xs,
-                    color: colors.fg.quaternary,
+                    color: colors.fg.tertiary,
                     fontFamily: typography.fonts.body,
                   }}>
                     Tokens used: {result.usage.totalTokens.toLocaleString()} |

@@ -16,7 +16,7 @@ interface WorkspaceNameModalProps {
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -151,7 +151,7 @@ export function WorkspaceNameModal({
                   border: 'none',
                   padding: 0,
                   cursor: 'pointer',
-                  color: colors.fg.quaternary,
+                  color: colors.fg.tertiary,
                   display: 'flex',
                   alignItems: 'center',
                 }}

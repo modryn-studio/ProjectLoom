@@ -33,7 +33,7 @@ const XIcon = () => (
 const overlayStyles: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  backgroundColor: 'var(--bg-overlay)',
   backdropFilter: 'blur(4px)',
   display: 'flex',
   alignItems: 'center',
@@ -75,7 +75,7 @@ const categoryStyles: React.CSSProperties = {
 const categoryTitleStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
   fontWeight: typography.weights.semibold,
-  color: colors.fg.quaternary,
+  color: colors.fg.tertiary,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   marginBottom: spacing[2],
@@ -91,7 +91,7 @@ const shortcutRowStyles: React.CSSProperties = {
 
 const shortcutDescriptionStyles: React.CSSProperties = {
   fontSize: typography.sizes.sm,
-  color: colors.fg.tertiary,
+  color: colors.fg.secondary,
 };
 
 const kbdStyles: React.CSSProperties = {
@@ -215,7 +215,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.color = colors.fg.primary;
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.color = colors.fg.secondary;
@@ -261,7 +261,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                 paddingTop: spacing[3],
                 borderTop: '1px solid var(--border-secondary)',
                 fontSize: typography.sizes.xs,
-                color: colors.fg.quaternary,
+                color: colors.fg.tertiary,
                 textAlign: 'center',
               }}>
                 {isMac ? '⌘ = Command key' : 'Ctrl = Control key'}

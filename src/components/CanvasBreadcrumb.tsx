@@ -49,7 +49,7 @@ const activeCrumbStyles: React.CSSProperties = {
 };
 
 const chevronStyles: React.CSSProperties = {
-  color: colors.fg.quaternary,
+  color: colors.fg.tertiary,
   flexShrink: 0,
 };
 
@@ -219,14 +219,14 @@ export function CanvasBreadcrumb({
           <span
             style={{
               ...breadcrumbItemStyles,
-              color: colors.fg.quaternary,
+              color: colors.fg.tertiary,
             }}
           >
             {workspaceName}
           </span>
           <span style={{
             fontSize: typography.sizes.xs,
-            color: colors.fg.quaternary,
+            color: colors.fg.tertiary,
             padding: `${spacing[1]} ${spacing[2]}`,
             backgroundColor: 'var(--bg-tertiary)',
             borderRadius: effects.border.radius.default,
