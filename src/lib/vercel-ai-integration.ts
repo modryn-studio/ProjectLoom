@@ -48,26 +48,9 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     costTier: 'low',
     description: '200K context. Fastest and most affordable Claude. Great for quick tasks.',
   },
-  {
-    id: 'anthropic/claude-sonnet-4-6',
-    name: 'Claude Sonnet 4.6',
-    provider: 'anthropic',
-    maxTokens: 200000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'medium',
-    description: '200K context. Latest Sonnet. Ideal balance of speed and intelligence.',
-  },
-  {
-    id: 'anthropic/claude-sonnet-4-5',
-    name: 'Claude Sonnet 4.5',
-    provider: 'anthropic',
-    maxTokens: 200000,
-    supportsStreaming: true,
-    supportsVision: true,
-    costTier: 'medium',
-    description: '200K context. Previous Sonnet generation.',
-  },
+  // NOTE: claude-sonnet-4-5 returns 500 from Perplexity Agent API (backend issue).
+  // NOTE: claude-sonnet-4-6 returns 400 "not supported" — not yet in Perplexity's catalog.
+  // Both Sonnet models are omitted until Perplexity fixes/adds support.
   {
     id: 'anthropic/claude-opus-4-5',
     name: 'Claude Opus 4.5',
