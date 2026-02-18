@@ -474,6 +474,27 @@ export function createPerplexityAgent(config: { apiKey: string; baseURL?: string
                         }
                       }
 
+                      // Handle output_text.done — fires per output item.
+                      // The `text` field is the FINAL FRAGMENT not yet delivered
+                      // as deltas (not the cumulative total). Always append it.
+                      // For models that fully streamed all text as deltas (e.g. Claude
+                      // when no web search), this event arrives with text:"" — harmless.
+                      if (parsed.type === 'response.output_text.done') {
+                        const doneText: string = parsed.text ?? '';
+                        if (doneText.length > 0) {
+                          if (!textStartSent) {
+                            controller.enqueue({ type: 'text-start' as const, id: textPartId });
+                            textStartSent = true;
+                          }
+                          controller.enqueue({
+                            type: 'text-delta' as const,
+                            id: textPartId,
+                            delta: doneText,
+                          });
+                          streamedText += doneText;
+                        }
+                      }
+
                       // Handle completion event - check multiple possible formats
                       if (parsed.type === 'response.completed' || parsed.type === 'done' || parsed.finish_reason) {
                         totalInputTokens = parsed.response?.usage?.input_tokens || parsed.usage?.input_tokens || 0;
