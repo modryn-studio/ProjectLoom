@@ -710,8 +710,16 @@ export function ChatPanel() {
   // in that case chatMessages already has the live in-flight content and we must not
   // overwrite it. For every other card (including switching away) we always sync so
   // the panel shows the correct stored conversation.
+  //
+  // IMPORTANT: use the ref for the streaming-card check, NOT streamingConversationId state.
+  // When isStreaming flips to true, all effects run in the same React flush. The
+  // setStreamingConversationId(activeConversationId) call in the companion effect queues a
+  // state update that isn't committed until after the flush, so streamingConversationId is
+  // still null/stale here. The ref is updated synchronously in the handlers before any
+  // async operation, so it is always current and safe to read inside the effect.
   useEffect(() => {
-    const viewingStreamingCard = isStreaming && activeConversationId === streamingConversationId;
+    const streamingConvIdRef = streamingRequestMetadataRef.current?.conversationId ?? null;
+    const viewingStreamingCard = isStreaming && activeConversationId === streamingConvIdRef;
 
     if (viewingStreamingCard) return;
 
