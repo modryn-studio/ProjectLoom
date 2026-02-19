@@ -6,27 +6,26 @@ Every new Next.js API route (`src/app/api/**/route.ts`) MUST include structured
 logging following this pattern. This enables live monitoring via `dev.log` during
 development and testing.
 
-### Required boilerplate for every POST/GET handler:
+### Use the `createRouteLogger` utility (preferred):
 
 ```typescript
+import { createRouteLogger } from '@/lib/route-logger';
+
 export async function POST(req: Request): Promise<Response> {
-  const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
-  const reqStart = Date.now();
-  console.log(`\n${'─'.repeat(60)}`);
-  console.log(`[route-name] ▶ START [${reqId}] ${new Date().toISOString()}`);
+  const log = createRouteLogger('route-name');
+  log.begin({ /* key request fields */ });
   try {
     // ... handler body ...
-
-    console.log(`[route-name] [${reqId}] ✅ Done in ${Date.now() - reqStart}ms`, {
-      // key result fields
-    });
+    log.end({ /* key result fields */ });
     return Response.json(result);
   } catch (error) {
-    console.error(`[route-name] [${reqId}] ❌ Error after ${Date.now() - reqStart}ms:`, error);
+    log.err(error);
     // ... error response ...
   }
 }
 ```
+
+Or use raw `console.log` following the same pattern (5-char reqId, `─`.repeat(60) separator, elapsed time). The utility handles this automatically.
 
 ### Rules:
 - Use a 5-char uppercase `reqId` on every request so correlated log lines are easy to grep
@@ -52,8 +51,10 @@ All AI calls go through `src/lib/provider-factory.ts`:
 
 ## Tech Stack
 
-- Next.js 16 (App Router, Edge Runtime for API routes)
+- Next.js 16 (App Router)
+  - Edge Runtime: `chat/route.ts`, `generate-title/route.ts`
+  - Node Runtime: `agent/route.ts`, `summarize/route.ts`, `web-search/route.ts`
 - Vercel AI SDK v6 (`ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/react`)
 - React Flow for canvas
-- Zustand for state (`src/stores/canvas-store.ts`)
+- Zustand for state (`src/stores/canvas-store.ts` is the main store)
 - TypeScript strict mode

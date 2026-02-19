@@ -13,8 +13,7 @@ import { apiKeyManager } from '@/lib/api-key-manager';
 import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
 import { useUsageStore } from '@/stores/usage-store';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
-import { attachEmbeddings, buildKnowledgeBaseContext, buildRagIndex, type RagIndex } from '@/lib/rag-utils';
-import { embedTexts, embedQuery, EMBEDDING_MODEL_NAME } from '@/lib/transformers-embeddings';
+import { buildKnowledgeBaseContext, buildRagIndex } from '@/lib/rag-utils';
 import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
@@ -27,7 +26,11 @@ import type { MessageAttachment, MessageMetadata } from '@/types';
 
 const MIN_PANEL_WIDTH = 400;
 const MAX_PANEL_WIDTH = 800;
-const KB_CONTEXT_MAX_CHARS = 5000;
+// Knowledge base context limits
+// Full-context injection threshold: ~100K tokens (conservative, leaves room for conversation history)
+const KB_FULL_CONTEXT_MAX_CHARS = 400_000;
+// Fallback TF-IDF retrieval cap used only when KB exceeds the full-context threshold
+const KB_RAG_FALLBACK_MAX_CHARS = 5_000;
 
 /** Extract text content from a UIMessage's parts array */
 function getMessageText(message: UIMessage): string {
@@ -152,7 +155,9 @@ export function ChatPanel() {
   // Local input state (managed externally from useChat in AI SDK v6)
   const [input, setInput] = useState('');
 
-  const [ragIndex, setRagIndex] = useState<RagIndex | null>(null);
+  // Full KB content string, loaded on workspace open/change.
+  // null = not loaded yet or no KB files. Empty string not used.
+  const [kbContent, setKbContent] = useState<string | null>(null);
 
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.id === activeWorkspaceId) || null,
@@ -171,57 +176,43 @@ export function ChatPanel() {
 
   useEffect(() => {
     if (contextLoadKey === 'closed') {
-      setRagIndex(null);
+      setKbContent(null);
       return;
     }
 
     let isCancelled = false;
-    const abortController = new AbortController();
 
-    const safeSetRagIndex = (nextIndex: RagIndex | null) => {
-      if (!isCancelled) {
-        setRagIndex(nextIndex);
-      }
-    };
-
-    async function loadCanvasContext() {
+    async function loadKnowledgeBaseContent() {
       if (!activeWorkspaceId) {
-        safeSetRagIndex(null);
+        if (!isCancelled) setKbContent(null);
         return;
       }
 
       const kbFiles = await getKnowledgeBaseContents(activeWorkspaceId);
-
       if (isCancelled) return;
 
       if (kbFiles.length === 0) {
-        safeSetRagIndex(null);
+        setKbContent(null);
         return;
       }
 
-      const baseIndex = buildRagIndex(kbFiles);
+      // Format all files as full content — no chunking, no embeddings.
+      // Anthropic recommends full-context injection for KBs < 200K tokens;
+      // typical workspace KBs are 2K–20K tokens (well within Claude 200K / GPT-4o 128K).
+      const formatted = kbFiles
+        .map((f) => `## ${f.name}\n\n${f.content}`)
+        .join('\n\n---\n\n');
 
-      try {
-        const chunkTexts = baseIndex.chunks.map((chunk) => chunk.content);
-        const embeddings = await embedTexts(chunkTexts);
-        if (isCancelled) return;
-        safeSetRagIndex(attachEmbeddings(baseIndex, embeddings, EMBEDDING_MODEL_NAME));
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return;
-        console.warn('[ChatPanel] Semantic embeddings unavailable, using keyword-based search instead');
-        console.debug('[ChatPanel] Embedding error:', err);
-        safeSetRagIndex(baseIndex);
-      }
+      if (!isCancelled) setKbContent(formatted);
     }
 
-    loadCanvasContext().catch((err) => {
-      console.error('[ChatPanel] Failed to load canvas context', err);
-      safeSetRagIndex(null);
+    loadKnowledgeBaseContent().catch((err) => {
+      console.error('[ChatPanel] Failed to load knowledge base content', err);
+      if (!isCancelled) setKbContent(null);
     });
 
     return () => {
       isCancelled = true;
-      abortController.abort();
     };
   }, [contextLoadKey, activeWorkspaceId]);
 
@@ -433,69 +424,34 @@ export function ChatPanel() {
     }
   }, [isStreaming]);
 
-  const getRagQuery = useCallback((explicitMessage?: string) => {
-    if (explicitMessage) return explicitMessage;
-    if (input.trim()) return input.trim();
-    const lastUserMessage = activeConversation?.content
-      ?.slice()
-      .reverse()
-      .find((msg) => msg.role === 'user');
-    return lastUserMessage?.content?.trim() || '';
-  }, [input, activeConversation]);
-
   const buildCanvasContextPayload = useCallback(async (explicitMessage?: string) => {
     const instructions = activeWorkspace?.context?.instructions?.trim() || '';
-    
-    console.log('[ChatPanel] buildCanvasContextPayload called', { 
-      hasInstructions: !!instructions, 
-      hasRagIndex: !!ragIndex,
-      ragIndexChunks: ragIndex?.chunks.length || 0
+
+    console.log('[ChatPanel] buildCanvasContextPayload called', {
+      hasInstructions: !!instructions,
+      hasKbContent: !!kbContent,
+      kbContentLength: kbContent?.length || 0,
     });
-    
-    // If no knowledge base files, just return instructions
-    if (!ragIndex) {
-      return instructions ? { instructions } : null;
-    }
 
-    // Always include knowledge base file listing so AI knows what's available
-    const kbFilesList = ragIndex.chunks
-      .map((chunk) => chunk.fileName)
-      .filter((name, idx, arr) => arr.indexOf(name) === idx) // unique names
-      .join(', ');
-    
-    let knowledgeBaseContent = '';
-    
-    // Try to retrieve relevant content via RAG
-    const query = getRagQuery(explicitMessage);
-    if (query) {
-      let queryEmbedding: number[] | undefined;
-      if (ragIndex.embeddings?.length) {
-        try {
-          queryEmbedding = await embedQuery(query);
-        } catch (err) {
-          console.warn('[ChatPanel] Query embedding unavailable, using keyword matching');
-          console.debug('[ChatPanel] Embedding error:', err);
-        }
-      }
-
-      const ragContext = buildKnowledgeBaseContext(
-        ragIndex,
-        query,
-        { maxChars: KB_CONTEXT_MAX_CHARS },
-        queryEmbedding
-      );
-      
-      if (ragContext?.text?.trim()) {
-        knowledgeBaseContent = ragContext.text.trim();
-      }
-    }
-    
-    // Build knowledge base section with file listing and optional retrieved content
     let knowledgeBase = '';
-    if (kbFilesList) {
-      knowledgeBase = `Available files: ${kbFilesList}`;
-      if (knowledgeBaseContent) {
-        knowledgeBase += `\n\n---\n\nRelevant excerpts:\n\n${knowledgeBaseContent}`;
+
+    if (kbContent) {
+      if (kbContent.length <= KB_FULL_CONTEXT_MAX_CHARS) {
+        // Fits within threshold — send full content directly (Anthropic-recommended approach
+        // for KBs < 200K tokens; no chunking or retrieval needed).
+        knowledgeBase = kbContent;
+      } else {
+        // Oversized KB — fall back to TF-IDF keyword retrieval.
+        console.warn('[ChatPanel] KB content exceeds full-context threshold, falling back to TF-IDF retrieval');
+        const query = explicitMessage || input.trim();
+        if (query && activeWorkspaceId) {
+          const kbFiles = await getKnowledgeBaseContents(activeWorkspaceId);
+          const index = buildRagIndex(kbFiles);
+          const ragContext = buildKnowledgeBaseContext(index, query, { maxChars: KB_RAG_FALLBACK_MAX_CHARS });
+          if (ragContext?.text?.trim()) {
+            knowledgeBase = ragContext.text.trim();
+          }
+        }
       }
     }
 
@@ -505,17 +461,17 @@ export function ChatPanel() {
       instructions: instructions || undefined,
       knowledgeBase: knowledgeBase || undefined,
     };
-    
+
     console.log('[ChatPanel] buildCanvasContextPayload result:', {
       hasInstructions: !!payload.instructions,
       instructionsLength: payload.instructions?.length || 0,
       hasKnowledgeBase: !!payload.knowledgeBase,
       knowledgeBaseLength: payload.knowledgeBase?.length || 0,
-      knowledgeBasePreview: payload.knowledgeBase?.substring(0, 100)
+      knowledgeBasePreview: payload.knowledgeBase?.substring(0, 100),
     });
-    
+
     return payload;
-  }, [activeWorkspace, ragIndex, getRagQuery]);
+  }, [activeWorkspace, kbContent, activeWorkspaceId, input]);
 
   // Handle message submission
   // =========================================================================
