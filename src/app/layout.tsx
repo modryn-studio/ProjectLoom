@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://projectloom.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://projectloom.space';
 const ogDescription = 'Branching AI conversations on an infinite canvas. Explore multiple threads simultaneously, merge insights, and never lose a thought. BYOK — your keys, your data.';
 
 export const metadata: Metadata = {
