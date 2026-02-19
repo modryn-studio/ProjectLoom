@@ -1,21 +1,164 @@
 # New Project Setup Guide
 
-Quick checklist to replicate the dev tooling established in ProjectLoom.
+Everything needed to replicate the dev tooling from ProjectLoom. All file contents are embedded below — no other reference needed.
 
 ---
 
-## 1. Copy Core Files
+## Checklist
 
-| File | Destination | Notes |
-|------|-------------|-------|
-| `.github/copilot-instructions.md` | `.github/copilot-instructions.md` | Update tech stack section for the new project |
-| `src/lib/route-logger.ts` | `src/lib/route-logger.ts` | No changes needed — reusable as-is |
+- [ ] Create `.github/copilot-instructions.md` (content below — update tech stack section)
+- [ ] Create `src/lib/route-logger.ts` (content below — copy as-is)
+- [ ] Create `.vscode/tasks.json` (content below)
+- [ ] Add `dev.log` to `.gitignore`
 
 ---
 
-## 2. Configure the Dev Server Task
+## File: `.github/copilot-instructions.md`
 
-In `.vscode/tasks.json`, set the default build task to tee output to `dev.log`:
+Update the **Tech Stack** and **Provider Pattern** sections for your project. Keep everything else as-is.
+
+```markdown
+# GitHub Copilot Instructions
+
+## API Route Logging Pattern
+
+Every new Next.js API route (`src/app/api/**/route.ts`) MUST include structured
+logging following this pattern. This enables live monitoring via `dev.log` during
+development and testing.
+
+### Required boilerplate for every POST/GET handler:
+
+```typescript
+export async function POST(req: Request): Promise<Response> {
+  const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
+  const reqStart = Date.now();
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`[route-name] ▶ START [${reqId}] ${new Date().toISOString()}`);
+  try {
+    // ... handler body ...
+
+    console.log(`[route-name] [${reqId}] ✅ Done in ${Date.now() - reqStart}ms`, {
+      // key result fields
+    });
+    return Response.json(result);
+  } catch (error) {
+    console.error(`[route-name] [${reqId}] ❌ Error after ${Date.now() - reqStart}ms:`, error);
+    // ... error response ...
+  }
+}
+```
+
+### Rules:
+- Use a 5-char uppercase `reqId` on every request so correlated log lines are easy to grep
+- Use `─`.repeat(60) separator between requests for visual scanning
+- Log key request fields (model, messageCount, user message preview, etc.) at entry
+- Log token usage + elapsed time at completion
+- Always log errors with elapsed time
+- Prefix every log line with `[route-name] [reqId]`
+
+## Dev Server
+
+Always start with: `npm run dev -- --port 3000 2>&1 | Tee-Object -FilePath dev.log`
+
+This is already configured as the default VS Code build task. `dev.log` is gitignored.
+
+## Tech Stack
+
+← UPDATE THIS SECTION FOR EACH PROJECT →
+```
+
+---
+
+## File: `src/lib/route-logger.ts`
+
+Copy as-is. No changes needed.
+
+```typescript
+export interface RouteLogContext {
+  reqId: string;
+  reqStart: number;
+}
+
+export interface RouteLogger {
+  /** Call at the top of the handler — prints separator + START line, returns context */
+  begin(): RouteLogContext;
+  /** Log an info line under the current request */
+  info(reqId: string, message: string, data?: Record<string, unknown>): void;
+  /** Log a warning line */
+  warn(reqId: string, message: string, data?: Record<string, unknown>): void;
+  /** Wrap a completed response — prints ✅ timing line and returns the response */
+  end(ctx: RouteLogContext, response: Response, data?: Record<string, unknown>): Response;
+  /** Log an error with elapsed time */
+  err(ctx: RouteLogContext, error: unknown): void;
+}
+
+export function createRouteLogger(routeName: string): RouteLogger {
+  const tag = `[${routeName}]`;
+
+  return {
+    begin() {
+      const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
+      const reqStart = Date.now();
+      console.log(`\n${'─'.repeat(60)}`);
+      console.log(`${tag} ▶ START [${reqId}] ${new Date().toISOString()}`);
+      return { reqId, reqStart };
+    },
+
+    info(reqId, message, data) {
+      if (data && Object.keys(data).length > 0) {
+        console.log(`${tag} [${reqId}] ${message}`, data);
+      } else {
+        console.log(`${tag} [${reqId}] ${message}`);
+      }
+    },
+
+    warn(reqId, message, data) {
+      if (data && Object.keys(data).length > 0) {
+        console.warn(`${tag} [${reqId}] ⚠️  ${message}`, data);
+      } else {
+        console.warn(`${tag} [${reqId}] ⚠️  ${message}`);
+      }
+    },
+
+    end({ reqId, reqStart }, response, data) {
+      const elapsed = Date.now() - reqStart;
+      const logData = { ...data, elapsedMs: elapsed, status: response.status };
+      console.log(`${tag} [${reqId}] ✅ Done`, logData);
+      return response;
+    },
+
+    err({ reqId, reqStart }, error) {
+      const elapsed = Date.now() - reqStart;
+      console.error(`${tag} [${reqId}] ❌ Error after ${elapsed}ms:`, error);
+    },
+  };
+}
+```
+
+### Usage in a route:
+
+```typescript
+import { createRouteLogger } from '@/lib/route-logger';
+const log = createRouteLogger('my-route');
+
+export async function POST(req: Request): Promise<Response> {
+  const ctx = log.begin();
+  try {
+    log.info(ctx.reqId, 'Request received', { model, messageCount });
+    // ... handler body ...
+    return log.end(ctx, Response.json(result), { outputTokens });
+  } catch (error) {
+    log.err(ctx, error);
+    return Response.json({ error: 'Internal error' }, { status: 500 });
+  }
+}
+```
+
+---
+
+## File: `.vscode/tasks.json`
+
+`Ctrl+Shift+B` starts the server and tees all output to `dev.log`.
 
 ```jsonc
 {
@@ -28,68 +171,24 @@ In `.vscode/tasks.json`, set the default build task to tee output to `dev.log`:
       "isBackground": true,
       "group": { "kind": "build", "isDefault": true },
       "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Run lint",
+      "type": "shell",
+      "command": "npm run lint",
+      "isBackground": false,
+      "group": "build"
     }
   ]
 }
 ```
 
-Start it with `Ctrl+Shift+B`. Copilot can then read `dev.log` anytime you say "check logs".
-
 ---
 
-## 3. Gitignore `dev.log`
+## How It Works
 
-```
-dev.log
-```
+During a testing session, start the server with `Ctrl+Shift+B`, then tell Copilot **"check logs"** at any point. Copilot reads `dev.log` and flags errors, slow requests, unexpected responses, or anything unusual — without you having to paste terminal output.
 
----
-
-## 4. API Route Logging
-
-Every new route gets this boilerplate — Copilot will apply it automatically because of `copilot-instructions.md`:
-
-```typescript
-import { createRouteLogger } from '@/lib/route-logger';
-const log = createRouteLogger('route-name');
-
-export async function POST(req: Request): Promise<Response> {
-  const ctx = log.begin();
-  try {
-    // handler body
-    log.info(ctx.reqId, 'Request received', { /* key fields */ });
-    return log.end(ctx, Response.json(result), { /* result fields */ });
-  } catch (error) {
-    log.err(ctx, error);
-    return Response.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
-```
-
-Or use the raw boilerplate (no import needed):
-
-```typescript
-const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
-const reqStart = Date.now();
-console.log(`\n${'─'.repeat(60)}`);
-console.log(`[route-name] ▶ START [${reqId}] ${new Date().toISOString()}`);
-```
-
----
-
-## 5. Update `copilot-instructions.md` for the New Project
-
-Edit the following sections after copying:
-
-- **Tech Stack** — swap in the actual framework, state library, etc.
-- **Provider Pattern** — update or remove if not using Vercel AI SDK / BYOK pattern
-- Keep the **API Route Logging** and **Dev Server** sections unchanged
-
----
-
-## Why This Works
-
-- `copilot-instructions.md` in `.github/` is auto-loaded by VS Code — Copilot applies the logging pattern to every new route without being asked
-- `dev.log` gives Copilot read access to live server output during testing
-- `route-logger.ts` eliminates copy-paste boilerplate across routes
-- The reqId + `─` separator pattern makes multi-request logs grep-friendly and visually scannable
+- `copilot-instructions.md` in `.github/` is auto-loaded by VS Code — Copilot applies the logging pattern to every new route it creates, without being asked
+- `route-logger.ts` provides `begin / info / warn / end / err` so there's no boilerplate to copy per route
+- The `reqId` + `─` separator pattern makes multi-concurrent-request logs grep-friendly and visually scannable
