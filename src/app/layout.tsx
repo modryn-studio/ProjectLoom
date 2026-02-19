@@ -12,9 +12,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://projectloom.app';
+const ogDescription = 'Branching AI conversations on an infinite canvas. Explore multiple threads simultaneously, merge insights, and never lose a thought. BYOK — your keys, your data.';
+
 export const metadata: Metadata = {
-  title: "ProjectLoom - Visual Canvas for AI Conversations",
-  description: "Transform linear AI conversations into spatial, branching project trees. Git for AI conversations.",
+  title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
+  description: ogDescription,
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    type: 'website',
+    url: siteUrl,
+    title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
+    description: ogDescription,
+    siteName: 'ProjectLoom',
+    images: [
+      {
+        url: '/banner.png',
+        width: 1280,
+        height: 320,
+        alt: 'ProjectLoom — infinite canvas for branching AI conversations',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
+    description: ogDescription,
+    images: ['/banner.png'],
+  },
 };
 
 export default function RootLayout({

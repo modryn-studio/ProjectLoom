@@ -9,6 +9,7 @@ import { ToastContainer } from '@/components/ToastContainer';
 import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
 import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
 import { APIKeySetupModal } from '@/components/APIKeySetupModal';
+import { WelcomeOverlay } from '@/components/WelcomeOverlay';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import { colors } from '@/lib/design-tokens';
@@ -67,6 +68,7 @@ export default function CanvasPage() {
         onClose={handleAPIKeySetupClose}
         onSuccess={handleAPIKeySetupSuccess}
       />
+      <WelcomeOverlay />
     </ErrorBoundary>
   );
 }
