@@ -630,7 +630,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             <div style={{
               padding: `${spacing[3]} ${spacing[4]}`,
               borderTop: '1px solid var(--border-primary)',
-              textAlign: 'center',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: spacing[3],
             }}>
               <a
                 href="https://tally.so/r/zxq0Jk"
@@ -646,6 +649,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onMouseLeave={(e) => { e.currentTarget.style.color = colors.fg.quaternary; }}
               >
                 Share feedback
+              </a>
+              <span style={{ color: colors.fg.quaternary, fontSize: typography.sizes.xs }}>·</span>
+              <a
+                href="https://tally.so/r/lby0Vv"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: typography.sizes.xs,
+                  color: colors.fg.quaternary,
+                  fontFamily: typography.fonts.body,
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = colors.fg.secondary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = colors.fg.quaternary; }}
+              >
+                Report a bug
               </a>
             </div>
 
