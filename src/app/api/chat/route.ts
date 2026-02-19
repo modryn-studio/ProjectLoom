@@ -435,6 +435,9 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     return result.toUIMessageStreamResponse({
+      // Forward source parts (web search citations) to the client.
+      // Without this, source-url parts are generated server-side but never sent.
+      sendSources: true,
       // Extract and pass citations via metadata for dropdown UI display.
       // Note: messageMetadata only receives { part }, not { message }.
       // We accumulate text from text-delta parts and extract citations on finish.
