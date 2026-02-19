@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, FileText, RefreshCcw, Link2 } from 'lucide-react';
+import { GitBranch, Globe, Loader, Image as ImageIcon, Copy, Edit2, ArrowRight, ChevronDown, FileText, RefreshCcw, Link2 } from 'lucide-react';
 import { SimpleChatMarkdown } from './SimpleChatMarkdown';
 import type { UIMessage } from 'ai';
 
@@ -180,6 +180,32 @@ export function MessageThread({
     && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   ));
 
+  // Detect live web search state from streaming message parts.
+  // AI SDK v6: tool parts have type 'tool-${toolName}' with state/input/output.
+  // 'searching' = tool call in flight (no text yet); 'done' = output received, text streaming in.
+  type StreamingWebSearchState = 'searching' | 'done' | 'none';
+  const streamingWebSearch = useMemo((): StreamingWebSearchState => {
+    if (!isStreaming || streamingMessages.length === 0) return 'none';
+    const lastMsg = streamingMessages[streamingMessages.length - 1];
+    if (lastMsg?.role !== 'assistant') return 'none';
+    type V6ToolPart = { type: string; state: string };
+    let hasActiveSearch = false;
+    let hasCompletedSearch = false;
+    for (const part of lastMsg.parts) {
+      if (part.type.startsWith('tool-')) {
+        const toolName = part.type.slice(5); // Strip 'tool-' prefix
+        if (toolName === 'web_search') {
+          const tp = part as unknown as V6ToolPart;
+          if (tp.state === 'input-streaming' || tp.state === 'input') hasActiveSearch = true;
+          if (tp.state === 'output') hasCompletedSearch = true;
+        }
+      }
+    }
+    if (hasActiveSearch) return 'searching';
+    if (hasCompletedSearch) return 'done';
+    return 'none';
+  }, [isStreaming, streamingMessages]);
+
   // Always use conversation.content as the display source of truth.
   // During streaming, append ONLY the actively-streaming assistant response.
   //
@@ -214,7 +240,10 @@ export function MessageThread({
             role: 'assistant' as const,
             content: getStreamingMessageText(lastStreaming),
             timestamp: new Date(),
-            metadata: { isStreaming: true },
+            metadata: {
+              isStreaming: true,
+              ...(streamingWebSearch !== 'none' ? { streamingWebSearch } : {}),
+            },
           },
         ];
       }
@@ -225,7 +254,7 @@ export function MessageThread({
     }
 
     return conversation.content;
-  }, [streamingMessages, conversation.content, conversation.id, isStreaming]);
+  }, [streamingMessages, conversation.content, conversation.id, isStreaming, streamingWebSearch]);
 
   const showPendingResponse = useMemo(() => {
     if (!isStreaming) return false;
@@ -487,6 +516,11 @@ const MessageBubble = memo(function MessageBubble({
   // Collapsed state for sources
   const [sourcesCollapsed, setSourcesCollapsed] = useState(true);
 
+  // Live web search state from streaming metadata (set by MessageThread on grafted messages)
+  const streamingWebSearchState = (!isUser && !isSystem)
+    ? (message.metadata as { streamingWebSearch?: string } | undefined)?.streamingWebSearch ?? null
+    : null;
+
   const webSearchMetadata = useMemo(() => {
     if (isUser || isSystem) return null;
 
@@ -509,6 +543,11 @@ const MessageBubble = memo(function MessageBubble({
       return { content: message.content, sources: [], used: false };
     }
 
+    // During streaming: model finished searching, now writing the response
+    if (streamingWebSearchState === 'done') {
+      return { content: message.content, sources: [], used: true };
+    }
+
     if (webSearchMetadata) {
       // Strip the inline citation section from display text since we show it in dropdown
       const cleanedContent = message.content.replace(/\n\n---\n\n\*\*Sources:\*\*[\s\S]*$/, '');
@@ -521,7 +560,7 @@ const MessageBubble = memo(function MessageBubble({
     }
 
     return { content: message.content, sources: [], used: false };
-  }, [message.content, isUser, isSystem, webSearchMetadata]);
+  }, [message.content, isUser, isSystem, webSearchMetadata, streamingWebSearchState]);
 
   // Get text styles for language-aware rendering
   const textStyles = useMemo(
@@ -613,16 +652,30 @@ const MessageBubble = memo(function MessageBubble({
             textAlign: textStyles.textAlign,
           }}
         >
-          <SimpleChatMarkdown content={webSearchData.content} />
-          {/* Streaming indicator */}
-          {isStreamingMessage && (
-            <motion.span
+          {/* Searching the web indicator — shown while tool-call is in flight */}
+          {isStreamingMessage && streamingWebSearchState === 'searching' ? (
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              style={bubbleStyles.streamingIndicator}
+              style={bubbleStyles.searchingIndicator}
             >
-              <Loader size={12} style={{ display: 'inline', marginLeft: spacing[1] }} className="animate-spin" />
-            </motion.span>
+              <Globe size={13} className="animate-pulse" style={{ flexShrink: 0 }} />
+              <span>Searching the web…</span>
+            </motion.div>
+          ) : (
+            <>
+              <SimpleChatMarkdown content={webSearchData.content} />
+              {/* Streaming cursor */}
+              {isStreamingMessage && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={bubbleStyles.streamingIndicator}
+                >
+                  <Loader size={12} style={{ display: 'inline', marginLeft: spacing[1] }} className="animate-spin" />
+                </motion.span>
+              )}
+            </>
           )}
         </div>
 
@@ -1129,6 +1182,16 @@ const bubbleStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     marginLeft: spacing[1],
     color: colors.accent.primary,
+  },
+
+  searchingIndicator: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: `${spacing[1]} 0`,
+    color: colors.fg.secondary,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fonts.body,
   },
 
   timestamp: {

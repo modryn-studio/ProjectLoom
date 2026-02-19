@@ -272,7 +272,7 @@ export function ChatPanel() {
       const messageText = getMessageText(message);
 
       // Don't persist an empty assistant message — it would poison future API calls
-      // (providers like Perplexity reject conversations containing empty-content turns).
+      // (providers reject conversations containing empty-content turns).
       if (!messageText.trim()) {
         console.warn('[ChatPanel] onFinish: empty assistant message, skipping addAIMessage');
         streamingRequestMetadataRef.current = null;
@@ -280,13 +280,58 @@ export function ChatPanel() {
         return;
       }
 
+      // Extract web search sources from message parts.
+      // AI SDK v6: tool parts have type 'tool-${toolName}' with state/input/output.
+      // Source parts are emitted by the SDK for some providers.
+      const webSearchSources: Array<{ title: string; url: string }> = [];
+      let webSearchUsed = false;
+      type AISV6ToolPart = { type: string; state: string; input?: unknown; output?: unknown };
+      type AISV6SourcePart = { type: 'source-url'; url: string; title?: string };
+      for (const part of message.parts ?? []) {
+        // Tool parts: type is 'tool-web_search', 'tool-whatever', etc.
+        if (part.type.startsWith('tool-')) {
+          const toolName = part.type.slice(5); // Strip 'tool-' prefix
+          const tp = part as unknown as AISV6ToolPart;
+          if (toolName === 'web_search' && tp.state === 'output' && tp.output) {
+            webSearchUsed = true;
+            const results = Array.isArray(tp.output) ? tp.output : [];
+            for (const r of results) {
+              const res = r as { url?: string; title?: string };
+              if (res.url) webSearchSources.push({ url: res.url, title: res.title ?? res.url });
+            }
+          }
+        }
+        // source-url parts: emitted by AI SDK for web citations
+        if (part.type === 'source-url') {
+          const sp = part as unknown as AISV6SourcePart;
+          if (sp.url && !webSearchSources.find((s) => s.url === sp.url)) {
+            webSearchUsed = true;
+            webSearchSources.push({ url: sp.url, title: sp.title ?? sp.url });
+          }
+        }
+      }
+      if (webSearchUsed) {
+        console.log('[ChatPanel] 🔍 Web search sources extracted:', webSearchSources.length);
+      }
+
+      // Merge server metadata (usage/tokenDetails) with extracted web search data
+      const serverMeta = message.metadata as MessageMetadata | undefined;
+      const aiMessageMetadata: MessageMetadata = {
+        ...serverMeta,
+        ...(webSearchUsed ? {
+          custom: {
+            ...(serverMeta?.custom ?? {}),
+            webSearch: { used: true, sources: webSearchSources },
+          },
+        } : {}),
+      };
+
       // Persist AI message to store using CAPTURED conversationId and model
-      // Pass message metadata to preserve sources/citations for dropdown display
       addAIMessage(
-        metadata.conversationId, 
-        messageText, 
+        metadata.conversationId,
+        messageText,
         metadata.model,
-        message.metadata as MessageMetadata | undefined
+        aiMessageMetadata
       );
 
       // Track usage from message metadata (sent by server via messageMetadata)
@@ -812,18 +857,19 @@ export function ChatPanel() {
           }
           
           // For partial saves (user clicked stop), extract web search metadata
-          // from tool invocations in message parts if available
+          // from tool parts if available (AI SDK v6: type='tool-web_search', state='output')
           const partialSearchSources: Array<{ title: string; url: string }> = [];
+          type PartialToolPart = { type: string; state: string; output?: unknown };
           for (const part of lastMessage.parts ?? []) {
-            // In v6, tool parts have type 'tool-<toolName>' with data directly on the part
             if (!part.type.startsWith('tool-')) continue;
-            const toolName = part.type.substring(5); // Remove 'tool-' prefix
-            if (toolName !== 'tavily_search') continue;
-            const partAny = part as { state?: string; output?: { sources?: Array<{ title: string; url: string }> } };
-            if (partAny.state !== 'output') continue;
-            const sources = partAny.output?.sources;
-            if (Array.isArray(sources)) {
-              partialSearchSources.push(...sources.map((s) => ({ title: s.title, url: s.url })));
+            const toolName = part.type.slice(5);
+            if (toolName !== 'web_search') continue;
+            const tp = part as unknown as PartialToolPart;
+            if (tp.state !== 'output' || !tp.output) continue;
+            const results = Array.isArray(tp.output) ? tp.output : [];
+            for (const r of results) {
+              const res = r as { url?: string; title?: string };
+              if (res.url) partialSearchSources.push({ url: res.url, title: res.title ?? res.url });
             }
           }
 

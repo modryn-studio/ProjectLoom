@@ -393,6 +393,22 @@ export async function POST(req: Request): Promise<Response> {
       ...(Object.keys(webSearchTools).length > 0 ? { tools: webSearchTools } : {}),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages: conversationMessages as any,
+      onStepFinish: ({ toolCalls, toolResults }) => {
+        toolCalls?.forEach((call) => {
+          if (call.toolName === 'web_search') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const args = (call as any).args as { query?: string };
+            console.log('[chat/route] 🔍 Web search query:', args?.query ?? call.toolName);
+          }
+        });
+        toolResults?.forEach((result) => {
+          if (result.toolName === 'web_search') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const size = JSON.stringify((result as any).result).length;
+            console.log('[chat/route] 🔍 Web search result received:', { sizeBytes: size });
+          }
+        });
+      },
       onError: (error) => {
         console.error('[Chat API Streaming Error]', {
           provider: providerType,
