@@ -397,15 +397,21 @@ export async function POST(req: Request): Promise<Response> {
         toolCalls?.forEach((call) => {
           if (call.toolName === 'web_search') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const args = (call as any).args as { query?: string };
-            console.log('[chat/route] 🔍 Web search query:', args?.query ?? call.toolName);
+            const args = (call as any).args as Record<string, unknown> | undefined;
+            const query = args?.query ?? args?.input ?? JSON.stringify(args);
+            console.log('[chat/route] 🔍 Web search query:', query);
           }
         });
         toolResults?.forEach((result) => {
           if (result.toolName === 'web_search') {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const size = JSON.stringify((result as any).result).length;
-            console.log('[chat/route] 🔍 Web search result received:', { sizeBytes: size });
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const raw = (result as any).result ?? (result as any).output ?? result;
+              const size = JSON.stringify(raw).length;
+              console.log('[chat/route] 🔍 Web search result received:', { sizeBytes: size });
+            } catch {
+              console.log('[chat/route] 🔍 Web search result received (size unknown)');
+            }
           }
         });
       },
