@@ -90,783 +90,268 @@ function createConversation(
 // =============================================================================
 
 /**
- * 1. Project Kickoff - Initial idea exploration
+ * 1. Project Kickoff — Root node
  */
-const projectKickoffMessages: Message[] = [
-  createMessage('user', `I want to build a task management app. Something like Todoist but with AI features. What's your take on the architecture?`, 72),
-  createMessage('assistant', `Great idea! For a modern task management app with AI, I'd suggest:
+const kickoffMessages: Message[] = [
+  createMessage('user', `I want to build and ship a side project in 30 days. I've been sitting on ideas forever. How do I actually do this?`, 72),
+  createMessage('assistant', `30 days is totally realistic if you constrain yourself ruthlessly. Here's the only framework that matters:
 
-## Architecture Overview
+**Week 1 — Decide and validate**
+Pick one idea. Talk to 5 potential users before writing a line of code. If you can't find 5 people who'd use it, pick a different idea.
 
-\`\`\`
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚   Next.js App   â”‚â”€â”€â”€â”€â–¶â”‚   Supabase DB   â”‚
-â”‚   (Frontend)    â”‚     â”‚   (PostgreSQL)  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-         â”‚
-         â–¼
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚   AI Service    â”‚
-â”‚  (Claude API)   â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-\`\`\`
+**Week 2 — Build the core**
+One feature done properly beats five features done halfway. Build only what you'd demo on day 14.
 
-Key features to consider:
-1. **Natural language task creation** - "Remind me to call mom tomorrow at 5pm"
-2. **Smart categorization** - AI auto-tags and prioritizes
-3. **Predictive scheduling** - Learn from user patterns
+**Week 3 — Make it usable**
+Auth, error states, mobile layout. The stuff that turns a prototype into something you're not embarrassed to share.
 
-Should I dive deeper into any of these?`, 71),
-  createMessage('user', `Love the NLP approach. Let's focus on the natural language parsing first. How would you structure that?`, 70),
-  createMessage('assistant', `Here's a TypeScript implementation for NLP task parsing:
+**Week 4 — Ship and tell people**
+Vercel deploy, a real domain, and actually posting about it. The build is 20% of the work. Distribution is 80%.
 
-\`\`\`typescript
-interface ParsedTask {
-  title: string;
-  dueDate?: Date;
-  priority: 'low' | 'medium' | 'high';
-  tags: string[];
-  recurring?: RecurrencePattern;
-}
+What's the idea you keep coming back to?`, 71),
+  createMessage('user', `A tool for developers to manage and replay their AI conversation history across different projects. Like git for AI chats.`, 70),
+  createMessage('assistant', `That's a strong idea — you're clearly your own user zero, which is the best starting point.
 
-async function parseNaturalLanguage(
-  input: string
-): Promise<ParsedTask> {
-  const response = await claude.messages.create({
-    model: 'claude-3-sonnet',
-    messages: [{
-      role: 'user',
-      content: \`Parse this task: "\${input}"
-      
-      Extract: title, due date, priority, tags.
-      Return as JSON.\`
-    }],
-  });
-  
-  return JSON.parse(response.content);
-}
-\`\`\`
+A few things make this promising:
+- Developers already feel the pain (context switching between tools, losing good prompts)
+- The "git for AI chats" framing is immediately understandable
+- BYOK means zero infrastructure cost to start
 
-This approach gives us flexibility while leveraging Claude's understanding.`, 69),
+The risk: scope creep. "Replay" and "manage" and "across projects" is already three features. For week 1, pick the single most painful thing and solve only that.
+
+What's the moment you personally felt most frustrated with your current AI workflow?`, 69),
 ];
 
 /**
- * 2. Database Design - Technical planning
+ * 2. Tech Stack — Branch from kickoff
  */
-const databaseDesignMessages: Message[] = [
-  createMessage('user', `Now I need help with the database schema. Using Supabase/PostgreSQL. What tables do we need?`, 68),
-  createMessage('assistant', `Here's a comprehensive schema for your task app:
+const techStackMessages: Message[] = [
+  createMessage('user', `What tech stack should I use? I know React and Node. I want to ship fast without fighting the tools.`, 68),
+  createMessage('assistant', `Stick with what you know for a 30-day project. Fighting unfamiliar tools kills momentum.
 
-\`\`\`sql
--- Users table (extends Supabase auth)
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users,
-  display_name TEXT,
-  timezone TEXT DEFAULT 'UTC',
-  preferences JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+**Recommended stack:**
+- **Next.js** — one repo, API routes included, Vercel deploy in minutes
+- **TypeScript** — catches bugs before users do, worth the small overhead
+- **Zustand** — simpler than Redux, great for client state
+- **Vercel** — deploy on every push, free tier covers early traffic
 
--- Tasks table
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id),
-  title TEXT NOT NULL,
-  description TEXT,
-  status TEXT DEFAULT 'pending',
-  priority INTEGER DEFAULT 2,
-  due_date TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  tags TEXT[] DEFAULT '{}',
-  metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+What to skip right now:
+- Don't add a DB until you know what you're storing
+- Don't set up auth until you have something worth protecting
+- Don't pick a UI library — just write CSS, it's faster for one person
 
--- Enable RLS
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-
--- Policy: users can only see their own tasks
-CREATE POLICY "Users own tasks" ON tasks
-  FOR ALL USING (auth.uid() = user_id);
-\`\`\`
-
-Want me to add the recurring tasks table?`, 67),
-  createMessage('user', `Yes, and also add indexes for performance.`, 66),
-  createMessage('assistant', `Adding recurring tasks and performance indexes:
-
-\`\`\`sql
--- Recurring patterns
-CREATE TABLE recurring_patterns (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
-  frequency TEXT NOT NULL, -- 'daily', 'weekly', 'monthly'
-  interval INTEGER DEFAULT 1,
-  days_of_week INTEGER[], -- 0-6 for weekly
-  day_of_month INTEGER, -- 1-31 for monthly
-  end_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Performance indexes
-CREATE INDEX idx_tasks_user_status 
-  ON tasks(user_id, status);
-  
-CREATE INDEX idx_tasks_due_date 
-  ON tasks(due_date) 
-  WHERE status = 'pending';
-  
-CREATE INDEX idx_tasks_tags 
-  ON tasks USING GIN(tags);
-
--- Full-text search
-ALTER TABLE tasks ADD COLUMN 
-  search_vector tsvector 
-  GENERATED ALWAYS AS (
-    to_tsvector('english', title || ' ' || COALESCE(description, ''))
-  ) STORED;
-
-CREATE INDEX idx_tasks_search 
-  ON tasks USING GIN(search_vector);
-\`\`\`
-
-This gives you fast queries and full-text search! ðŸš€`, 65),
+The goal is a URL you can send to someone by day 14.`, 67),
 ];
 
 /**
- * 3. Japanese Localization - International support (RTL testing)
+ * 3. Finding Your Users — Branch from kickoff
  */
-const japaneseLocalizationMessages: Message[] = [
-  createMessage('user', `I want to add Japanese language support. Can you help translate the UI strings?`, 48),
-  createMessage('assistant', `ã‚‚ã¡ã‚ã‚“ã§ã™ï¼æ—¥æœ¬èªžã®UIãƒ†ã‚­ã‚¹ãƒˆã‚’ç”¨æ„ã—ã¾ã—ãŸï¼š
+const findingUsersMessages: Message[] = [
+  createMessage('user', `Who are my first users and how do I actually find them? "post on social media" feels vague.`, 66),
+  createMessage('assistant', `Forget broad social media for launch. You need 10 obsessed users, not 1,000 indifferent ones.
 
-\`\`\`typescript
-// locales/ja.ts
-export const ja = {
-  common: {
-    save: 'ä¿å­˜',
-    cancel: 'ã‚­ãƒ£ãƒ³ã‚»ãƒ«',
-    delete: 'å‰Šé™¤',
-    edit: 'ç·¨é›†',
-    loading: 'èª­ã¿è¾¼ã¿ä¸­...',
-  },
-  tasks: {
-    title: 'ã‚¿ã‚¹ã‚¯',
-    addTask: 'ã‚¿ã‚¹ã‚¯ã‚’è¿½åŠ ',
-    dueDate: 'æœŸé™',
-    priority: {
-      high: 'é«˜',
-      medium: 'ä¸­',
-      low: 'ä½Ž',
-    },
-    status: {
-      pending: 'æœªå®Œäº†',
-      completed: 'å®Œäº†',
-      archived: 'ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–æ¸ˆã¿',
-    },
-    empty: 'ã‚¿ã‚¹ã‚¯ãŒã‚ã‚Šã¾ã›ã‚“',
-    naturalLanguagePlaceholder: 
-      'ä¾‹ï¼šæ˜Žæ—¥ã®åˆå¾Œ5æ™‚ã«æ¯ã«é›»è©±ã™ã‚‹',
-  },
-  ai: {
-    analyzing: 'AIåˆ†æžä¸­...',
-    suggestion: 'AIã®ææ¡ˆ',
-    autoTag: 'è‡ªå‹•ã‚¿ã‚°ä»˜ã‘',
-  },
-};
-\`\`\`
+**Where developers with your exact problem hang out:**
+- r/ChatGPT, r/LocalLLaMA, r/SideProject — post a "I'm solving X, anyone else feel this pain?"
+- Hacker News "Who wants to be beta tested?" thread (posted Tuesdays)
+- Dev Twitter/X — search "I wish my AI chat tool could..." and reply directly
+- Discord servers for indie hackers (Buildspace, Indie Hackers)
 
-æ—¥æœ¬èªžã®NLPã«ã¯Claude 3ãŒå¯¾å¿œã—ã¦ã„ã¾ã™ã€‚æ—¥ä»˜ã®å½¢å¼ï¼ˆ2024å¹´3æœˆ15æ—¥ï¼‰ã‚‚è‡ªå‹•èªè­˜ã•ã‚Œã¾ã™ã€‚`, 47),
+**The opener that works:**
+"I'm building [thing] because I personally needed it. Here's a short demo. Would you use this? Brutal honesty welcome."
+
+Don't ask if it's a good idea. Ask if they'd pay for it, or better yet — ask them to try it and watch where they get confused.
+
+Who specifically do you picture using this on day 1?`, 65),
+  createMessage('user', `Developers who use Claude or ChatGPT daily for coding help and feel frustrated when they lose context or good prompts.`, 64),
+  createMessage('assistant', `Perfect — that's specific enough to find them. They're on:
+
+- r/ClaudeAI and r/ChatGPT (active daily)
+- GitHub discussions on AI coding tools
+- Cursor and Windsurf Discord servers (these users live in AI dev tools)
+
+**Your outreach message:**
+> "I built a canvas for organizing AI conversations — branching, merging threads, never losing context again. Made it for myself. If you've ever lost a great prompt or wished you could compare two AI approaches side by side, I'd love 10 minutes of your time."
+
+One thing: before you post anywhere, have a 30-second video of the core interaction. Text posts get ignored. A GIF of the canvas in action gets clicks.`, 63),
 ];
 
 /**
- * 4. Arabic RTL Support - Testing RTL rendering
+ * 4. Pricing Strategy — Branch from kickoff
  */
-const arabicRTLMessages: Message[] = [
-  createMessage('user', `We also need Arabic support. I know it's RTL - what are the considerations?`, 46),
-  createMessage('assistant', `Great question! Arabic requires careful RTL handling:
+const pricingMessages: Message[] = [
+  createMessage('user', `Should I charge from day one? Free tier with paid upgrade? I don't want to undersell but I also have zero users.`, 62),
+  createMessage('assistant', `Charge from day one — but make the free tier genuinely useful so there's no friction to start.
 
-## RTL Considerations
+**Model that works for indie developer tools:**
 
-\`\`\`typescript
-// locales/ar.ts
-export const ar = {
-  common: {
-    save: 'Ø­ÙØ¸',
-    cancel: 'Ø¥Ù„ØºØ§Ø¡',
-    delete: 'Ø­Ø°Ù',
-    edit: 'ØªØ¹Ø¯ÙŠÙ„',
-  },
-  tasks: {
-    title: 'Ø§Ù„Ù…Ù‡Ø§Ù…',
-    addTask: 'Ø¥Ø¶Ø§ÙØ© Ù…Ù‡Ù…Ø©',
-    dueDate: 'ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ø³ØªØ­Ù‚Ø§Ù‚',
-    priority: {
-      high: 'Ø¹Ø§Ù„ÙŠØ©',
-      medium: 'Ù…ØªÙˆØ³Ø·Ø©',
-      low: 'Ù…Ù†Ø®ÙØ¶Ø©',
-    },
-  },
-};
-\`\`\`
+Free tier:
+- Unlimited use, no time limit
+- BYOK (they bring their own API keys — your infra cost is zero)
+- Core features fully available
 
-## CSS Considerations
+Paid tier ($8–12/mo):
+- Sync across devices
+- Hosted keys / usage included
+- Priority support
+- Export and integrations
 
-\`\`\`css
-/* Use logical properties */
-.task-card {
-  padding-inline-start: 1rem;
-  margin-inline-end: 0.5rem;
-  text-align: start;
-}
+Why this works:
+- Free tier removes the "should I try this?" friction
+- BYOK free tier costs you nothing, so free users aren't a liability
+- The paid tier sells convenience, not access — much easier to justify
 
-/* Direction-aware flexbox */
-[dir="rtl"] .task-header {
-  flex-direction: row-reverse;
-}
-\`\`\`
-
-## Next.js Configuration
-
-\`\`\`typescript
-// Add to layout.tsx
-<html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-\`\`\`
-
-The key is using CSS logical properties instead of left/right! ðŸ“`, 45),
+Don't do a 14-day trial. Trials create urgency that turns into churn. Give them the free tier forever and let them upgrade when they hit a real limit.`, 61),
 ];
 
 /**
- * 5. API Implementation - Backend work
+ * 5. Frontend Framework — Branch from tech stack
  */
-const apiImplementationMessages: Message[] = [
-  createMessage('user', `Let's implement the API routes. Using Next.js App Router with server actions.`, 40),
-  createMessage('assistant', `Here's a complete API implementation:
+const frontendMessages: Message[] = [
+  createMessage('user', `Should I use Next.js App Router or stick with Pages Router? I've heard App Router has a learning curve.`, 60),
+  createMessage('assistant', `App Router for a new project. The learning curve is real but it's worth it — and the curve is mostly unlearning patterns, not learning new ones.
 
-\`\`\`typescript
-// app/actions/tasks.ts
-'use server'
+The payoff for a tool like this:
+- **Streaming** — AI responses stream natively without workarounds
+- **Server components** — initial data loads fast, no loading spinners for static content
+- **Route handlers** — clean API routes without Express overhead
 
-import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-import { parseNaturalLanguage } from '@/lib/ai/parser'
+The one thing that trips people up: client vs server boundary. Rule of thumb — if it needs \`useState\`, \`useEffect\`, or browser APIs, add \`'use client'\` at the top. Everything else defaults to server. That's 90% of what you need to know.
 
-export async function createTask(formData: FormData) {
-  const supabase = createClient()
-  const input = formData.get('input') as string
-  
-  // Parse natural language input
-  const parsed = await parseNaturalLanguage(input)
-  
-  const { data, error } = await supabase
-    .from('tasks')
-    .insert({
-      title: parsed.title,
-      due_date: parsed.dueDate,
-      priority: parsed.priority,
-      tags: parsed.tags,
-    })
-    .select()
-    .single()
-  
-  if (error) throw error
-  
-  revalidatePath('/tasks')
-  return data
-}
-
-export async function updateTaskStatus(
-  taskId: string, 
-  status: string
-) {
-  const supabase = createClient()
-  
-  await supabase
-    .from('tasks')
-    .update({ 
-      status,
-      completed_at: status === 'completed' 
-        ? new Date().toISOString() 
-        : null
-    })
-    .eq('id', taskId)
-  
-  revalidatePath('/tasks')
-}
-\`\`\`
-
-This gives you type-safe server actions with AI integration!`, 39),
-  createMessage('user', `How do we handle errors gracefully?`, 38),
-  createMessage('assistant', `Let's add comprehensive error handling:
-
-\`\`\`typescript
-// lib/errors.ts
-export class AppError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public status: number = 500
-  ) {
-    super(message)
-    this.name = 'AppError'
-  }
-}
-
-export const ErrorCodes = {
-  TASK_NOT_FOUND: 'TASK_NOT_FOUND',
-  UNAUTHORIZED: 'UNAUTHORIZED',
-  AI_PARSE_FAILED: 'AI_PARSE_FAILED',
-  RATE_LIMITED: 'RATE_LIMITED',
-} as const
-
-// app/actions/tasks.ts
-export async function createTask(formData: FormData) {
-  try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      throw new AppError(
-        'Authentication required',
-        ErrorCodes.UNAUTHORIZED,
-        401
-      )
-    }
-    
-    const input = formData.get('input') as string
-    
-    let parsed
-    try {
-      parsed = await parseNaturalLanguage(input)
-    } catch (e) {
-      throw new AppError(
-        'Could not understand task',
-        ErrorCodes.AI_PARSE_FAILED,
-        422
-      )
-    }
-    
-    // ... rest of implementation
-  } catch (error) {
-    if (error instanceof AppError) {
-      return { error: error.message, code: error.code }
-    }
-    return { error: 'Something went wrong' }
-  }
-}
-\`\`\`
-
-Now errors are typed and user-friendly! âœ¨`, 37),
+For your canvas specifically: the React Flow canvas will be a client component. API routes for AI calls will be server. Clean separation.`, 59),
 ];
 
 /**
- * 6. Debugging Session - Problem solving
+ * 6. Backend & Auth — Branch from frontend
  */
-const debuggingSessionMessages: Message[] = [
-  createMessage('user', `I'm getting a weird error: "Cannot read properties of undefined (reading 'map')" when rendering tasks. Here's my component:
+const backendMessages: Message[] = [
+  createMessage('user', `What about backend and auth? Do I even need auth on day one if it's BYOK?`, 58),
+  createMessage('assistant', `For a BYOK tool — skip auth on day one. 100%.
 
-\`\`\`tsx
-function TaskList({ tasks }) {
-  return (
-    <ul>
-      {tasks.map(task => (
-        <TaskItem key={task.id} task={task} />
-      ))}
-    </ul>
-  )
-}
-\`\`\``, 24),
-  createMessage('assistant', `Classic async data issue! The \`tasks\` prop is \`undefined\` before the data loads. Here are 3 fixes:
+Here's why it's safe:
+- Users bring their own API keys, stored in their own browser (localStorage or sessionStorage)
+- You have zero sensitive data server-side
+- No auth = no login friction = faster path to that first "aha" moment
 
-## Option 1: Default Parameter
-\`\`\`tsx
-function TaskList({ tasks = [] }) {
-  return (
-    <ul>
-      {tasks.map(task => (
-        <TaskItem key={task.id} task={task} />
-      ))}
-    </ul>
-  )
-}
-\`\`\`
+What you do need:
+- Client-side key storage (encrypted in localStorage is fine for MVP)
+- A clear "your keys never leave your browser" message — it's a trust feature, not just a technical detail
 
-## Option 2: Optional Chaining
-\`\`\`tsx
-function TaskList({ tasks }) {
-  return (
-    <ul>
-      {tasks?.map(task => (
-        <TaskItem key={task.id} task={task} />
-      ))}
-    </ul>
-  )
-}
-\`\`\`
+Add auth when you have a reason: sync across devices, team features, or a hosted key tier. Until then, auth is a feature you're building for a problem you don't have yet.
 
-## Option 3: Early Return (Best for loading states)
-\`\`\`tsx
-function TaskList({ tasks, isLoading }) {
-  if (isLoading) return <Skeleton />
-  if (!tasks?.length) return <EmptyState />
-  
-  return (
-    <ul>
-      {tasks.map(task => (
-        <TaskItem key={task.id} task={task} />
-      ))}
-    </ul>
-  )
-}
-\`\`\`
-
-I recommend Option 3 for the best UX! ðŸŽ¯`, 23),
-  createMessage('user', `Option 3 worked perfectly. But now I'm seeing hydration errors in Next.js.`, 22),
-  createMessage('assistant', `Hydration errors happen when server and client HTML don't match. Common causes:
-
-## 1. Using \`Date.now()\` or \`Math.random()\`
-\`\`\`tsx
-// âŒ Bad - different on server vs client
-<span>{Date.now()}</span>
-
-// âœ… Good - use effect for client-only values
-const [time, setTime] = useState<number>()
-useEffect(() => setTime(Date.now()), [])
-\`\`\`
-
-## 2. Browser-only APIs
-\`\`\`tsx
-// âŒ Bad - window doesn't exist on server
-const width = window.innerWidth
-
-// âœ… Good - check for browser
-const [width, setWidth] = useState(0)
-useEffect(() => {
-  setWidth(window.innerWidth)
-}, [])
-\`\`\`
-
-## 3. Timestamps in locale format
-\`\`\`tsx
-// âŒ Bad - locale differs between server/client
-<span>{new Date(task.createdAt).toLocaleString()}</span>
-
-// âœ… Good - use consistent formatting
-import { format } from 'date-fns'
-<span>{format(new Date(task.createdAt), 'PPp')}</span>
-\`\`\`
-
-Can you share the specific hydration error message?`, 21),
+For persistence right now: \`localStorage\` for canvas state, \`IndexedDB\` for anything larger than a few KB (conversation history). Both are free, offline-capable, and require zero backend.`, 57),
 ];
 
 /**
- * 7. Performance Optimization - Deep dive
- */
-const performanceMessages: Message[] = [
-  createMessage('user', `The app is getting slow with 500+ tasks. How can we optimize?`, 12),
-  createMessage('assistant', `Great timing to optimize! Here's a performance deep-dive:
-
-## 1. Virtual List for Large Data
-\`\`\`tsx
-import { useVirtualizer } from '@tanstack/react-virtual'
-
-function TaskList({ tasks }) {
-  const parentRef = useRef<HTMLDivElement>(null)
-  
-  const virtualizer = useVirtualizer({
-    count: tasks.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 72, // estimated row height
-    overscan: 5,
-  })
-  
-  return (
-    <div ref={parentRef} className="h-150 overflow-auto">
-      <div style={{ height: virtualizer.getTotalSize() }}>
-        {virtualizer.getVirtualItems().map((virtualRow) => (
-          <TaskItem 
-            key={tasks[virtualRow.index].id}
-            task={tasks[virtualRow.index]}
-            style={{
-              position: 'absolute',
-              top: virtualRow.start,
-              height: virtualRow.size,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-\`\`\`
-
-## 2. Pagination at Database Level
-\`\`\`typescript
-const PAGE_SIZE = 50
-
-async function getTasks(page: number) {
-  const { data } = await supabase
-    .from('tasks')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-  
-  return data
-}
-\`\`\`
-
-## 3. Memoize Expensive Components
-\`\`\`tsx
-const TaskItem = memo(function TaskItem({ task }) {
-  return (...)
-})
-\`\`\`
-
-These changes should handle 10,000+ tasks smoothly! ðŸ“Š`, 11),
-];
-
-/**
- * 8. Rust Backend Exploration - Alternative tech
- */
-const rustExplorationMessages: Message[] = [
-  createMessage('user', `I'm curious about rewriting the AI parsing service in Rust for better performance. Is it worth it?`, 8),
-  createMessage('assistant', `Interesting question! Let me give you a balanced view:
-
-## Rust Pros for AI Services
-- **10-100x faster** than Node.js for CPU-bound tasks
-- **Memory safety** without GC pauses
-- **Predictable latency** for real-time features
-
-## Simple Rust Example
-\`\`\`rust
-use axum::{routing::post, Json, Router};
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize)]
-struct ParseRequest {
-    input: String,
-}
-
-#[derive(Serialize)]
-struct ParsedTask {
-    title: String,
-    due_date: Option<String>,
-    priority: u8,
-}
-
-async fn parse_task(
-    Json(req): Json<ParseRequest>
-) -> Json<ParsedTask> {
-    // Call Claude API from Rust
-    let client = anthropic::Client::new();
-    let response = client
-        .messages()
-        .create(/* ... */)
-        .await?;
-    
-    // Parse and return
-    Json(parse_response(response))
-}
-
-#[tokio::main]
-async fn main() {
-    let app = Router::new()
-        .route("/parse", post(parse_task));
-    
-    axum::serve(
-        TcpListener::bind("0.0.0.0:3001").await?,
-        app
-    ).await?;
-}
-\`\`\`
-
-## My Recommendation
-For your use case (API calls to Claude), the bottleneck is **network I/O**, not CPU. Node.js/TypeScript is fine.
-
-Consider Rust when:
-- Processing millions of tasks locally
-- Running ML models on-device
-- Need sub-millisecond response times
-
-Stick with TypeScript for now, optimize later if needed! ðŸ¦€`, 7),
-];
-
-/**
- * 9. Spanish UI Copy - More i18n
- */
-const spanishUIMessages: Message[] = [
-  createMessage('user', `Adding Spanish as well. Can you provide the translations?`, 6),
-  createMessage('assistant', `Â¡Por supuesto! AquÃ­ estÃ¡n las traducciones al espaÃ±ol:
-
-\`\`\`typescript
-// locales/es.ts
-export const es = {
-  common: {
-    save: 'Guardar',
-    cancel: 'Cancelar',
-    delete: 'Eliminar',
-    edit: 'Editar',
-    loading: 'Cargando...',
-    search: 'Buscar',
-    settings: 'ConfiguraciÃ³n',
-  },
-  tasks: {
-    title: 'Tareas',
-    addTask: 'Agregar tarea',
-    newTask: 'Nueva tarea',
-    dueDate: 'Fecha lÃ­mite',
-    priority: {
-      high: 'Alta',
-      medium: 'Media',
-      low: 'Baja',
-    },
-    status: {
-      pending: 'Pendiente',
-      inProgress: 'En progreso',
-      completed: 'Completada',
-      archived: 'Archivada',
-    },
-    empty: 'No hay tareas todavÃ­a',
-    naturalLanguagePlaceholder: 
-      'Ej: Llamar a mamÃ¡ maÃ±ana a las 5pm',
-  },
-  ai: {
-    analyzing: 'Analizando con IA...',
-    suggestion: 'Sugerencia de IA',
-    autoTag: 'Etiquetado automÃ¡tico',
-    smartSchedule: 'ProgramaciÃ³n inteligente',
-  },
-  errors: {
-    generic: 'Algo saliÃ³ mal',
-    notFound: 'No encontrado',
-    unauthorized: 'Acceso no autorizado',
-  },
-};
-\`\`\`
-
-Claude entiende espaÃ±ol perfectamente para el anÃ¡lisis de lenguaje natural. Â¡Tu app estarÃ¡ lista para el mercado hispanohablante! ðŸ‡ªðŸ‡¸ðŸ‡²ðŸ‡½ðŸ‡¦ðŸ‡·`, 5),
-];
-
-/**
- * 10. Deployment & Launch - Final steps
+ * 7. Deployment — Branch from backend
  */
 const deploymentMessages: Message[] = [
-  createMessage('user', `We're ready to deploy! What's the production checklist?`, 2),
-  createMessage('assistant', `Here's your production deployment checklist:
+  createMessage('user', `Deployment setup — what do I actually need to go live properly?`, 56),
+  createMessage('assistant', `Lean setup that covers everything for an early-stage tool:
 
-## Pre-Deployment âœ…
+**Hosting: Vercel (free tier)**
+Connect your GitHub repo, every push auto-deploys. Takes 5 minutes to set up, zero to maintain.
 
-### Security
-- [ ] Environment variables secured (not in repo)
-- [ ] API keys rotated from development
-- [ ] RLS policies tested thoroughly
-- [ ] Rate limiting configured
-- [ ] CORS properly configured
+**Domain: buy it now**
+$12/year on Namecheap. Don't launch with a \`.vercel.app\` URL — it signals side project energy when you want product energy.
 
-### Performance
-- [ ] Images optimized (next/image)
-- [ ] Bundle analyzed (no huge dependencies)
-- [ ] Database indexes verified
-- [ ] CDN configured for static assets
+**Analytics: Plausible or Fathom**
+Lightweight, privacy-friendly, won't get blocked by ad blockers. You need to know if anyone is actually using it.
 
-### Monitoring
-- [ ] Error tracking (Sentry)
-- [ ] Analytics (Posthog/Plausible)
-- [ ] Uptime monitoring
-- [ ] Database monitoring
+**Error tracking: Sentry (free tier)**
+You will not be watching the console when users hit bugs. Sentry tells you what broke and where.
 
-## Vercel Deployment
+That's the full stack. No Docker, no AWS, no CI/CD pipeline — those are problems for when you have users to serve. Ship this weekend, optimize next month.`, 55),
+];
 
-\`\`\`bash
-# Install Vercel CLI
-npm i -g vercel
+/**
+ * 8. Scaling Later — Branch from deployment
+ */
+const scalingMessages: Message[] = [
+  createMessage('user', `When should I start thinking about scaling? I don't want to build something that collapses at 1000 users.`, 54),
+  createMessage('assistant', `Don't think about scaling until you have a scaling problem. Seriously.
 
-# Deploy to preview
-vercel
+The math: Vercel's free tier handles millions of requests/month. Next.js static + edge functions scale automatically. A BYOK app with localStorage has essentially zero server load. You could get 10,000 users before you need to change anything.
 
-# Deploy to production
-vercel --prod
-\`\`\`
+The trap most indie hackers fall into: spending week 3 optimizing infrastructure for a user load they don't have instead of talking to the 8 users they do have.
 
-## Environment Variables (Vercel Dashboard)
-\`\`\`
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-\`\`\`
+**When to actually revisit:**
+- You're getting charged on Vercel (good problem — means traffic)
+- A specific feature is slow for a measurable reason
+- You're adding a DB and need to think about queries
 
-## Post-Deployment
-- [ ] Smoke test all features
-- [ ] Verify OAuth flows work
-- [ ] Test in incognito mode
-- [ ] Check mobile responsiveness
-- [ ] Verify i18n routes work
+Until one of those is true, every hour on scaling is an hour not spent on growth. Your bottleneck right now is distribution, not architecture.`, 53),
+];
 
-Ready to launch! ðŸš€`, 1),
-  createMessage('user', `Amazing! One last thing - how do we set up preview deployments for PRs?`, 0.5),
-  createMessage('assistant', `Vercel handles this automatically! But here's how to customize:
+/**
+ * 9. Landing Page Copy — Branch from finding users
+ */
+const landingPageMessages: Message[] = [
+  createMessage('user', `Help me write landing page copy. I want it to be direct, not full of buzzwords.`, 52),
+  createMessage('assistant', `Good instinct. Here's a structure that converts for developer tools:
 
-## Automatic Preview Deployments
+**Hero (above the fold)**
+Headline: "Your AI conversations, organized like a project — not a chat log."
+Sub: "Branch, merge, and navigate your AI work on an infinite canvas. BYOK, runs in your browser."
+CTA: "Try it free →"
 
-Every PR gets a unique preview URL:
-\`\`\`
-https://your-app-git-feature-branch.vercel.app
-\`\`\`
+**One-liner pain acknowledgment**
+"Every developer has a graveyard of good prompts they'll never find again."
 
-## GitHub Action for Extra Checks
+**3 features, not 8**
+Pick the three things that make it different. For this tool probably:
+- Branch any conversation to explore two paths at once
+- Merge multiple threads into a single synthesis
+- Full context flows through the graph automatically
 
-\`\`\`yaml
-# .github/workflows/preview.yml
-name: Preview
+**Social proof placeholder**
+Even if you have zero users: "Built by a developer who kept losing context. Now it's yours too."
 
-on:
-  pull_request:
-    branches: [main]
+**Footer CTA**
+"BYOK — your API keys never leave your browser."
 
-jobs:
-  preview:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run test
-      - run: npm run build
-      
-      - name: Comment Preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'ðŸš€ Preview: https://...'
-            })
-\`\`\`
+What's the one thing you want users to understand in 5 seconds?`, 51),
+  createMessage('user', `That they can branch and merge AI conversations like code, and never lose context again.`, 50),
+  createMessage('assistant', `Then lead with exactly that:
 
-## Protect Production
-\`\`\`json
-// vercel.json
-{
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "feature/*": true
-    }
-  }
-}
-\`\`\`
+**Headline:** "Branch and merge AI conversations — like code, not chat."
 
-You're all set for a professional CI/CD workflow! ðŸŽ‰`, 0),
+**Sub:** "Explore multiple AI approaches in parallel, merge the best ideas, and carry full context through every thread. Your keys, your browser, your work."
+
+The "like code" framing is instant for developers — they already know what branch and merge means. You're not explaining a new concept, you're applying a familiar mental model to a new problem.
+
+One tip: show it, don't say it. A 15-second screen recording of someone branching a conversation and watching context flow to the child card will do more than any headline.`, 49),
+];
+
+/**
+ * 10. Launch Checklist — Branch from deployment
+ */
+const launchChecklistMessages: Message[] = [
+  createMessage('user', `What's my actual launch checklist? I want to make sure I'm not missing anything obvious.`, 4),
+  createMessage('assistant', `**The day-before checklist:**
+
+Product
+- [ ] Core flow works end-to-end (create, branch, merge, persist)
+- [ ] Error states don't show stack traces to users
+- [ ] Mobile layout isn't broken
+- [ ] Empty state guides new users (don't show a blank canvas with no hint)
+
+Trust signals
+- [ ] Custom domain live (not .vercel.app)
+- [ ] "Your keys never leave your browser" visible on the API key screen
+- [ ] Feedback link somewhere accessible
+
+Launch posts (write them before you deploy, post simultaneously)
+- [ ] HN Show HN post drafted
+- [ ] r/SideProject post drafted
+- [ ] Twitter/X thread drafted (3-4 tweets with a GIF)
+- [ ] Personal network DMs to 5 people you think would genuinely use it
+
+Day-of
+- [ ] Sentry is live before you post anywhere
+- [ ] You can see Plausible traffic in real time
+- [ ] You're free for 2-3 hours to respond to comments
+
+The most common launch mistake: shipping and walking away. The first hour of comments shapes everything. Be there.`, 3),
 ];
 
 // =============================================================================
@@ -875,29 +360,25 @@ You're all set for a professional CI/CD workflow! ðŸŽ‰`, 0),
 
 /**
  * Generate the complete mock data set
- * 
- * Creates 10 logically connected conversations forming a coherent
- * project story from initial idea through deployment.
- * 
- * v4 Branching Demo:
- * - Card 0 (Kickoff) is root with no parents
- * - Card 1 (Database) branches from Kickoff at message 3 (full context)
- * - Card 2 (Japanese i18n) branches from Kickoff at message 2 (full context)
- * - Card 3 (Arabic RTL) branches from Kickoff at message 2 (full context)
- * - Card 4 (API) branches from Database (full context)
- * - Card 10 (i18n Synthesis) is a MERGE NODE combining Japanese + Arabic + Spanish
+ *
+ * Demonstrates ProjectLoom's core capabilities through a realistic
+ * "shipping a side project in 30 days" planning canvas.
+ *
+ * Graph structure:
+ *  Kickoff (root)
+ *    ├── Tech Stack → Frontend → Backend → Deployment → Scaling
+ *    │                                              └── Launch Checklist
+ *    ├── Finding Users → Landing Page ──────────────────────────┐
+ *    └── Pricing ──────────────────────────────── 🔀 Week 1 Plan ◄─┘
  */
 export function generateMockData(): MockDataResult {
-  // Create conversations with temporary positions (will be updated)
   const tempPosition: Position = { x: 0, y: 0 };
-  
-  // Helper to create branch point
+
   const makeBranchPoint = (parentCardId: string, messageIndex: number): BranchPoint => ({
     parentCardId,
     messageIndex,
   });
-  
-  // Helper to create inherited context entry with sample messages
+
   const makeInheritedContext = (
     messages: Message[],
     totalParentMessages: number
@@ -907,254 +388,239 @@ export function generateMockData(): MockDataResult {
     timestamp: new Date(),
     totalParentMessages,
   });
-  
-  // Step 1: Create root conversation (no parents)
+
+  // 0 — root
   const kickoff = createConversation(
-    'Project Kickoff',
-    projectKickoffMessages,
-    tempPosition,
-    [], // connections filled later
-    [], // no parents - root
-    undefined, // no branch point
-    {}, // no inherited context
-    false
-  );
-  
-  // Step 2: Create branched conversations with proper v4 metadata
-  const database = createConversation(
-    'Database Design',
-    databaseDesignMessages,
+    'Ship a Side Project in 30 Days',
+    kickoffMessages,
     tempPosition,
     [],
-    [kickoff.id], // branched from kickoff
-    makeBranchPoint(kickoff.id, 2), // branched after 3rd message
-    {
-      [kickoff.id]: makeInheritedContext(projectKickoffMessages.slice(0, 3), projectKickoffMessages.length),
-    },
+    [],
+    undefined,
+    {},
     false
   );
-  
-  const japaneseI18n = createConversation(
-    'Japanese i18n',
-    japaneseLocalizationMessages,
+
+  // 1 — branch from kickoff
+  const techStack = createConversation(
+    'Tech Stack',
+    techStackMessages,
     tempPosition,
     [],
     [kickoff.id],
     makeBranchPoint(kickoff.id, 1),
-    {
-      [kickoff.id]: makeInheritedContext(projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
-    },
+    { [kickoff.id]: makeInheritedContext(kickoffMessages.slice(0, 2), kickoffMessages.length) },
     false
   );
-  
-  const arabicRTL = createConversation(
-    'Arabic RTL',
-    arabicRTLMessages,
+
+  // 2 — branch from kickoff
+  const findingUsers = createConversation(
+    'Finding Your Users',
+    findingUsersMessages,
     tempPosition,
     [],
     [kickoff.id],
-    makeBranchPoint(kickoff.id, 1),
-    {
-      [kickoff.id]: makeInheritedContext(projectKickoffMessages.slice(0, 2), projectKickoffMessages.length),
-    },
+    makeBranchPoint(kickoff.id, 2),
+    { [kickoff.id]: makeInheritedContext(kickoffMessages.slice(0, 3), kickoffMessages.length) },
     false
   );
-  
-  const apiImpl = createConversation(
-    'API Implementation',
-    apiImplementationMessages,
+
+  // 3 — branch from kickoff
+  const pricing = createConversation(
+    'Pricing Strategy',
+    pricingMessages,
     tempPosition,
     [],
-    [database.id],
-    makeBranchPoint(database.id, 3),
-    {
-      [database.id]: makeInheritedContext(databaseDesignMessages.slice(0, 4), databaseDesignMessages.length),
-    },
+    [kickoff.id],
+    makeBranchPoint(kickoff.id, 2),
+    { [kickoff.id]: makeInheritedContext(kickoffMessages.slice(0, 3), kickoffMessages.length) },
     false
   );
-  
-  const debugging = createConversation(
-    'Debugging Session',
-    debuggingSessionMessages,
+
+  // 4 — branch from techStack
+  const frontend = createConversation(
+    'App Router vs Pages Router',
+    frontendMessages,
     tempPosition,
     [],
-    [apiImpl.id],
-    makeBranchPoint(apiImpl.id, 5),
-    {
-      [apiImpl.id]: makeInheritedContext(apiImplementationMessages.slice(0, 6), apiImplementationMessages.length),
-    },
+    [techStack.id],
+    makeBranchPoint(techStack.id, 1),
+    { [techStack.id]: makeInheritedContext(techStackMessages.slice(0, 2), techStackMessages.length) },
     false
   );
-  
-  const performance = createConversation(
-    'Performance',
-    performanceMessages,
+
+  // 5 — branch from frontend
+  const backend = createConversation(
+    'Backend & Auth',
+    backendMessages,
     tempPosition,
     [],
-    [debugging.id],
-    makeBranchPoint(debugging.id, 7),
-    {
-      [debugging.id]: makeInheritedContext(debuggingSessionMessages.slice(0, 8), debuggingSessionMessages.length),
-    },
+    [frontend.id],
+    makeBranchPoint(frontend.id, 1),
+    { [frontend.id]: makeInheritedContext(frontendMessages.slice(0, 2), frontendMessages.length) },
     false
   );
-  
-  const rustExploration = createConversation(
-    'Rust Exploration',
-    rustExplorationMessages,
-    tempPosition,
-    [],
-    [performance.id],
-    makeBranchPoint(performance.id, 3),
-    {
-      [performance.id]: makeInheritedContext(performanceMessages.slice(0, 2), performanceMessages.length),
-    },
-    false
-  );
-  
-  const spanishUI = createConversation(
-    'Spanish i18n',
-    spanishUIMessages,
-    tempPosition,
-    [],
-    [japaneseI18n.id],
-    makeBranchPoint(japaneseI18n.id, 3),
-    {
-      [japaneseI18n.id]: makeInheritedContext(japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
-    },
-    false
-  );
-  
+
+  // 6 — branch from backend
   const deployment = createConversation(
-    'Deployment',
+    'Deployment Setup',
     deploymentMessages,
     tempPosition,
     [],
-    [performance.id],
-    makeBranchPoint(performance.id, 4),
-    {
-      [performance.id]: makeInheritedContext(performanceMessages.slice(0, 5), performanceMessages.length),
-    },
+    [backend.id],
+    makeBranchPoint(backend.id, 1),
+    { [backend.id]: makeInheritedContext(backendMessages.slice(0, 2), backendMessages.length) },
     false
   );
-  
-  // Step 3: Create a MERGE NODE that synthesizes i18n work
-  // This demonstrates the v4 multi-parent merge capability
-  const i18nSynthesis = createConversation(
-    'ðŸ”€ i18n Synthesis',
+
+  // 7 — branch from deployment
+  const scaling = createConversation(
+    'Scaling Later',
+    scalingMessages,
+    tempPosition,
+    [],
+    [deployment.id],
+    makeBranchPoint(deployment.id, 1),
+    { [deployment.id]: makeInheritedContext(deploymentMessages.slice(0, 2), deploymentMessages.length) },
+    false
+  );
+
+  // 8 — branch from findingUsers
+  const landingPage = createConversation(
+    'Landing Page Copy',
+    landingPageMessages,
+    tempPosition,
+    [],
+    [findingUsers.id],
+    makeBranchPoint(findingUsers.id, 3),
+    { [findingUsers.id]: makeInheritedContext(findingUsersMessages.slice(0, 4), findingUsersMessages.length) },
+    false
+  );
+
+  // 9 — branch from deployment
+  const launchChecklist = createConversation(
+    'Launch Checklist',
+    launchChecklistMessages,
+    tempPosition,
+    [],
+    [deployment.id],
+    makeBranchPoint(deployment.id, 1),
+    { [deployment.id]: makeInheritedContext(deploymentMessages.slice(0, 2), deploymentMessages.length) },
+    false
+  );
+
+  // 10 — MERGE NODE: findingUsers + pricing + landingPage
+  const weekOnePlan = createConversation(
+    '🔀 Week 1 Action Plan',
     [
-      createMessage('user', 'Can you synthesize our internationalization approach based on the Japanese, Arabic, and Spanish implementations?', 2),
-      createMessage('assistant', `## i18n Strategy Synthesis
+      createMessage('user', 'Based on everything we explored about finding users, pricing, and the landing page — what should I actually do in week 1? Give me a concrete daily plan.', 2),
+      createMessage('assistant', `## Week 1 — Concrete Daily Plan
 
-Based on our exploration across three languages, here's our unified approach:
+**Day 1 (today)**
+- Write down the single most painful moment in your current AI workflow
+- Find 3 posts on Reddit/X from people describing that same pain
+- Reply to them — not to pitch, just to ask one question
 
-### Key Patterns Identified
+**Day 2**
+- Set up your repo and deploy a "coming soon" page with your domain
+- Write your landing page headline using the "branch and merge like code" framing
+- DM 5 developer friends; ask if they've felt the context-loss problem
 
-| Language | Key Challenge | Solution |
-|----------|--------------|----------|
-| Japanese | Character width | Dynamic layout + \`clamp()\` |
-| Arabic | RTL + numerals | \`dir="rtl"\` + logical properties |
-| Spanish | Text expansion | Flexible containers + truncation |
+**Day 3–4**
+- Build the core interaction: create a card, branch it, see context flow
+- Nothing else. Resist adding auth, settings, or polish
 
-### Recommended Stack
+**Day 5**
+- Record a 30-second screen capture of the core flow
+- Post it in one place (HN, r/SideProject, or your Twitter) with: "I built this because I needed it — does this resonate?"
 
-\`\`\`typescript
-// Unified i18n configuration
-const i18nConfig = {
-  fallbackLocale: 'en',
-  locales: ['en', 'ja', 'ar', 'es'],
-  defaultDirection: 'ltr',
-  rtlLocales: ['ar', 'he'],
-};
-\`\`\`
+**Day 6–7**
+- Talk to anyone who replied. Don't pitch — ask what else they'd need
+- Write down every friction point you noticed while building
 
-This synthesis combines the best practices from each language exploration! ðŸŒ`, 1),
+**Pricing in week 1:** don't charge yet. Your goal is 10 users who use it twice. Revenue follows retention.
+
+By day 7 you'll know if you have something worth week 2.`, 1),
     ],
     tempPosition,
     [],
-    [japaneseI18n.id, arabicRTL.id, spanishUI.id], // THREE parents - merge node
-    undefined, // merge nodes don't have a single branch point
+    [findingUsers.id, pricing.id, landingPage.id],
+    undefined,
     {
-      [japaneseI18n.id]: makeInheritedContext(japaneseLocalizationMessages.slice(0, 4), japaneseLocalizationMessages.length),
-      [arabicRTL.id]: makeInheritedContext(arabicRTLMessages.slice(0, 4), arabicRTLMessages.length),
-      [spanishUI.id]: makeInheritedContext(spanishUIMessages.slice(0, 4), spanishUIMessages.length),
+      [findingUsers.id]: makeInheritedContext(findingUsersMessages.slice(0, 4), findingUsersMessages.length),
+      [pricing.id]: makeInheritedContext(pricingMessages.slice(0, 2), pricingMessages.length),
+      [landingPage.id]: makeInheritedContext(landingPageMessages.slice(0, 4), landingPageMessages.length),
     },
-    true // IS a merge node
+    true
   );
-  
-  // Collect all conversations in order
+
   const conversations = [
-    kickoff,      // 0
-    database,     // 1
-    japaneseI18n, // 2
-    arabicRTL,    // 3
-    apiImpl,      // 4
-    debugging,    // 5
-    performance,  // 6
-    rustExploration, // 7
-    spanishUI,    // 8
-    deployment,   // 9
-    i18nSynthesis, // 10 - merge node
+    kickoff,        // 0
+    techStack,      // 1
+    findingUsers,   // 2
+    pricing,        // 3
+    frontend,       // 4
+    backend,        // 5
+    deployment,     // 6
+    scaling,        // 7
+    landingPage,    // 8
+    launchChecklist,// 9
+    weekOnePlan,    // 10 — merge node
   ];
-  
-  // Define edges with v4 relation types
+
   const edgeDefinitions: Array<{
     sourceIdx: number;
     targetIdx: number;
     relationType: EdgeRelationType;
   }> = [
-    { sourceIdx: 0, targetIdx: 1, relationType: 'branch' },  // Kickoff â†’ Database
-    { sourceIdx: 0, targetIdx: 2, relationType: 'branch' },  // Kickoff â†’ Japanese
-    { sourceIdx: 0, targetIdx: 3, relationType: 'branch' },  // Kickoff â†’ Arabic
-    { sourceIdx: 1, targetIdx: 4, relationType: 'branch' },  // Database â†’ API
-    { sourceIdx: 4, targetIdx: 5, relationType: 'branch' },  // API â†’ Debugging
-    { sourceIdx: 5, targetIdx: 6, relationType: 'branch' },  // Debugging â†’ Performance
-    { sourceIdx: 6, targetIdx: 7, relationType: 'branch' },  // Performance â†’ Rust
-    { sourceIdx: 2, targetIdx: 8, relationType: 'branch' },  // Japanese â†’ Spanish
-    { sourceIdx: 6, targetIdx: 9, relationType: 'branch' },  // Performance â†’ Deployment
-    // Merge edges (emerald colored)
-    { sourceIdx: 2, targetIdx: 10, relationType: 'merge' }, // Japanese â†’ Synthesis
-    { sourceIdx: 3, targetIdx: 10, relationType: 'merge' }, // Arabic â†’ Synthesis
-    { sourceIdx: 8, targetIdx: 10, relationType: 'merge' }, // Spanish â†’ Synthesis
+    { sourceIdx: 0, targetIdx: 1, relationType: 'branch' },  // Kickoff → Tech Stack
+    { sourceIdx: 0, targetIdx: 2, relationType: 'branch' },  // Kickoff → Finding Users
+    { sourceIdx: 0, targetIdx: 3, relationType: 'branch' },  // Kickoff → Pricing
+    { sourceIdx: 1, targetIdx: 4, relationType: 'branch' },  // Tech Stack → Frontend
+    { sourceIdx: 4, targetIdx: 5, relationType: 'branch' },  // Frontend → Backend
+    { sourceIdx: 5, targetIdx: 6, relationType: 'branch' },  // Backend → Deployment
+    { sourceIdx: 6, targetIdx: 7, relationType: 'branch' },  // Deployment → Scaling
+    { sourceIdx: 2, targetIdx: 8, relationType: 'branch' },  // Finding Users → Landing Page
+    { sourceIdx: 6, targetIdx: 9, relationType: 'branch' },  // Deployment → Launch Checklist
+    // Merge edges
+    { sourceIdx: 2, targetIdx: 10, relationType: 'merge' },  // Finding Users → Week 1 Plan
+    { sourceIdx: 3, targetIdx: 10, relationType: 'merge' },  // Pricing → Week 1 Plan
+    { sourceIdx: 8, targetIdx: 10, relationType: 'merge' },  // Landing Page → Week 1 Plan
   ];
-  
-  // Generate tree layout (excluding merge node for initial layout)
+
   const branchPairs = edgeDefinitions
     .filter(e => e.relationType === 'branch')
     .map(e => ({ source: e.sourceIdx, target: e.targetIdx }));
-    
+
   const layout = generateTreeLayout(
     branchPairs,
     { count: conversations.length },
-    42 // Seed for consistent layout
+    42
   );
-  
-  // Update positions
+
   conversations.forEach((conv, index) => {
-    conv.position = layout.positions[index] || { x: 1400, y: 300 }; // Default for merge node
+    conv.position = layout.positions[index] || { x: 1400, y: 300 };
   });
-  
+
   // Position merge node to the right of its parents
   const mergeParentPositions = [2, 3, 8].map(i => conversations[i].position);
   const avgY = mergeParentPositions.reduce((sum, p) => sum + p.y, 0) / mergeParentPositions.length;
   const maxX = Math.max(...mergeParentPositions.map(p => p.x));
   conversations[10].position = { x: maxX + 400, y: avgY };
-  
-  // Create edge connections
+
   const edges: EdgeConnection[] = edgeDefinitions.map(({ sourceIdx, targetIdx, relationType }) => ({
     id: `edge-${conversations[sourceIdx].id}-${conversations[targetIdx].id}`,
     source: conversations[sourceIdx].id,
     target: conversations[targetIdx].id,
     curveType: 'bezier' as const,
     relationType,
-    animated: relationType === 'merge', // Merge edges are animated
+    animated: relationType === 'merge',
   }));
-  
-  // Update conversation connections
+
   edgeDefinitions.forEach(({ sourceIdx, targetIdx }) => {
     conversations[sourceIdx].connections.push(conversations[targetIdx].id);
   });
-  
+
   return { conversations, edges };
 }
 
