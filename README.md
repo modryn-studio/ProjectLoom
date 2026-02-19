@@ -1,7 +1,7 @@
 # ProjectLoom
 
 <p align="center">
-  <img src="assets/logomark.png" alt="ProjectLoom" width="120" />
+  <img src="assets/banner.png" alt="ProjectLoom" width="100%" />
 </p>
 
 **Visual canvas for AI conversations.** Escape the linear chat window — branch, merge, and spatially organize your AI conversations as an infinite canvas of connected nodes.
