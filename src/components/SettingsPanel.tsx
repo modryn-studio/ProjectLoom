@@ -626,6 +626,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </>
             </div>
 
+            {/* Feedback link */}
+            <div style={{
+              padding: `${spacing[3]} ${spacing[4]}`,
+              borderTop: '1px solid var(--border-primary)',
+              textAlign: 'center',
+            }}>
+              <a
+                href="mailto:hello@modrynstudio.com"
+                style={{
+                  fontSize: typography.sizes.xs,
+                  color: colors.fg.quaternary,
+                  fontFamily: typography.fonts.body,
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = colors.fg.secondary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = colors.fg.quaternary; }}
+              >
+                Questions or feedback? hello@modrynstudio.com
+              </a>
+            </div>
+
             {/* Footer */}
             <div style={footerStyles}>
               <button

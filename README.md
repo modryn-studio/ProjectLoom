@@ -53,3 +53,9 @@ Open [http://localhost:3000](http://localhost:3000), enter your API key(s) in Se
 - **React Flow** — canvas and edge rendering
 - **Zustand** — all client state including undo/redo
 - **TypeScript** strict mode throughout
+
+---
+
+## Feedback
+
+Questions, bugs, or ideas — [hello@modrynstudio.com](mailto:hello@modrynstudio.com)
