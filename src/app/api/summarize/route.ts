@@ -145,10 +145,20 @@ SUMMARY:`;
 // =============================================================================
 
 export async function POST(req: Request): Promise<Response> {
+  const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
+  const reqStart = Date.now();
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`[summarize] ▶ START [${reqId}] ${new Date().toISOString()}`);
   try {
     const body = (await req.json()) as SummarizeRequestBody;
     const { messages, model, anthropicKey, openaiKey, parentTitle } = body;
     const keys = { anthropic: anthropicKey, openai: openaiKey };
+    console.log(`[summarize] [${reqId}] Request:`, {
+      model,
+      messageCount: messages?.length ?? 0,
+      parentTitle: parentTitle ?? '(none)',
+      provider: detectProvider(model),
+    });
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -208,9 +218,14 @@ export async function POST(req: Request): Promise<Response> {
       },
     };
 
+    console.log(`[summarize] [${reqId}] ✅ Done in ${Date.now() - reqStart}ms`, {
+      summaryLength: result.text.length,
+      inputTokens: result.usage?.inputTokens ?? 0,
+      outputTokens: result.usage?.outputTokens ?? 0,
+    });
     return Response.json(response);
   } catch (error) {
-    console.error('[Summarize API Error]', error);
+    console.error(`[summarize] ❌ Error after ${Date.now() - reqStart}ms:`, error);
     return handleProviderError(error);
   }
 }

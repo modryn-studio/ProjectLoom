@@ -56,9 +56,20 @@ function errorResponse(message: string, code: string, status: number) {
 // =============================================================================
 
 export async function POST(req: Request): Promise<Response> {
+  const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
+  const reqStart = Date.now();
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`[agent] ▶ START [${reqId}] ${new Date().toISOString()}`);
   try {
     const body = (await req.json()) as AgentRequestBody;
     const { agentId, userPrompt, workspace, config, extra } = body;
+    console.log(`[agent] [${reqId}] Request:`, {
+      agentId,
+      model: config?.modelId,
+      cardCount: workspace?.cards?.length ?? 0,
+      userPrompt: userPrompt?.substring(0, 100),
+      extraKeys: extra ? Object.keys(extra) : [],
+    });
 
     // Validate required fields
     if (!agentId || !['cleanup', 'branch', 'summarize'].includes(agentId)) {
@@ -134,9 +145,14 @@ export async function POST(req: Request): Promise<Response> {
         return errorResponse(`Unknown agent: ${agentId}`, 'UNKNOWN_AGENT', 400);
     }
 
+    console.log(`[agent] [${reqId}] ✅ Done in ${Date.now() - reqStart}ms`, {
+      status: result.status,
+      actionCount: result.actions?.length ?? 0,
+      error: result.error,
+    });
     return Response.json(result);
   } catch (error) {
-    console.error('[Agent API Error]', error);
+    console.error(`[agent] [${reqId}] ❌ Error after ${Date.now() - reqStart}ms:`, error);
     const err = error as Error;
     return errorResponse(
       err.message || 'Agent execution failed.',

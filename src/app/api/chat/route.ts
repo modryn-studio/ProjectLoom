@@ -164,20 +164,29 @@ function handleProviderError(error: unknown): Response {
 // =============================================================================
 
 export async function POST(req: Request): Promise<Response> {
+  const reqId = Math.random().toString(36).slice(2, 7).toUpperCase();
+  const reqStart = Date.now();
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`[chat/route] ▶ START [${reqId}] ${new Date().toISOString()}`);
   try {
     const body = await req.json() as ChatRequestBody;
     const { messages, model, anthropicKey, openaiKey, attachments, canvasContext } = body;
     
     const keys = { anthropic: anthropicKey, openai: openaiKey };
-    
-    console.log('[chat/route] Request received:', {
+    const lastUserMsg = [...(messages ?? [])].reverse().find(m => m.role === 'user');
+    const lastUserPreview = typeof lastUserMsg?.content === 'string'
+      ? lastUserMsg.content.substring(0, 120)
+      : '[multipart]';
+
+    console.log(`[chat/route] [${reqId}] Request received:`, {
       model,
       messageCount: messages?.length || 0,
+      lastUserMessage: lastUserPreview,
+      hasAttachments: !!(attachments?.length),
+      attachmentCount: attachments?.length ?? 0,
       hasCanvasContext: !!canvasContext,
-      canvasContextKeys: canvasContext ? Object.keys(canvasContext) : [],
       hasInstructions: !!canvasContext?.instructions,
       hasKnowledgeBase: !!canvasContext?.knowledgeBase,
-      instructionsPreview: canvasContext?.instructions?.substring(0, 50),
       knowledgeBasePreview: canvasContext?.knowledgeBase?.substring(0, 100)
     });
 
@@ -430,7 +439,7 @@ export async function POST(req: Request): Promise<Response> {
         });
       },
       onError: (error) => {
-        console.error('[Chat API Streaming Error]', {
+        console.error(`[chat/route] [${reqId}] ❌ Streaming error after ${Date.now() - reqStart}ms`, {
           provider: providerType,
           model,
           error: error instanceof Error ? error.message : String(error),
@@ -438,10 +447,15 @@ export async function POST(req: Request): Promise<Response> {
           ...(typeof error === 'object' && error !== null ? error : {}),
         });
       },
-      onFinish: ({ sources }) => {
+      onFinish: ({ sources, usage }) => {
+        const elapsed = Date.now() - reqStart;
         if (sources && sources.length > 0) {
-          console.log('[chat/route] 🔍 Web search sources found:', sources.length);
+          console.log(`[chat/route] [${reqId}] 🔍 Web search sources found:`, sources.length);
         }
+        console.log(`[chat/route] [${reqId}] ✅ Stream finished in ${elapsed}ms`, {
+          inputTokens: usage?.inputTokens,
+          outputTokens: usage?.outputTokens,
+        });
       },
     });
 
