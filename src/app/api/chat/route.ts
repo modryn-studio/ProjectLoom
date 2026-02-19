@@ -440,9 +440,7 @@ export async function POST(req: Request): Promise<Response> {
       },
       onFinish: ({ sources }) => {
         if (sources && sources.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapped = sources.map(s => ({ url: (s as any).url, title: (s as any).title }));
-          console.log('[chat/route] 🔍 Web search sources found:', sources.length, mapped);
+          console.log('[chat/route] 🔍 Web search sources found:', sources.length);
         }
       },
     });

@@ -236,12 +236,6 @@ export function ChatPanel() {
   } = useChat({
     id: stableChatId,
     onFinish: ({ message }) => {
-      console.log('[ChatPanel] onFinish called', { 
-        messageId: message.id, 
-        hasMetadata: !!message.metadata,
-        metadata: message.metadata,
-        partTypes: (message.parts ?? []).map(p => p.type),
-      });
       
       // Get captured metadata from request start time (prevents race condition when switching cards)
       const metadata = streamingRequestMetadataRef.current;
