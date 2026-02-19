@@ -281,7 +281,10 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                     ...(storagePreference === 'localStorage' ? styles.storageOptionActive : {}),
                   }}
                 >
-                  <div style={styles.storageOptionTitle}>Persistent</div>
+                  <div style={{
+                    ...styles.storageOptionTitle,
+                    ...(storagePreference === 'localStorage' ? styles.storageOptionTitleActive : {}),
+                  }}>Persistent</div>
                   <div style={styles.storageOptionDesc}>Stays across sessions</div>
                 </button>
                 <button
@@ -292,7 +295,10 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                     ...(storagePreference === 'sessionStorage' ? styles.storageOptionActive : {}),
                   }}
                 >
-                  <div style={styles.storageOptionTitle}>Session Only</div>
+                  <div style={{
+                    ...styles.storageOptionTitle,
+                    ...(storagePreference === 'sessionStorage' ? styles.storageOptionTitleActive : {}),
+                  }}>Session Only</div>
                   <div style={styles.storageOptionDesc}>Cleared when tab closes</div>
                 </button>
               </div>
@@ -504,7 +510,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   infoBanner: {
     padding: spacing[3],
-    backgroundColor: 'var(--accent-muted)',
+    backgroundColor: colors.bg.inset,
     borderRadius: effects.border.radius.default,
     border: '1px solid var(--border-primary)',
   },
@@ -632,7 +638,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: colors.accent.primary,
     border: 'none',
     borderRadius: effects.border.radius.default,
-    color: colors.fg.primary,
+    color: colors.accent.contrast,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
     fontWeight: typography.weights.medium,
@@ -656,7 +662,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'flex-start',
     padding: spacing[3],
-    backgroundColor: 'var(--accent-muted)',
+    backgroundColor: colors.bg.inset,
     border: '1px solid var(--border-primary)',
     borderRadius: effects.border.radius.default,
     color: colors.fg.secondary,
@@ -676,6 +682,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.fg.primary,
     fontFamily: typography.fonts.body,
     marginBottom: spacing[1],
+  },
+
+  storageOptionTitleActive: {
+    color: colors.accent.primary,
   },
 
   storageOptionDesc: {
