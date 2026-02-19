@@ -396,12 +396,18 @@ export async function POST(req: Request): Promise<Response> {
       onStepFinish: ({ toolCalls, toolResults }) => {
         toolCalls?.forEach((call) => {
           if (call.toolName === 'web_search') {
-            // Anthropic: args.query holds the search query
-            // OpenAI: query is on the tool result output (output.action.query)
+            // Anthropic's provider-defined webSearch tool does NOT expose the query
+            // in toolCalls.args — it's resolved internally by the provider.
+            // OpenAI also exposes the query only on the tool result (output.action.query).
+            // So we only log here if args actually contain something useful.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const args = (call as any).args as Record<string, unknown> | undefined;
-            const query = args?.query ?? args?.input ?? JSON.stringify(args);
-            console.log('[chat/route] 🔍 Web search query (from args):', query);
+            const query = args?.query ?? args?.input;
+            if (query) {
+              console.log('[chat/route] 🔍 Web search query:', query);
+            } else {
+              console.log('[chat/route] 🔍 Web search triggered (query resolved by provider)');
+            }
           }
         });
         toolResults?.forEach((result) => {
@@ -413,7 +419,7 @@ export async function POST(req: Request): Promise<Response> {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const oaiQuery = (raw as any)?.action?.query;
               if (oaiQuery) {
-                console.log('[chat/route] 🔍 Web search query (OpenAI):', oaiQuery);
+                console.log('[chat/route] 🔍 Web search query (OpenAI result):', oaiQuery);
               }
               const size = JSON.stringify(raw).length;
               console.log('[chat/route] 🔍 Web search result received:', { sizeBytes: size });
@@ -431,6 +437,13 @@ export async function POST(req: Request): Promise<Response> {
           stack: error instanceof Error ? error.stack : undefined,
           ...(typeof error === 'object' && error !== null ? error : {}),
         });
+      },
+      onFinish: ({ sources }) => {
+        if (sources && sources.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mapped = sources.map(s => ({ url: (s as any).url, title: (s as any).title }));
+          console.log('[chat/route] 🔍 Web search sources found:', sources.length, mapped);
+        }
       },
     });
 
