@@ -59,3 +59,5 @@ Open [http://localhost:3000](http://localhost:3000), enter your API key(s) in Se
 ## Feedback
 
 Questions, bugs, or ideas — [share your thoughts](https://tally.so/r/zxq0Jk) or email [hello@modrynstudio.com](mailto:hello@modrynstudio.com)
+
+Found a bug? [Open an issue](https://github.com/modryn-studio/ProjectLoom/issues)
