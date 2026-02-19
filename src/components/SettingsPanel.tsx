@@ -633,7 +633,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               textAlign: 'center',
             }}>
               <a
-                href="mailto:hello@modrynstudio.com"
+                href="https://tally.so/r/zxq0Jk"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   fontSize: typography.sizes.xs,
                   color: colors.fg.quaternary,
@@ -643,7 +645,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 onMouseEnter={(e) => { e.currentTarget.style.color = colors.fg.secondary; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = colors.fg.quaternary; }}
               >
-                Questions or feedback? hello@modrynstudio.com
+                Share feedback
               </a>
             </div>
 
