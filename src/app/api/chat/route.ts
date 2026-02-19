@@ -396,10 +396,12 @@ export async function POST(req: Request): Promise<Response> {
       onStepFinish: ({ toolCalls, toolResults }) => {
         toolCalls?.forEach((call) => {
           if (call.toolName === 'web_search') {
+            // Anthropic: args.query holds the search query
+            // OpenAI: query is on the tool result output (output.action.query)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const args = (call as any).args as Record<string, unknown> | undefined;
             const query = args?.query ?? args?.input ?? JSON.stringify(args);
-            console.log('[chat/route] 🔍 Web search query:', query);
+            console.log('[chat/route] 🔍 Web search query (from args):', query);
           }
         });
         toolResults?.forEach((result) => {
@@ -407,6 +409,12 @@ export async function POST(req: Request): Promise<Response> {
             try {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const raw = (result as any).result ?? (result as any).output ?? result;
+              // OpenAI: output.action.query contains the search query used
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const oaiQuery = (raw as any)?.action?.query;
+              if (oaiQuery) {
+                console.log('[chat/route] 🔍 Web search query (OpenAI):', oaiQuery);
+              }
               const size = JSON.stringify(raw).length;
               console.log('[chat/route] 🔍 Web search result received:', { sizeBytes: size });
             } catch {

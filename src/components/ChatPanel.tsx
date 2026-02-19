@@ -294,8 +294,15 @@ export function ChatPanel() {
           const tp = part as unknown as AISV6ToolPart;
           if (toolName === 'web_search' && tp.state === 'output' && tp.output) {
             webSearchUsed = true;
-            const results = Array.isArray(tp.output) ? tp.output : [];
-            for (const r of results) {
+            // Anthropic: output is an array of result objects with url/title
+            // OpenAI: output is { action: { query }, sources: [{ type: 'url', url }] }
+            const out = tp.output as Record<string, unknown> | unknown[];
+            const rawResults = Array.isArray(out)
+              ? out
+              : Array.isArray((out as Record<string, unknown>).sources)
+                ? (out as Record<string, unknown>).sources as unknown[]
+                : [];
+            for (const r of rawResults) {
               const res = r as { url?: string; title?: string };
               if (res.url) webSearchSources.push({ url: res.url, title: res.title ?? res.url });
             }
