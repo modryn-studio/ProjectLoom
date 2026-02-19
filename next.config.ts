@@ -12,11 +12,16 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "connect-src 'self' https://api.perplexity.ai https://huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cas-bridge.xethub.hf.co",
+              // 'unsafe-eval' covers WASM execution; cdn.jsdelivr.net needed for
+              // @huggingface/transformers dynamic WASM backend import
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+              // HuggingFace model hub + LFS CDNs for model weights; jsdelivr for WASM runtime files
+              "connect-src 'self' https://api.anthropic.com https://api.openai.com https://huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cas-bridge.xethub.hf.co https://cdn.jsdelivr.net",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
+              // ONNX Runtime Web spawns blob: workers for WASM inference
+              "worker-src blob: 'self'",
               "frame-ancestors 'none'",
             ].join('; '),
           },
