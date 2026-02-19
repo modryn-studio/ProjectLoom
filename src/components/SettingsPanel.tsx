@@ -447,10 +447,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
                 {/* Anthropic API Key */}
                 <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>Anthropic API Key</label>
+                  <label htmlFor="settings-anthropic-key" style={labelStyles}>Anthropic API Key</label>
                   <div style={{ display: 'flex', gap: spacing[2] }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input
+                        id="settings-anthropic-key"
+                        name="anthropic-api-key"
+                        autoComplete="off"
                         type={showAnthropicKey ? 'text' : 'password'}
                         value={anthropicKey}
                         onChange={(e) => setAnthropicKey(e.target.value)}
@@ -508,10 +511,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
                 {/* OpenAI API Key */}
                 <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>OpenAI API Key</label>
+                  <label htmlFor="settings-openai-key" style={labelStyles}>OpenAI API Key</label>
                   <div style={{ display: 'flex', gap: spacing[2] }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input
+                        id="settings-openai-key"
+                        name="openai-api-key"
+                        autoComplete="off"
                         type={showOpenaiKey ? 'text' : 'password'}
                         value={openaiKey}
                         onChange={(e) => setOpenaiKey(e.target.value)}

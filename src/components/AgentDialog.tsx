@@ -413,6 +413,31 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
             </button>
           </div>
 
+          {/* Coming Soon Banner */}
+          <div style={{
+            padding: `${spacing[2]} ${spacing[4]}`,
+            backgroundColor: `${colors.accent.primary}10`,
+            borderBottom: '1px solid var(--border-primary)',
+            fontSize: typography.sizes.xs,
+            color: colors.fg.secondary,
+            fontFamily: typography.fonts.body,
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[2],
+          }}>
+            <span style={{
+              padding: '1px 6px',
+              backgroundColor: colors.accent.muted,
+              color: colors.accent.primary,
+              borderRadius: effects.border.radius.default,
+              fontWeight: typography.weights.medium,
+              fontSize: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}>Coming Soon</span>
+            Agent workflows are in development. Browse the options below — execution will be enabled in an upcoming release.
+          </div>
+
           {/* Content */}
           <div style={{ padding: spacing[4], overflowY: 'auto', flex: 1 }}>
             {/* Agent Selection */}
@@ -697,21 +722,22 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
               </button>
             ) : !result ? (
               <button
-                onClick={handleRunAgent}
-                disabled={!selectedAgent}
+                disabled
+                title="Coming soon"
                 style={{
                   padding: `${spacing[2]} ${spacing[3]}`,
-                  backgroundColor: !selectedAgent ? colors.bg.inset : colors.accent.primary,
+                  backgroundColor: colors.bg.inset,
                   border: 'none',
                   borderRadius: effects.border.radius.default,
-                  color: !selectedAgent ? colors.fg.quaternary : colors.fg.primary,
+                  color: colors.fg.quaternary,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
                   fontWeight: typography.weights.medium,
-                  cursor: !selectedAgent ? 'not-allowed' : 'pointer',
+                  cursor: 'not-allowed',
                   display: 'flex',
                   alignItems: 'center',
                   gap: spacing[1],
+                  opacity: 0.5,
                 }}
               >
                 <Play size={16} />

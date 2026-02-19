@@ -10,12 +10,14 @@ import {
   Edge,
   Connection,
   NodeTypes,
+  EdgeTypes,
   OnConnect,
   OnConnectEnd,
   OnNodesChange,
   OnEdgesChange,
   ReactFlowInstance,
   BackgroundVariant,
+  BezierEdge,
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -51,6 +53,13 @@ import { Plus } from 'lucide-react';
 
 const nodeTypes: NodeTypes = {
   conversation: ConversationCard,
+};
+
+// Register 'bezier' as an explicit edge type — React Flow's built-in types are
+// 'default' (bezier), 'straight', 'step', 'smoothstep'. Without this, edge
+// records saved with type='bezier' trigger a "not found" console warning.
+const edgeTypes: EdgeTypes = {
+  bezier: BezierEdge,
 };
 
 // =============================================================================
@@ -1031,6 +1040,7 @@ export function InfiniteCanvas() {
                 onPaneContextMenu={handlePaneContextMenu}
                 onInit={handleInit}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 connectionLineStyle={connectionLineStyle}
                 connectionLineComponent={CustomConnectionLine}

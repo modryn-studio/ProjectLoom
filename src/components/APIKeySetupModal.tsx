@@ -374,12 +374,16 @@ function KeyInput({
   error,
 }: KeyInputProps) {
   const [showKey, setShowKey] = useState(false);
+  const inputId = `api-key-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   return (
-    <div style={styles.inputGroup}>
-      <label style={styles.label}>{label}</label>
+    <form style={styles.inputGroup} onSubmit={(e) => e.preventDefault()}>
+      <label htmlFor={inputId} style={styles.label}>{label}</label>
       <div style={styles.inputWrapper}>
         <input
+          id={inputId}
+          name={inputId}
+          autoComplete="off"
           type={showKey ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -407,7 +411,7 @@ function KeyInput({
         </div>
       </div>
       {error && <span style={styles.error}>{error}</span>}
-    </div>
+    </form>
   );
 }
 

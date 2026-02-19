@@ -193,7 +193,7 @@ export const components = {
     maxHeight: 64,
   },
   tree: {
-    indentBase: 8,
+    indentBase: 16,
     indentStep: 16,
   },
   progressBar: {
