@@ -35,6 +35,25 @@ Or use raw `console.log` following the same pattern (5-char reqId, `─`.repeat(
 - Always log errors with elapsed time
 - Prefix every log line with `[route-name] [reqId]`
 
+## GitHub Issues
+
+Use `gh` CLI to open and comment on issues. Always include `--repo modryn-studio/ProjectLoom`.
+
+```powershell
+# Create issue
+gh issue create --repo modryn-studio/ProjectLoom --title "Title" --body "Body"
+
+# Short comment
+gh issue comment X --repo modryn-studio/ProjectLoom --body "text"
+
+# Long comment (ALWAYS use file for multi-line)
+@"
+Multi-line content
+"@ | Set-Content temp.md
+gh issue comment X --repo modryn-studio/ProjectLoom --body-file temp.md
+Remove-Item temp.md
+```
+
 ## Dev Server
 
 Always start with: `npm run dev -- --port 3000 2>&1 | Tee-Object -FilePath dev.log`

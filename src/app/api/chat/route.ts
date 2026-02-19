@@ -380,11 +380,13 @@ export async function POST(req: Request): Promise<Response> {
     // Token config
     const tokenConfig = { maxOutputTokens: modelConfig.maxTokens };
 
-    // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
-    const temperatureConfig = (providerType === 'openai' &&
-                               model === 'openai/gpt-5-mini')
-      ? { temperature: 1 }
-      : { temperature: modelConfig.temperature };
+    // Reasoning models (gpt-5.2, gpt-5.1) don't support temperature — omit entirely.
+    // GPT-5 Mini only supports temperature: 1 — must explicitly set it.
+    const temperatureConfig = modelConfig.reasoning
+      ? {}
+      : (providerType === 'openai' && model === 'openai/gpt-5-mini')
+        ? { temperature: 1 }
+        : { temperature: modelConfig.temperature };
 
     // =========================================================================
     // SYSTEM PROMPT FINALIZATION

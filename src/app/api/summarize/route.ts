@@ -194,12 +194,13 @@ export async function POST(req: Request): Promise<Response> {
     // Get per-model temperature
     const modelConfig = getModelConfig(model);
 
-    // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
-    // even though no tools used here, for consistency with chat route.
-    const temperatureConfig = (providerType === 'openai' && 
-                               model === 'openai/gpt-5-mini')
-      ? { temperature: 1 } // Explicitly set to 1 for consistency
-      : { temperature: modelConfig.temperature };
+    // Reasoning models (gpt-5.2, gpt-5.1) don't support temperature — omit entirely.
+    // GPT-5 Mini only supports temperature: 1.
+    const temperatureConfig = modelConfig.reasoning
+      ? {}
+      : (providerType === 'openai' && model === 'openai/gpt-5-mini')
+        ? { temperature: 1 }
+        : { temperature: modelConfig.temperature };
 
     // Generate summary (non-streaming)
     const result = await generateText({

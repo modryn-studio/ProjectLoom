@@ -89,17 +89,18 @@ Examples:
     const aiModel = createModel(titleModel, keys);
     const modelConfig = getModelConfig(titleModel);
 
-    // GPT-5 Mini only supports temperature: 1
+    // Reasoning models don't support temperature — omit entirely.
+    // GPT-5 Mini only supports temperature: 1.
     const titleProvider = detectProvider(titleModel);
-    const temperature = (titleProvider === 'openai' && titleModel === 'openai/gpt-5-mini')
-      ? 1
-      : modelConfig.temperature;
+    const temperatureConfig = modelConfig.reasoning
+      ? {}
+      : { temperature: (titleProvider === 'openai' && titleModel === 'openai/gpt-5-mini') ? 1 : modelConfig.temperature };
 
     const result = await generateText({
       model: aiModel,
       system: systemPrompt,
       prompt: userPrompt,
-      temperature,
+      ...temperatureConfig,
       maxOutputTokens: 20,
     });
 

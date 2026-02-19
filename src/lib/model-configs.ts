@@ -25,6 +25,8 @@ export interface ModelConfig {
   maxTokens: number;
   /** Optional baseline system prompt — undefined = let the model be itself */
   systemPrompt: string | undefined;
+  /** Reasoning models (e.g. gpt-5.2) do not support temperature — omit the parameter entirely */
+  reasoning?: boolean;
 }
 
 // =============================================================================
@@ -59,11 +61,13 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     temperature: 0.7,
     maxTokens: 16384,
     systemPrompt: undefined,
+    reasoning: true,
   },
   'openai/gpt-5.1': {
     temperature: 0.7,
     maxTokens: 16384,
     systemPrompt: undefined,
+    reasoning: true,
   },
 };
 
