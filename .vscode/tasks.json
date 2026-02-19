@@ -4,15 +4,31 @@
 		{
 			"label": "Run dev server",
 			"type": "shell",
-			"command": "npm",
-			"args": [
-				"run",
-				"dev"
-			],
+			"command": "npm run dev -- --port 3000 2>&1 | Tee-Object -FilePath dev.log",
 			"isBackground": true,
 			"problemMatcher": [],
-			"group": "build"
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"label": "Dev Server"
+			}
 		},
+		{
+			"label": "Run lint",
+			"type": "shell",
+			"command": "npm",
+			"args": ["run", "lint"],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
+
 		{
 			"label": "Run dev server (3000)",
 			"type": "shell",
