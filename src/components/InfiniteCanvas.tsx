@@ -363,9 +363,14 @@ export function InfiniteCanvas() {
 
     const needsBackup = !lastExportRaw || now - lastExport > weekMs;
     const canRemind = !lastReminderRaw || now - lastReminder > dayMs;
-    const needsAutoBackup = !lastAutoRaw || now - lastAuto > dayMs;
+    const needsAutoBackup = lastAutoRaw && now - lastAuto > dayMs;
 
-    if (needsAutoBackup) {
+    if (!lastAutoRaw) {
+      // First visit — just record the timestamp so the 24-hour clock starts.
+      // Don't trigger a download: the user has no real data yet and the
+      // unexpected "Save As" dialog is intimidating for new users.
+      window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT, new Date().toISOString());
+    } else if (needsAutoBackup) {
       const payload = createBackupPayload();
       const json = JSON.stringify(payload, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
