@@ -265,12 +265,13 @@ async function generateAITitle(
     // Import dynamically to avoid SSR issues
     const { apiKeyManager } = await import('@/lib/api-key-manager');
     
-    // All models route through Perplexity Agent API — single key
-    const apiKey = apiKeyManager.getKey('perplexity');
+    // Get API keys for the model's provider
+    const anthropicKey = apiKeyManager.getKey('anthropic') ?? undefined;
+    const openaiKey = apiKeyManager.getKey('openai') ?? undefined;
 
-    if (!apiKey) {
-      console.warn('[Auto-Title] No API key available for title generation');
-      logger.warn('No API key available for title generation');
+    if (!anthropicKey && !openaiKey) {
+      console.warn('[Auto-Title] No API keys available for title generation');
+      logger.warn('No API keys available for title generation');
       return;
     }
     
@@ -285,7 +286,8 @@ async function generateAITitle(
         userMessage,
         assistantMessage,
         model,
-        apiKey,
+        anthropicKey,
+        openaiKey,
       }),
     });
 
@@ -2290,9 +2292,25 @@ export const useCanvasStore = create<WorkspaceState>()(
     // =========================================================================
 
     addAIMessage: (conversationId: string, content: string, model: string, metadata?: MessageMetadata) => {
-      const { conversations, nodes } = get();
-      const conversation = conversations.get(conversationId);
-      
+      const { conversations, nodes, workspaces } = get();
+      let conversation = conversations.get(conversationId);
+
+      // The conversation may belong to a workspace the user navigated away from while
+      // streaming was in progress. In that case it won't be in the active `conversations`
+      // Map, but it will still exist in the `workspaces` array. Detect this so we can
+      // write the finished message to the correct place.
+      let backgroundWorkspaceId: string | null = null;
+      if (!conversation) {
+        for (const ws of workspaces) {
+          const found = ws.conversations.find(c => c.id === conversationId);
+          if (found) {
+            conversation = found;
+            backgroundWorkspaceId = ws.id;
+            break;
+          }
+        }
+      }
+
       if (!conversation) {
         logger.warn(`Cannot add AI message: conversation ${conversationId} not found`);
         return;
@@ -2342,6 +2360,33 @@ export const useCanvasStore = create<WorkspaceState>()(
         },
       };
 
+      if (backgroundWorkspaceId) {
+        // The conversation belongs to a workspace the user navigated away from.
+        // Update it directly in the workspaces array so the message is persisted
+        // and visible when the user navigates back.
+        const updatedWorkspaces = workspaces.map(ws => {
+          if (ws.id !== backgroundWorkspaceId) return ws;
+          return {
+            ...ws,
+            conversations: ws.conversations.map(c =>
+              c.id === conversationId ? updatedConversation : c
+            ),
+            metadata: { ...ws.metadata, updatedAt: new Date() },
+          };
+        });
+        set({ workspaces: updatedWorkspaces });
+        get().saveToStorage();
+        logger.debug(`Added AI message to background conversation ${conversationId} (workspace ${backgroundWorkspaceId})`);
+
+        if (shouldGenerateAITitle) {
+          generateAITitle(conversationId, firstUserText, content, model).catch(err => {
+            logger.error('Failed to generate AI title (background):', err);
+          });
+        }
+        return;
+      }
+
+      // Normal path: conversation is in the active workspace
       // Update store
       const newConversations = new Map(conversations);
       newConversations.set(conversationId, updatedConversation);

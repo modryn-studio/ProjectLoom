@@ -37,12 +37,18 @@ export function ModelSelector({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // All models are available when the Perplexity API key is configured
-  // (single gateway — no per-provider key checks needed)
-  const hasPerplexityKey = useMemo(() => {
-    return !!apiKeyManager.getKey('perplexity');
+  // Check which providers have API keys configured
+  const hasAnthropicKey = useMemo(() => {
+    return !!apiKeyManager.getKey('anthropic');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  const hasOpenaiKey = useMemo(() => {
+    return !!apiKeyManager.getKey('openai');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const hasAnyKey = hasAnthropicKey || hasOpenaiKey;
 
   // Get current model info
   const currentModelInfo = useMemo(() => {
@@ -121,7 +127,7 @@ export function ModelSelector({
             role="listbox"
           >
             {/* Anthropic Models */}
-            {hasPerplexityKey && (
+            {hasAnthropicKey && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'anthropic')
@@ -137,12 +143,12 @@ export function ModelSelector({
             )}
 
             {/* Divider between providers */}
-            {hasPerplexityKey && (
+            {hasAnthropicKey && hasOpenaiKey && (
               <div style={styles.divider} />
             )}
 
             {/* OpenAI Models */}
-            {hasPerplexityKey && (
+            {hasOpenaiKey && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'openai')
@@ -157,32 +163,11 @@ export function ModelSelector({
               </>
             )}
 
-            {/* Divider between providers */}
-            {hasPerplexityKey && (
-              <div style={styles.divider} />
-            )}
-
-            {/* Perplexity Sonar Models (native, built-in web search) */}
-            {hasPerplexityKey && (
-              <>
-                {AVAILABLE_MODELS
-                  .filter(m => m.provider === 'perplexity')
-                  .map(model => (
-                    <ModelOption
-                      key={model.id}
-                      model={model}
-                      isSelected={model.id === currentModel}
-                      onSelect={handleSelect}
-                    />
-                  ))}
-              </>
-            )}
-
             {/* No key configured */}
-            {!hasPerplexityKey && (
+            {!hasAnyKey && (
               <div style={styles.noKeys}>
                 <Key size={16} />
-                <span>Configure Perplexity API key in Settings</span>
+                <span>Configure API keys in Settings</span>
               </div>
             )}
           </motion.div>

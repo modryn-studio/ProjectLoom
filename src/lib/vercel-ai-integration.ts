@@ -16,8 +16,8 @@ export interface ModelDefinition {
   id: string;
   /** Human-readable display name */
   name: string;
-  /** Provider (anthropic/openai/perplexity) */
-  provider: 'anthropic' | 'openai' | 'perplexity';
+  /** Provider (anthropic/openai) */
+  provider: 'anthropic' | 'openai';
   /** Maximum context tokens */
   maxTokens: number;
   /** Whether streaming is supported */
@@ -35,8 +35,7 @@ export interface ModelDefinition {
  * Updated for Feb 2026 model lineup
  */
 export const AVAILABLE_MODELS: ModelDefinition[] = [
-  // ── Anthropic Claude (via Perplexity Agent API) ─────────────────────────
-  // Source: https://docs.perplexity.ai/docs/agent-api/models
+  // ── Anthropic Claude (direct API via @ai-sdk/anthropic) ───────────────────
   {
     id: 'anthropic/claude-haiku-4-5',
     name: 'Claude Haiku 4.5',
@@ -68,7 +67,7 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K context. Most capable Claude for complex reasoning.',
   },
 
-  // ── OpenAI (via Perplexity Agent API) ───────────────────────────────────
+  // ── OpenAI (direct API via @ai-sdk/openai) ───────────────────────────────
   {
     id: 'openai/gpt-5-mini',
     name: 'GPT-5 Mini',
@@ -99,28 +98,20 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     costTier: 'medium',
     description: '128K context. Balanced OpenAI model between mini and flagship.',
   },
-
-  // ── Perplexity Sonar (native, built-in web search) ─────────────────────
-  {
-    id: 'perplexity/sonar',
-    name: 'Sonar',
-    provider: 'perplexity',
-    maxTokens: 128000,
-    supportsStreaming: true,
-    supportsVision: false,
-    costTier: 'low',
-    description: 'Real-time web search with AI synthesis.',
-  },
 ];
 
 /**
  * Get models available based on configured API keys.
- * All models route through the Perplexity Agent API — a single key unlocks everything.
+ * Each provider requires its own key.
  */
 export function getAvailableModels(
-  hasPerplexityKey: boolean
+  keys: { anthropic?: boolean; openai?: boolean }
 ): ModelDefinition[] {
-  return hasPerplexityKey ? [...AVAILABLE_MODELS] : [];
+  return AVAILABLE_MODELS.filter((m) => {
+    if (m.provider === 'anthropic') return keys.anthropic;
+    if (m.provider === 'openai') return keys.openai;
+    return false;
+  });
 }
 
 /**
@@ -133,7 +124,7 @@ export function getModelById(id: string): ModelDefinition | undefined {
 /**
  * Get the default model for a provider
  */
-export function getDefaultModel(provider: 'anthropic' | 'openai' | 'perplexity'): ModelDefinition {
+export function getDefaultModel(provider: 'anthropic' | 'openai'): ModelDefinition {
   const models = AVAILABLE_MODELS.filter((m) => m.provider === provider);
   if (models.length === 0) {
     if (AVAILABLE_MODELS.length === 0) {
@@ -148,20 +139,16 @@ export function getDefaultModel(provider: 'anthropic' | 'openai' | 'perplexity')
 
 /**
  * Detect the underlying provider from a model ID.
- * Model IDs use the Perplexity Agent API prefix format: 'provider/model-name'.
- * Sonar models are native Perplexity and use bare names.
+ * Model IDs use the 'provider/model-name' format.
  */
-export function detectProvider(modelId: string): 'anthropic' | 'openai' | 'perplexity' {
-  // Prefixed format: 'anthropic/claude-...', 'openai/gpt-...', 'perplexity/sonar'
+export function detectProvider(modelId: string): 'anthropic' | 'openai' {
   if (modelId.startsWith('anthropic/')) return 'anthropic';
   if (modelId.startsWith('openai/')) return 'openai';
-  if (modelId.startsWith('perplexity/')) return 'perplexity';
-  // Sonar models are native Perplexity (bare name - legacy)
-  if (modelId.startsWith('sonar')) return 'perplexity';
-  // Legacy bare model IDs (backwards compat)
+  // Legacy bare model IDs
   if (modelId.startsWith('claude')) return 'anthropic';
-  if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai';
-  return 'perplexity';
+  if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3') || modelId.startsWith('o4')) return 'openai';
+  // Default to anthropic for unknown
+  return 'anthropic';
 }
 
 // =============================================================================
@@ -248,26 +235,17 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
 
 /**
  * Cost per 1M tokens (input/output) by model ID.
- * Pricing via Perplexity Agent API — pass-through at direct provider rates, no markup.
- * Source: https://docs.perplexity.ai/docs/agent-api/models
- *
- * NOTE: These are estimates based on actual token consumption.
- * Gemini models offer 90% cache read discounts (not reflected here).
- * Sonar models also incur per-request search fees ($0.005/search).
- * Check your Perplexity dashboard for exact billing.
+ * Direct provider pricing via @ai-sdk/anthropic and @ai-sdk/openai.
  */
 export const MODEL_PRICING = {
-  // Anthropic Claude (via Perplexity Agent API)
+  // Anthropic Claude (direct API)
   'anthropic/claude-haiku-4-5': { input: 1, output: 5 },
   'anthropic/claude-sonnet-4-5': { input: 3, output: 15 },
   'anthropic/claude-opus-4-6': { input: 5, output: 25 },
 
-  // OpenAI (via Perplexity Agent API)
+  // OpenAI (direct API)
   'openai/gpt-5-mini': { input: 0.25, output: 2 },
   'openai/gpt-5.2': { input: 1.75, output: 14 },
-
-  // Perplexity Sonar (native — built-in web search)
-  'perplexity/sonar': { input: 0.25, output: 2.50 },
 } as const;
 
 const DEFAULT_PRICING = { input: 3, output: 15 };

@@ -95,19 +95,6 @@ export function UsageDisplay() {
             {formatUsd(usageTotals.byProvider.openai.costUsd)}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: typography.sizes.sm, color: colors.fg.secondary, fontFamily: typography.fonts.body }}>
-            Sonar (Perplexity)
-            {usageTotals.byProvider.perplexity.recordCount > 0 && (
-              <span style={{ fontSize: typography.sizes.xs, opacity: 0.6, marginLeft: spacing[1] }}>
-                ({usageTotals.byProvider.perplexity.recordCount})
-              </span>
-            )}
-          </span>
-          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code }}>
-            {formatUsd(usageTotals.byProvider.perplexity.costUsd)}
-          </span>
-        </div>
         <div style={{ borderTop: `1px solid ${colors.border.default}`, paddingTop: spacing[2], display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.fg.primary, fontFamily: typography.fonts.body }}>
             Total
@@ -138,7 +125,7 @@ export function UsageDisplay() {
             margin: 0,
             fontFamily: typography.fonts.body,
           }}>
-            💡 Estimated costs based on token usage. Actual charges may vary. Check your Perplexity dashboard for exact billing.
+            💡 Estimated costs based on token usage. Actual charges may vary. Check your Anthropic/OpenAI dashboards for exact billing.
           </p>
         </div>
       )}

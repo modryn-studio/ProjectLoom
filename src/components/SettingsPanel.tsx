@@ -127,9 +127,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const backupInputRef = useRef<HTMLInputElement>(null);
   const overlayMouseDownRef = useRef(false);
 
-  // API Keys state — single Perplexity key for all models
-  const [perplexityKey, setPerplexityKey] = useState('');
-  const [showPerplexityKey, setShowPerplexityKey] = useState(false);
+  // API Keys state — separate keys for each provider
+  const [anthropicKey, setAnthropicKey] = useState('');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
 
@@ -140,10 +142,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   useEffect(() => {
     if (isOpen && !keysLoaded) {
-      const savedPerplexityKey = apiKeyManager.getKey('perplexity');
+      const savedAnthropicKey = apiKeyManager.getKey('anthropic');
+      const savedOpenaiKey = apiKeyManager.getKey('openai');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
-      if (savedPerplexityKey) setPerplexityKey(savedPerplexityKey);
+      if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
+      if (savedOpenaiKey) setOpenaiKey(savedOpenaiKey);
        
       setStoragePreference(currentStoragePreference);
        
@@ -194,8 +198,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     const providerName = apiKeyManager.getProviderDisplayName(provider);
     if (window.confirm(`Delete ${providerName} API key?`)) {
       apiKeyManager.removeKey(provider);
-      if (provider === 'perplexity') {
-        setPerplexityKey('');
+      if (provider === 'anthropic') {
+        setAnthropicKey('');
+      } else if (provider === 'openai') {
+        setOpenaiKey('');
       }
     }
   }, []);
@@ -439,17 +445,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </select>
                 </div>
 
-                {/* Perplexity API Key (single gateway for all models) */}
+                {/* Anthropic API Key */}
                 <div style={{ marginBottom: spacing[3] }}>
-                  <label style={labelStyles}>Perplexity API Key</label>
+                  <label style={labelStyles}>Anthropic API Key</label>
                   <div style={{ display: 'flex', gap: spacing[2] }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input
-                        type={showPerplexityKey ? 'text' : 'password'}
-                        value={perplexityKey}
-                        onChange={(e) => setPerplexityKey(e.target.value)}
-                        onBlur={() => handleSaveKey('perplexity', perplexityKey)}
-                        placeholder="pplx-..."
+                        type={showAnthropicKey ? 'text' : 'password'}
+                        value={anthropicKey}
+                        onChange={(e) => setAnthropicKey(e.target.value)}
+                        onBlur={() => handleSaveKey('anthropic', anthropicKey)}
+                        placeholder="sk-ant-..."
                         style={{
                           ...selectStyles,
                           fontFamily: typography.fonts.code,
@@ -458,7 +464,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPerplexityKey(!showPerplexityKey)}
+                        onClick={() => setShowAnthropicKey(!showAnthropicKey)}
                         style={{
                           position: 'absolute',
                           right: spacing[2],
@@ -471,16 +477,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           padding: spacing[1],
                         }}
                       >
-                        {showPerplexityKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showAnthropicKey ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
-                    {perplexityKey && (
+                    {anthropicKey && (
                       <>
                         <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
                           <CheckCircle size={16} />
                         </span>
                         <button
-                          onClick={() => handleDeleteKey('perplexity')}
+                          onClick={() => handleDeleteKey('anthropic')}
                           title="Delete key"
                           style={{
                             background: 'none',
@@ -496,7 +502,68 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     )}
                   </div>
                   <p style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary, marginTop: spacing[1] }}>
-                    One key for all models — Claude, GPT, and Sonar with built-in web search.
+                    For Claude models. Get your key at console.anthropic.com
+                  </p>
+                </div>
+
+                {/* OpenAI API Key */}
+                <div style={{ marginBottom: spacing[3] }}>
+                  <label style={labelStyles}>OpenAI API Key</label>
+                  <div style={{ display: 'flex', gap: spacing[2] }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        type={showOpenaiKey ? 'text' : 'password'}
+                        value={openaiKey}
+                        onChange={(e) => setOpenaiKey(e.target.value)}
+                        onBlur={() => handleSaveKey('openai', openaiKey)}
+                        placeholder="sk-..."
+                        style={{
+                          ...selectStyles,
+                          fontFamily: typography.fonts.code,
+                          paddingRight: '40px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                        style={{
+                          position: 'absolute',
+                          right: spacing[2],
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: colors.fg.tertiary,
+                          cursor: 'pointer',
+                          padding: spacing[1],
+                        }}
+                      >
+                        {showOpenaiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    {openaiKey && (
+                      <>
+                        <span style={{ display: 'flex', alignItems: 'center', color: 'var(--success-solid)' }}>
+                          <CheckCircle size={16} />
+                        </span>
+                        <button
+                          onClick={() => handleDeleteKey('openai')}
+                          title="Delete key"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: colors.fg.tertiary,
+                            cursor: 'pointer',
+                            padding: spacing[1],
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <p style={{ fontSize: typography.sizes.xs, color: colors.fg.tertiary, marginTop: spacing[1] }}>
+                    For GPT models with web search. Get your key at platform.openai.com
                   </p>
                 </div>
               </div>

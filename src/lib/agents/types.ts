@@ -137,6 +137,9 @@ export interface AgentRunResult {
 }
 
 // =============================================================================
+import type { ProviderKeys } from '@/lib/provider-factory';
+
+// =============================================================================
 // AGENT RUNNER CONFIG
 // =============================================================================
 
@@ -149,8 +152,8 @@ export interface AgentRunnerConfig {
   maxCostUsd: number;
   /** Model ID to use */
   modelId: string;
-  /** API key */
-  apiKey: string;
+  /** API keys for providers */
+  keys: ProviderKeys;
 }
 
 export const DEFAULT_AGENT_CONFIG: AgentRunnerConfig = {
@@ -158,7 +161,7 @@ export const DEFAULT_AGENT_CONFIG: AgentRunnerConfig = {
   timeoutMs: 60_000,
   maxCostUsd: 0.50,
   modelId: 'anthropic/claude-sonnet-4-6',
-  apiKey: '',
+  keys: {},
 };
 
 // =============================================================================

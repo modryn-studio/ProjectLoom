@@ -185,12 +185,19 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
       return;
     }
 
-    // Check API key — all models route through Perplexity Agent API
-    const apiKey = apiKeyManager.getKey('perplexity');
+    // Check API keys
+    const anthropicKey = apiKeyManager.getKey('anthropic') ?? undefined;
+    const openaiKey = apiKeyManager.getKey('openai') ?? undefined;
     const modelId = 'anthropic/claude-sonnet-4-6'; // Default agent model
 
-    if (!apiKey) {
+    if (!anthropicKey && !openaiKey) {
       setError('No API key configured. Add one in Settings.');
+      return;
+    }
+
+    // Agents use Claude by default — need anthropic key
+    if (!anthropicKey) {
+      setError('Anthropic API key is required for agents (uses Claude). Add it in Settings.');
       return;
     }
 
@@ -211,7 +218,8 @@ export function AgentDialog({ isOpen, onClose }: AgentDialogProps) {
         workspace: workspaceSnapshot,
         config: {
           modelId,
-          apiKey,
+          anthropicKey,
+          openaiKey,
           maxSteps: 10,
           timeoutMs: 60_000,
           maxCostUsd: 0.50,

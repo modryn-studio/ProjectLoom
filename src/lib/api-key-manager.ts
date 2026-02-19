@@ -12,7 +12,7 @@
 // TYPES
 // =============================================================================
 
-export type ProviderType = 'anthropic' | 'openai' | 'perplexity';
+export type ProviderType = 'anthropic' | 'openai';
 export type StorageType = 'localStorage' | 'sessionStorage';
 
 export interface APIKeyInfo {
@@ -39,7 +39,6 @@ const STORAGE_PREF_KEY = 'projectloom:storage-preference';
 const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
   anthropic: 'Anthropic (Claude)',
   openai: 'OpenAI',
-  perplexity: 'Perplexity (All Models)',
 };
 
 // =============================================================================
@@ -262,11 +261,11 @@ class APIKeyManager {
   }
 
   /**
-   * Check if user has the Perplexity API key configured.
-   * All models route through Perplexity Agent API — only one key needed.
+   * Check if user has at least one API key configured.
+   * Anthropic key for Claude models, OpenAI key for GPT models.
    */
   hasAnyKey(): boolean {
-    return this.getKey('perplexity') !== null;
+    return this.getKey('anthropic') !== null || this.getKey('openai') !== null;
   }
 
   /**
@@ -278,7 +277,6 @@ class APIKeyManager {
       providers: {
         anthropic: this.getKeyInfo('anthropic'),
         openai: this.getKeyInfo('openai'),
-        perplexity: this.getKeyInfo('perplexity'),
       },
     };
   }
@@ -325,11 +323,6 @@ class APIKeyManager {
           return { valid: false, error: 'OpenAI API keys should start with "sk-"' };
         }
         break;
-      case 'perplexity':
-        if (!key.startsWith('pplx-')) {
-          return { valid: false, error: 'Perplexity API keys should start with "pplx-"' };
-        }
-        break;
     }
 
     return { valid: true };
@@ -373,8 +366,6 @@ export function useAPIKeyStatus() {
     saveKey,
     removeKey,
     hasDevModeKeys: status.providers.anthropic.isDevMode
-      || status.providers.openai.isDevMode
-      || status.providers.google.isDevMode
-      || status.providers.perplexity.isDevMode,
+      || status.providers.openai.isDevMode,
   };
 }

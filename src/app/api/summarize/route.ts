@@ -4,11 +4,11 @@
  * Generates AI-powered conversation summaries for context inheritance.
  * Uses Vercel AI SDK generateText (non-streaming) with BYOK pattern.
  * 
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { generateText } from 'ai';
-import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
+import { createModel, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -23,8 +23,10 @@ interface SummarizeRequestBody {
   }>;
   /** Model identifier */
   model: string;
-  /** User's API key for the provider */
-  apiKey: string;
+  /** User's Anthropic API key */
+  anthropicKey?: string;
+  /** User's OpenAI API key */
+  openaiKey?: string;
   /** Parent card title for context */
   parentTitle?: string;
 }
@@ -50,15 +52,10 @@ interface APIError {
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai' | 'perplexity';
+type ProviderType = 'anthropic' | 'openai';
 
 function detectProvider(model: string): ProviderType {
-  if (model.startsWith('anthropic/')) return 'anthropic';
-  if (model.startsWith('openai/')) return 'openai';
-  if (model.startsWith('sonar')) return 'perplexity';
-  if (model.startsWith('claude')) return 'anthropic';
-  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
-  return 'perplexity';
+  return detectModelProvider(model);
 }
 
 // =============================================================================
@@ -150,7 +147,8 @@ SUMMARY:`;
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = (await req.json()) as SummarizeRequestBody;
-    const { messages, model, apiKey, parentTitle } = body;
+    const { messages, model, anthropicKey, openaiKey, parentTitle } = body;
+    const keys = { anthropic: anthropicKey, openai: openaiKey };
 
     // Validate required fields
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -171,20 +169,17 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    if (!apiKey) {
+    if (!anthropicKey && !openaiKey) {
       return createErrorResponse(
-        'API key is required. Configure it in Settings.',
+        'At least one API key is required. Configure it in Settings.',
         'MISSING_API_KEY',
         401
       );
     }
 
-    // Create provider model instance — all models route through Perplexity Agent API
-    // Disable web_search for summarization; it's pure text processing and web_search
-    // can cause 500 errors on some model/tool combinations.
+    // Create model instance via provider factory (no web search for summarization)
     const providerType = detectProvider(model);
-    const perplexity = createPerplexityAgent({ apiKey });
-    const aiModel = perplexity(model, { webSearch: false });
+    const aiModel = createModel(model, keys);
 
     // Get per-model temperature
     const modelConfig = getModelConfig(model);

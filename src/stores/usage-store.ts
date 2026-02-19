@@ -20,7 +20,7 @@ import { calculateCost } from '@/lib/vercel-ai-integration';
 // TYPES
 // =============================================================================
 
-export type UsageProvider = 'anthropic' | 'openai' | 'perplexity';
+export type UsageProvider = 'anthropic' | 'openai';
 export type UsageSource = 'chat' | 'agent' | 'summarize' | 'embeddings' | 'title-generation';
 
 export type UsageRange = 'this_month' | 'last_month' | 'year_to_date' | 'all_time';
@@ -38,7 +38,7 @@ export interface UsageRecord {
   createdAt: number;
   conversationId?: string;
   source?: UsageSource;
-  /** Detailed cost breakdown from Perplexity API (when available) */
+  /** Detailed cost breakdown (when available) */
   costBreakdown?: {
     inputCost: number;
     outputCost: number;
@@ -48,7 +48,7 @@ export interface UsageRecord {
     toolCallsCost?: number;
     currency: string;
   };
-  /** Token details from Perplexity API (when available) */
+  /** Token details (when available) */
   tokenDetails?: {
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
@@ -63,7 +63,7 @@ export interface UsageInput {
   conversationId?: string;
   source?: UsageSource;
   createdAt?: number;
-  /** Actual cost data from Perplexity API response (preferred over estimation) */
+  /** Actual cost data from API response (preferred over estimation) */
   actualCost?: {
     inputCost: number;
     outputCost: number;
@@ -73,7 +73,7 @@ export interface UsageInput {
     toolCallsCost?: number;
     currency: string;
   };
-  /** Token details from Perplexity API response */
+  /** Token details from API response */
   tokenDetails?: {
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
@@ -163,7 +163,6 @@ export function getUsageTotals(records: UsageRecord[], range: UsageRange, now = 
     byProvider: {
       anthropic: { costUsd: 0, totalTokens: 0, recordCount: 0 },
       openai: { costUsd: 0, totalTokens: 0, recordCount: 0 },
-      perplexity: { costUsd: 0, totalTokens: 0, recordCount: 0 },
     },
   };
 
@@ -219,7 +218,7 @@ export const useUsageStore = create<UsageState>()(
           inputTokens,
           outputTokens,
           totalTokens,
-          // Prefer actual cost from Perplexity API over local estimation
+          // Prefer actual cost from API over local estimation
           costUsd: input.actualCost ? input.actualCost.totalCost : calculateCost(input.model, inputTokens, outputTokens),
           costIsActual: !!input.actualCost,
           createdAt: input.createdAt ?? Date.now(),
@@ -250,7 +249,7 @@ export const useUsageStore = create<UsageState>()(
       onRehydrateStorage: () => (state) => {
         // Clean up invalid records on load, and purge legacy providers that
         // have been removed (e.g. 'google' after Gemini was dropped).
-        const VALID_PROVIDERS: UsageProvider[] = ['anthropic', 'openai', 'perplexity'];
+        const VALID_PROVIDERS: UsageProvider[] = ['anthropic', 'openai'];
         if (state?.records) {
           const validRecords = state.records.filter(
             (record) =>

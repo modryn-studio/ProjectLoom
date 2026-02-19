@@ -35,19 +35,24 @@ const INITIAL_KEY_STATE: KeyState = {
 };
 
 export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModalProps) {
-  const [perplexityKey, setPerplexityKey] = useState<KeyState>(INITIAL_KEY_STATE);
+  const [anthropicKey, setAnthropicKey] = useState<KeyState>(INITIAL_KEY_STATE);
+  const [openaiKey, setOpenaiKey] = useState<KeyState>(INITIAL_KEY_STATE);
   const [isSaving, setIsSaving] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
   const overlayMouseDownRef = useRef(false);
 
-  // Load existing key and storage preference on mount
+  // Load existing keys and storage preference on mount
   useEffect(() => {
     if (isOpen) {
-      const existingPerplexity = apiKeyManager.getKey('perplexity');
+      const existingAnthropic = apiKeyManager.getKey('anthropic');
+      const existingOpenai = apiKeyManager.getKey('openai');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
-      if (existingPerplexity) {
-        setPerplexityKey(prev => ({ ...prev, value: existingPerplexity, isValid: true }));
+      if (existingAnthropic) {
+        setAnthropicKey(prev => ({ ...prev, value: existingAnthropic, isValid: true }));
+      }
+      if (existingOpenai) {
+        setOpenaiKey(prev => ({ ...prev, value: existingOpenai, isValid: true }));
       }
       setStoragePreference(currentStoragePreference);
     }
@@ -64,10 +69,6 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } else if (provider === 'openai') {
       if (!key.startsWith('sk-')) {
         return 'OpenAI keys start with "sk-"';
-      }
-    } else if (provider === 'perplexity') {
-      if (!key.startsWith('pplx-')) {
-        return 'Perplexity keys start with "pplx-"';
       }
     }
     
@@ -118,17 +119,18 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     setIsSaving(true);
 
     try {
-      // Validate key
-      const perplexityValid = await validateKey('perplexity', perplexityKey.value, setPerplexityKey);
+      // Validate keys
+      const anthropicValid = await validateKey('anthropic', anthropicKey.value, setAnthropicKey);
+      const openaiValid = await validateKey('openai', openaiKey.value, setOpenaiKey);
 
-      if (!perplexityValid) {
+      if (!anthropicValid || !openaiValid) {
         setIsSaving(false);
         return;
       }
 
-      // Perplexity key is required — it's the single gateway for all models
-      if (!perplexityKey.value.trim()) {
-        setPerplexityKey(prev => ({ ...prev, error: 'Perplexity API key is required for all models' }));
+      // At least one key is required
+      if (!anthropicKey.value.trim() && !openaiKey.value.trim()) {
+        setAnthropicKey(prev => ({ ...prev, error: 'At least one API key is required' }));
         setIsSaving(false);
         return;
       }
@@ -136,8 +138,13 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
       // Set storage preference first
       apiKeyManager.setStoragePreference(storagePreference);
 
-      // Save key
-      apiKeyManager.saveKey('perplexity', perplexityKey.value.trim());
+      // Save keys
+      if (anthropicKey.value.trim()) {
+        apiKeyManager.saveKey('anthropic', anthropicKey.value.trim());
+      }
+      if (openaiKey.value.trim()) {
+        apiKeyManager.saveKey('openai', openaiKey.value.trim());
+      }
 
       // Mark setup as complete
       if (typeof window !== 'undefined') {
@@ -149,7 +156,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } finally {
       setIsSaving(false);
     }
-  }, [perplexityKey.value, storagePreference, validateKey, onSuccess, onClose]);
+  }, [anthropicKey.value, openaiKey.value, storagePreference, validateKey, onSuccess, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -222,17 +229,14 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
             {/* Info banner */}
             <div style={styles.infoBanner}>
               <p style={styles.infoText}>
-                Get your API key from Perplexity — one key unlocks Claude, GPT, and Sonar models with built-in web search:
-              </p>
-              <p style={{ ...styles.infoText, fontSize: typography.sizes.xs, marginTop: spacing[1], color: colors.fg.tertiary }}>
-                (Optional: Add OpenAI key later in Settings for embeddings/knowledge base features)
+                Add your API keys to use Claude and GPT models. You can add one or both:
               </p>
               <div style={styles.links}>
                 <a
-                  href="https://www.perplexity.ai/settings/api"
+                  href="https://console.anthropic.com/settings/keys"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ ...styles.link, gridColumn: '1 / -1' }}
+                  style={styles.link}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
                     e.currentTarget.style.borderColor = colors.accent.primary;
@@ -242,7 +246,24 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
                     e.currentTarget.style.borderColor = 'var(--border-primary)';
                   }}
                 >
-                  <span style={styles.linkText}>Perplexity API Settings</span>
+                  <span style={styles.linkText}>Anthropic Console</span>
+                  <ExternalLink size={18} style={{ flexShrink: 0 }} />
+                </a>
+                <a
+                  href="https://platform.openai.com/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.link}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
+                    e.currentTarget.style.borderColor = colors.accent.primary;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.bg.inset;
+                    e.currentTarget.style.borderColor = 'var(--border-primary)';
+                  }}
+                >
+                  <span style={styles.linkText}>OpenAI Platform</span>
                   <ExternalLink size={18} style={{ flexShrink: 0 }} />
                 </a>
               </div>
@@ -277,15 +298,26 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
               </div>
             </div>
 
-            {/* Perplexity API Key (single gateway for all models) */}
+            {/* Anthropic API Key */}
             <KeyInput
-              label="Perplexity API Key"
-              placeholder="pplx-..."
-              value={perplexityKey.value}
-              onChange={(v) => handleKeyChange('perplexity', v, setPerplexityKey)}
-              isValid={perplexityKey.isValid}
-              isValidating={perplexityKey.isValidating}
-              error={perplexityKey.error}
+              label="Anthropic API Key"
+              placeholder="sk-ant-..."
+              value={anthropicKey.value}
+              onChange={(v) => handleKeyChange('anthropic', v, setAnthropicKey)}
+              isValid={anthropicKey.isValid}
+              isValidating={anthropicKey.isValidating}
+              error={anthropicKey.error}
+            />
+
+            {/* OpenAI API Key */}
+            <KeyInput
+              label="OpenAI API Key"
+              placeholder="sk-..."
+              value={openaiKey.value}
+              onChange={(v) => handleKeyChange('openai', v, setOpenaiKey)}
+              isValid={openaiKey.isValid}
+              isValidating={openaiKey.isValidating}
+              error={openaiKey.error}
             />
           </div>
 

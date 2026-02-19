@@ -28,7 +28,8 @@ interface AgentRequestBody {
   workspace: WorkspaceSnapshot;
   config: {
     modelId: string;
-    apiKey: string;
+    anthropicKey?: string;
+    openaiKey?: string;
     maxSteps?: number;
     timeoutMs?: number;
     maxCostUsd?: number;
@@ -64,8 +65,8 @@ export async function POST(req: Request): Promise<Response> {
       return errorResponse('Invalid agent ID. Must be cleanup, branch, or summarize.', 'INVALID_AGENT', 400);
     }
 
-    if (!config?.apiKey) {
-      return errorResponse('API key is required.', 'MISSING_API_KEY', 401);
+    if (!config?.anthropicKey && !config?.openaiKey) {
+      return errorResponse('At least one API key is required.', 'MISSING_API_KEY', 401);
     }
 
     if (!workspace) {
@@ -78,7 +79,7 @@ export async function POST(req: Request): Promise<Response> {
       timeoutMs: config.timeoutMs ?? 60_000,
       maxCostUsd: config.maxCostUsd ?? 0.50,
       modelId: config.modelId || 'anthropic/claude-sonnet-4-6',
-      apiKey: config.apiKey,
+      keys: { anthropic: config.anthropicKey, openai: config.openaiKey },
     };
 
     // Reconstruct Date objects from serialized workspace

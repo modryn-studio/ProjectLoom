@@ -113,24 +113,31 @@ export function ChatPanel() {
 
     if (conversationModel) return conversationModel;
 
-    // All models route through Perplexity Agent API — single key
-    const hasPerplexityKey = !!apiKeyManager.getKey('perplexity');
+    // Check which providers have keys
+    const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
+    const hasOpenaiKey = !!apiKeyManager.getKey('openai');
 
-    if (hasPerplexityKey) {
+    if (hasAnthropicKey) {
       return getDefaultModel('anthropic').id;
+    }
+    if (hasOpenaiKey) {
+      return getDefaultModel('openai').id;
     }
 
     return null;
   }, [activeConversationId, conversationModel]);
 
-  // Get API key — always the Perplexity key (single gateway)
-  const currentApiKey = useMemo(() => {
-    if (!currentModel) return null;
-    return apiKeyManager.getKey('perplexity');
-  }, [currentModel]);
+  // Get API keys for all providers (reads from module-level singleton — no reactive deps needed)
+  const currentKeys = useMemo(() => {
+    return {
+      anthropic: apiKeyManager.getKey('anthropic') ?? undefined,
+      openai: apiKeyManager.getKey('openai') ?? undefined,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversationId, conversationModel]);
 
-  // Check if we have the Perplexity API key configured
-  const hasAnyApiKey = !!apiKeyManager.getKey('perplexity');
+  // Check if we have any API key configured
+  const hasAnyApiKey = apiKeyManager.hasAnyKey();
 
   // Check if current model supports vision
   const supportsVision = useMemo(() => {
@@ -244,9 +251,17 @@ export function ChatPanel() {
         return;
       }
       
-      // Verify conversation still exists (user might have deleted it during streaming)
-      const conversations = useCanvasStore.getState().conversations;
-      if (!conversations.get(metadata.conversationId)) {
+      // Verify conversation still exists — search both the active workspace and all
+      // background workspaces. The user may have navigated away while this stream ran,
+      // swapping the active `conversations` Map to a different workspace. Checking only
+      // that Map produces a false-negative and silently drops the finished message.
+      const onFinishState = useCanvasStore.getState();
+      const conversationStillExists =
+        onFinishState.conversations.has(metadata.conversationId) ||
+        onFinishState.workspaces.some(ws =>
+          ws.conversations.some(c => c.id === metadata.conversationId)
+        );
+      if (!conversationStillExists) {
         console.warn(`[ChatPanel] onFinish: Target conversation ${metadata.conversationId} no longer exists`);
         streamingRequestMetadataRef.current = null;
         setPendingAttachments([]);
@@ -520,7 +535,8 @@ export function ChatPanel() {
     // 6. Build request body (inline — don't rely on stale memoized chatBody)
     const body = {
       model: currentModel,
-      apiKey: currentApiKey,
+      anthropicKey: currentKeys.anthropic,
+      openaiKey: currentKeys.openai,
       ...(attachments?.length ? {
         attachments: attachments.map(a => ({
           contentType: a.contentType,
@@ -543,7 +559,7 @@ export function ChatPanel() {
       }
       setPendingAttachments([]);
     }
-  }, [setInput, buildCanvasContextPayload, sendMessage, isStreaming, activeConversationId, currentModel, currentApiKey, setStreamingConversationId, getConversationMessages, setMessages, setPendingAttachments]);
+  }, [setInput, buildCanvasContextPayload, sendMessage, isStreaming, activeConversationId, currentModel, currentKeys, setStreamingConversationId, getConversationMessages, setMessages, setPendingAttachments]);
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {
@@ -602,7 +618,8 @@ export function ChatPanel() {
     // 5. Build request body inline
     const body = {
       model: currentModel,
-      apiKey: currentApiKey,
+      anthropicKey: currentKeys.anthropic,
+      openaiKey: currentKeys.openai,
       ...(messageAttachments.length > 0 ? {
         attachments: messageAttachments.map(a => ({
           contentType: a.contentType,
@@ -623,7 +640,7 @@ export function ChatPanel() {
     }
     
     console.log('[ChatPanel] Retrying message:', { messageIndex, content: targetMessage.content });
-  }, [activeConversation, isStreaming, stop, updateConversation, setMessages, activeConversationId, currentModel, currentApiKey, buildCanvasContextPayload, sendMessage, setPendingAttachments, setStreamingConversationId, getConversationMessages]);
+  }, [activeConversation, isStreaming, stop, updateConversation, setMessages, activeConversationId, currentModel, currentKeys, buildCanvasContextPayload, sendMessage, setPendingAttachments, setStreamingConversationId, getConversationMessages]);
 
   // Handle edit message click
   const handleEditClick = useCallback((messageIndex: number) => {
@@ -695,7 +712,8 @@ export function ChatPanel() {
     // 5. Build request body inline
     const body = {
       model: currentModel,
-      apiKey: currentApiKey,
+      anthropicKey: currentKeys.anthropic,
+      openaiKey: currentKeys.openai,
       ...(attachments.length > 0 ? {
         attachments: attachments.map(a => ({
           contentType: a.contentType,
@@ -714,7 +732,7 @@ export function ChatPanel() {
         streamingRequestMetadataRef.current = null;
       }
     }
-  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentApiKey, setPendingAttachments, sendMessage, setStreamingConversationId, getConversationMessages]);
+  }, [activeConversation, editingMessageIndex, activeConversationId, currentModel, isStreaming, stop, updateConversation, setMessages, buildCanvasContextPayload, currentKeys, setPendingAttachments, sendMessage, setStreamingConversationId, getConversationMessages]);
 
   // Handle edit cancel
   const handleEditCancel = useCallback(() => {
@@ -769,15 +787,24 @@ export function ChatPanel() {
           return;
         }
         
-        const storeMessages = getConversationMessages(metadata.conversationId);
-        const lastStoreMessage = storeMessages[storeMessages.length - 1];
-        
+        // getConversationMessages() only reads the active `conversations` Map, so it
+        // returns [] for conversations in background workspaces — causing a false
+        // "not yet saved" and then an existence check that also fails the same way.
+        // Instead, do a single global lookup that covers all workspaces.
+        const partialSaveState = useCanvasStore.getState();
+        const globalConv =
+          partialSaveState.conversations.get(metadata.conversationId) ??
+          partialSaveState.workspaces
+            .flatMap(ws => ws.conversations)
+            .find(c => c.id === metadata.conversationId);
+
+        const lastStoreMessage = globalConv?.content[globalConv.content.length - 1];
+
         // Only save if this message isn't already in the store (avoid duplicate saves)
         // Compare content to detect if it's a new/partial message
         if (!lastStoreMessage || lastStoreMessage.content !== lastMessageText) {
-          // Verify conversation still exists
-          const conversations = useCanvasStore.getState().conversations;
-          if (!conversations.get(metadata.conversationId)) {
+          // Verify conversation still exists globally (including background workspaces)
+          if (!globalConv) {
             console.warn(`[ChatPanel] Partial save: Target conversation ${metadata.conversationId} no longer exists`);
             streamingRequestMetadataRef.current = null;
             setPendingAttachments([]);
@@ -819,7 +846,7 @@ export function ChatPanel() {
         }
       }
     }
-  }, [isStreaming, chatMessages, addAIMessage, getConversationMessages]);
+  }, [isStreaming, chatMessages, addAIMessage]);
 
   // Resize handlers (IDENTICAL to CanvasTreeSidebar)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

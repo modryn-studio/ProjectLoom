@@ -410,6 +410,22 @@ export function InfiniteCanvas() {
     }
   }, [nodes.length, getFitViewOptions]);
 
+  // Fit view when switching between workspaces
+  const prevWorkspaceId = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevWorkspaceId.current !== null && prevWorkspaceId.current !== activeWorkspaceId) {
+      // Reset so the new workspace can re-trigger the initial fit if needed
+      hasFitInitialView.current = false;
+      setTimeout(() => {
+        reactFlowInstance.current?.fitView(
+          getFitViewOptions({ duration: 600 })
+        );
+        hasFitInitialView.current = true;
+      }, 100);
+    }
+    prevWorkspaceId.current = activeWorkspaceId;
+  }, [activeWorkspaceId, getFitViewOptions]);
+
   // Adjust canvas view when chat panel is opened/closed
   // This ensures the active card stays in view when the viewport changes
   useEffect(() => {

@@ -98,18 +98,24 @@ export function APIKeyWarningBanner({
                       <strong>Current status:</strong>
                     </p>
                     <ul style={styles.detailList}>
-                      {keyStatus.providers.perplexity.key && (
+                      {keyStatus.providers.anthropic.key && (
                         <li>
-                          Perplexity: {keyStatus.providers.perplexity.source === 'env' ? '✓ Environment variable' : '⚠ Browser storage'}
+                          Anthropic: {keyStatus.providers.anthropic.source === 'env' ? '✓ Environment variable' : '⚠ Browser storage'}
+                        </li>
+                      )}
+                      {keyStatus.providers.openai.key && (
+                        <li>
+                          OpenAI: {keyStatus.providers.openai.source === 'env' ? '✓ Environment variable' : '⚠ Browser storage'}
                         </li>
                       )}
                     </ul>
                     <p style={styles.detailText}>
-                      <strong>To secure your key:</strong>
+                      <strong>To secure your keys:</strong>
                     </p>
                     <ol style={styles.detailList}>
                       <li>Create a <code style={styles.code}>.env.local</code> file in your project root</li>
-                      <li>Add: <code style={styles.code}>PERPLEXITY_API_KEY=pplx-...</code></li>
+                      <li>Add: <code style={styles.code}>ANTHROPIC_API_KEY=sk-ant-...</code></li>
+                      <li>Add: <code style={styles.code}>OPENAI_API_KEY=sk-...</code></li>
                       <li>Restart your development server</li>
                     </ol>
                     <a

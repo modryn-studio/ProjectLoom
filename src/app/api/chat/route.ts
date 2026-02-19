@@ -2,17 +2,17 @@
  * Chat API Route
  * 
  * Streaming chat endpoint using Vercel AI SDK.
- * All models route through the Perplexity Agent API gateway with a single API key.
+ * Models connect directly to Anthropic and OpenAI via their official provider SDKs.
  * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2', etc.
- * Sonar models include built-in web search — no external search orchestration needed.
+ * Web search is supported via provider-native tools (Anthropic web_search, OpenAI Responses API).
  * 
- * @version 3.0.0
+ * @version 4.0.0
  */
 
 export const runtime = 'edge';
 
 import { streamText } from 'ai';
-import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
+import { createModel, getWebSearchTools, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
 
 // =============================================================================
@@ -31,10 +31,12 @@ interface ChatRequestBody {
     instructions?: string;
     knowledgeBase?: string;
   };
-  /** Model identifier (e.g., 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2', 'sonar-pro') */
+  /** Model identifier (e.g., 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2') */
   model: string;
-  /** User's API key for the provider */
-  apiKey: string;
+  /** User's Anthropic API key (for Claude models) */
+  anthropicKey?: string;
+  /** User's OpenAI API key (for GPT models) */
+  openaiKey?: string;
   /** Optional image attachments for the current message (vision support) */
   attachments?: Array<{
     contentType: string;
@@ -77,17 +79,10 @@ function extractMessageText(message: ChatRequestBody['messages'][number]): strin
 // PROVIDER DETECTION
 // =============================================================================
 
-type ProviderType = 'anthropic' | 'openai' | 'perplexity';
+type ProviderType = 'anthropic' | 'openai';
 
 function detectProvider(model: string): ProviderType {
-  if (model.startsWith('anthropic/')) return 'anthropic';
-  if (model.startsWith('openai/')) return 'openai';
-  if (model.startsWith('perplexity/')) return 'perplexity';
-  if (model.startsWith('sonar')) return 'perplexity';
-  // Legacy bare model IDs
-  if (model.startsWith('claude')) return 'anthropic';
-  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
-  return 'perplexity';
+  return detectModelProvider(model);
 }
 
 // =============================================================================
@@ -171,7 +166,9 @@ function handleProviderError(error: unknown): Response {
 export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, apiKey, attachments, canvasContext } = body;
+    const { messages, model, anthropicKey, openaiKey, attachments, canvasContext } = body;
+    
+    const keys = { anthropic: anthropicKey, openai: openaiKey };
     
     console.log('[chat/route] Request received:', {
       model,
@@ -203,23 +200,31 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    if (!apiKey) {
+    if (!anthropicKey && !openaiKey) {
       return createErrorResponse(
-        'API key is required. Configure it in Settings.',
+        'At least one API key is required. Configure Anthropic or OpenAI key in Settings.',
         'MISSING_API_KEY',
         401,
         { recoverable: true, suggestion: 'add_api_key' }
       );
     }
 
-    // Detect underlying provider for config adjustments
+    // Validate that the selected model's provider key is present
     const providerType = detectProvider(model);
+    const providerKey = providerType === 'anthropic' ? anthropicKey : openaiKey;
+    if (!providerKey) {
+      return createErrorResponse(
+        `${providerType === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key is required for this model. Configure it in Settings.`,
+        'MISSING_API_KEY',
+        401,
+        { recoverable: true, suggestion: 'add_api_key' }
+      );
+    }
     
-    // All models route through Perplexity Agent API.
-    // web_search is enabled for all models — Anthropic/OpenAI invoke it selectively,
-    // Sonar always searches (search-first product).
-    const perplexity = createPerplexityAgent({ apiKey });
-    const aiModel = perplexity(model, { webSearch: true });
+    // Create model instance via provider factory
+    // Web search tools are added separately via getWebSearchTools()
+    const aiModel = createModel(model, keys);
+    const webSearchTools = getWebSearchTools(model, keys, { webSearch: true });
 
     // Build messages for AI SDK, handling both text and image attachments
     // Find the index of the last user message (not just checking if the last message overall is user)
@@ -363,7 +368,7 @@ export async function POST(req: Request): Promise<Response> {
     console.log('[chat/route] Final system prompt length:', combinedSystemPrompt?.length || 0);
     console.log('[chat/route] System prompt preview:', combinedSystemPrompt?.substring(0, 200) || 'none');
 
-    // Token config — use maxTokens uniformly through Perplexity gateway
+    // Token config
     const tokenConfig = { maxOutputTokens: modelConfig.maxTokens };
 
     // GPT-5 Mini only supports temperature: 1. MUST explicitly set it (not omit)
@@ -375,9 +380,6 @@ export async function POST(req: Request): Promise<Response> {
     // =========================================================================
     // SYSTEM PROMPT FINALIZATION
     // =========================================================================
-    // Sonar models (Perplexity) include built-in web search — results are
-    // automatically woven into the response. No external search needed.
-    // =========================================================================
 
     const finalSystemPrompt = combinedSystemPrompt;
 
@@ -387,6 +389,8 @@ export async function POST(req: Request): Promise<Response> {
       system: finalSystemPrompt,
       ...temperatureConfig,
       ...tokenConfig,
+      // Provider-native web search tools (Anthropic webSearch / OpenAI Responses API)
+      ...(Object.keys(webSearchTools).length > 0 ? { tools: webSearchTools } : {}),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages: conversationMessages as any,
       onError: (error) => {
@@ -405,41 +409,21 @@ export async function POST(req: Request): Promise<Response> {
       // Note: messageMetadata only receives { part }, not { message }.
       // We accumulate text from text-delta parts and extract citations on finish.
       messageMetadata: (() => {
-        let accumulatedText = '';
         // Captured from 'finish-step' — the only part that carries providerMetadata.
-        // The 'finish' part only has totalUsage; providerMetadata is absent there.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let capturedCost: any = null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let capturedTokenDetails: any = null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return ({ part }: { part: { type: string; text?: string; totalUsage?: { inputTokens?: number; outputTokens?: number }; usage?: { inputTokens?: number; outputTokens?: number }; providerMetadata?: any } }) => {
         const metadata: Record<string, unknown> = {};
 
-        // Accumulate text from text-delta parts
-        if (part.type === 'text-delta' && typeof part.text === 'string') {
-          accumulatedText += part.text;
-        }
-
-        // 'finish-step' carries providerMetadata — capture cost here for use on 'finish'
+        // 'finish-step' carries providerMetadata — capture token details
         if (part.type === 'finish-step') {
-          const perplexityMeta = part.providerMetadata?.perplexity;
-          if (perplexityMeta?.cost) {
-            capturedCost = {
-              inputCost: perplexityMeta.cost.input_cost ?? 0,
-              outputCost: perplexityMeta.cost.output_cost ?? 0,
-              totalCost: perplexityMeta.cost.total_cost ?? 0,
-              cacheCreationCost: perplexityMeta.cost.cache_creation_cost,
-              cacheReadCost: perplexityMeta.cost.cache_read_cost,
-              toolCallsCost: perplexityMeta.cost.tool_calls_cost,
-              currency: perplexityMeta.cost.currency ?? 'USD',
-            };
-            console.log('[chat/route] Actual cost captured from finish-step:', capturedCost);
-          }
-          if (perplexityMeta?.inputTokensDetails) {
+          // Anthropic cache token details
+          const anthropicMeta = part.providerMetadata?.anthropic;
+          if (anthropicMeta) {
             capturedTokenDetails = {
-              cacheCreationInputTokens: perplexityMeta.inputTokensDetails.cache_creation_input_tokens,
-              cacheReadInputTokens: perplexityMeta.inputTokensDetails.cache_read_input_tokens,
+              cacheCreationInputTokens: anthropicMeta.cacheCreationInputTokens,
+              cacheReadInputTokens: anthropicMeta.cacheReadInputTokens,
             };
           }
         }
@@ -452,38 +436,8 @@ export async function POST(req: Request): Promise<Response> {
           console.log('[chat/route] Sending usage metadata:', usage);
           metadata.usage = usage;
 
-          if (capturedCost) {
-            metadata.actualCost = capturedCost;
-          }
           if (capturedTokenDetails) {
             metadata.tokenDetails = capturedTokenDetails;
-          }
-
-          // Extract citations from accumulated text (markdown format from Sonar)
-          // Only extract links that appear after the "---\n\n**Sources:**" section
-          // to avoid treating normal user markdown links as citations
-          const sourcesMatch = accumulatedText.match(/\n\n---\n\n\*\*Sources:\*\*\n\n([\s\S]+)$/);
-          if (sourcesMatch && sourcesMatch[1]) {
-            const sourcesSection = sourcesMatch[1];
-            const citationMatches = sourcesSection.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g);
-            
-            if (citationMatches && citationMatches.length > 0) {
-              const sources = citationMatches.map(match => {
-                const titleMatch = match.match(/\[([^\]]+)\]/);
-                const urlMatch = match.match(/\((https?:\/\/[^\)]+)\)/);
-                return {
-                  title: titleMatch ? titleMatch[1] : 'Unknown',
-                  url: urlMatch ? urlMatch[1] : '',
-                };
-              });
-
-              metadata.custom = {
-                webSearch: {
-                  used: true,
-                  sources,
-                },
-              };
-            }
           }
         }
 

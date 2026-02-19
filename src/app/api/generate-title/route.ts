@@ -3,36 +3,32 @@
  * 
  * Generates a concise, meaningful title for a conversation card
  * based on the first user message and AI response.
- * All models route through the Perplexity Agent API gateway.
+ * Uses direct Anthropic/OpenAI provider SDKs.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
-import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
+import { createModel, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
 
 export const runtime = 'edge';
 export const maxDuration = 30;
 
-type ProviderType = 'anthropic' | 'openai' | 'perplexity';
+type ProviderType = 'anthropic' | 'openai';
 
 interface GenerateTitleRequest {
   userMessage: string;
   assistantMessage: string;
   model: string;
-  apiKey: string;
+  anthropicKey?: string;
+  openaiKey?: string;
 }
 
 /**
  * Detect underlying provider from model ID (for temperature config)
  */
 function detectProvider(model: string): ProviderType {
-  if (model.startsWith('anthropic/')) return 'anthropic';
-  if (model.startsWith('openai/')) return 'openai';
-  if (model.startsWith('sonar')) return 'perplexity';
-  if (model.startsWith('claude')) return 'anthropic';
-  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3')) return 'openai';
-  return 'perplexity';
+  return detectModelProvider(model);
 }
 
 /**
@@ -43,7 +39,8 @@ function detectProvider(model: string): ProviderType {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as GenerateTitleRequest;
-    const { userMessage, assistantMessage, model, apiKey } = body;
+    const { userMessage, assistantMessage, model, anthropicKey, openaiKey } = body;
+    const keys = { anthropic: anthropicKey, openai: openaiKey };
 
     console.log('[Generate Title API] Request received:', {
       model,
@@ -59,20 +56,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!model || !apiKey) {
+    if (!model || (!anthropicKey && !openaiKey)) {
       return NextResponse.json(
-        { error: 'model and apiKey are required' },
+        { error: 'model and at least one API key are required' },
         { status: 400 }
       );
     }
 
-    // Sonar is a web search model, not suitable for simple text generation
-    // Fallback to Claude Haiku for title generation
-    let titleModel = model;
-    if (model === 'perplexity/sonar' || model.includes('sonar')) {
-      titleModel = 'anthropic/claude-haiku-4-5';
-      console.log('[Generate Title API] Sonar detected, falling back to Claude Haiku for title generation');
-    }
+    const titleModel = model;
 
     // Build prompt for title generation
     const systemPrompt = `You are a title generator. Given a conversation between a user and assistant, generate a concise, descriptive title.
@@ -94,10 +85,8 @@ Examples:
       ? `USER: ${userMessage.slice(0, 500)}\n\nASSISTANT: ${assistantMessage.slice(0, 500)}\n\nGenerate a concise title (3-5 words):`
       : `USER: ${userMessage.slice(0, 500)}\n\nGenerate a concise title (3-5 words):`;
 
-    // All models route through Perplexity Agent API
-    // Disable web_search for title generation — it's a simple text task and
-    // web_search causes 500 errors on some model/tool combinations.
-    const perplexity = createPerplexityAgent({ apiKey });
+    // Create model instance via provider factory (no web search needed for title gen)
+    const aiModel = createModel(titleModel, keys);
     const modelConfig = getModelConfig(titleModel);
 
     // GPT-5 Mini only supports temperature: 1
@@ -107,7 +96,7 @@ Examples:
       : modelConfig.temperature;
 
     const result = await generateText({
-      model: perplexity(titleModel, { webSearch: false }),
+      model: aiModel,
       system: systemPrompt,
       prompt: userPrompt,
       temperature,

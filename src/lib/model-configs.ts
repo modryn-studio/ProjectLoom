@@ -32,7 +32,7 @@ export interface ModelConfig {
 // =============================================================================
 
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
-  // ── Anthropic Models (via Perplexity Agent API) ───────────────────────────
+  // ── Anthropic Models ──────────────────────────────────────────────────────
   'anthropic/claude-haiku-4-5': {
     temperature: 1.0,
     maxTokens: 8192,
@@ -49,7 +49,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     systemPrompt: undefined,
   },
 
-  // ── OpenAI Models (via Perplexity Agent API) ──────────────────────────────
+  // ── OpenAI Models ─────────────────────────────────────────────────────────
   'openai/gpt-5-mini': {
     temperature: 1.0,
     maxTokens: 8192,
@@ -63,13 +63,6 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   'openai/gpt-5.1': {
     temperature: 0.7,
     maxTokens: 16384,
-    systemPrompt: undefined,
-  },
-
-  // ── Perplexity Sonar (native, built-in web search) ────────────────────────
-  'perplexity/sonar': {
-    temperature: 0.7,
-    maxTokens: 4096,
     systemPrompt: undefined,
   },
 };

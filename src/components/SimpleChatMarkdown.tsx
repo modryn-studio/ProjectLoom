@@ -129,8 +129,8 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
 
       // Tables (GFM-style)
       if (line.trim().match(/^\|.+\|$/)) {
-        // Check if next line is a separator row
-        if (i + 1 < lines.length && lines[i + 1].trim().match(/^\|[\s:-]+\|$/)) {
+        // Check if next line is a separator row (allow | between columns)
+        if (i + 1 < lines.length && lines[i + 1].trim().match(/^\|[\s|:-]+\|$/)) {
           const tableRows: string[][] = [];
           
           // Parse header row

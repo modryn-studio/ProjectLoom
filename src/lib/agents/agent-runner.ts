@@ -15,7 +15,8 @@
 
 import { generateText, type ToolSet, stepCountIs } from 'ai';
 import type { LanguageModel } from 'ai';
-import { createPerplexityAgent } from '@/lib/perplexity-agent-provider';
+import { createModel as createProviderModel } from '@/lib/provider-factory';
+import type { ProviderKeys } from '@/lib/provider-factory';
 import { nanoid } from 'nanoid';
 
 import { estimateCost, detectProvider } from '@/lib/vercel-ai-integration';
@@ -32,14 +33,11 @@ import type {
 // =============================================================================
 
 /**
- * All models route through the Perplexity Agent API gateway.
- * Model IDs use provider prefix format: 'anthropic/claude-sonnet-4-6', etc.
- * Disable web_search because agents define their own tool set — mixing the two
- * causes API 500s on some model/tool combinations.
+ * Create a model instance via the provider factory.
+ * Agents don't use web search tools — they define their own tool set.
  */
-function createModel(modelId: string, apiKey: string): LanguageModel {
-  const provider = createPerplexityAgent({ apiKey });
-  return provider(modelId, { webSearch: false });
+function createAgentModel(modelId: string, keys: ProviderKeys): LanguageModel {
+  return createProviderModel(modelId, keys);
 }
 
 // =============================================================================
@@ -118,7 +116,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRunResult
   }
 
   try {
-    const model = createModel(config.modelId, config.apiKey);
+    const model = createAgentModel(config.modelId, config.keys);
     const modelConfig = getModelConfig(config.modelId);
     const providerType = detectProvider(config.modelId);
 
