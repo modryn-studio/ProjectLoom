@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon } from 'lucide-react';
+import { Settings, X, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon, MessageSquare, Bug } from 'lucide-react';
+import { FeedbackModal } from './FeedbackModal';
+import { BugReportModal } from './BugReportModal';
 
 import { usePreferencesStore, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
@@ -115,6 +117,10 @@ interface SettingsPanelProps {
   isMobile?: boolean;
 }
 
+// =============================================================================
+// SETTINGS PANEL
+// =============================================================================
+
 export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPanelProps) {
 
   // Preferences state
@@ -136,6 +142,10 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
+
+  // Feedback / bug-report modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showBugModal, setShowBugModal] = useState(false);
 
   // Load preferences and API keys on mount
   useEffect(() => {
@@ -305,6 +315,7 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
   } : panelStyles;
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -649,7 +660,7 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
               </>
             </div>
 
-            {/* Feedback link */}
+            {/* Feedback / bug report */}
             <div style={{
               padding: `${spacing[3]} ${spacing[4]}`,
               borderTop: '1px solid var(--border-primary)',
@@ -658,37 +669,47 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
               alignItems: 'center',
               gap: spacing[3],
             }}>
-              <a
-                href="https://tally.so/r/zxq0Jk"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setShowFeedbackModal(true)}
                 style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
                   fontSize: typography.sizes.xs,
                   color: colors.fg.quaternary,
                   fontFamily: typography.fonts.body,
-                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = colors.fg.secondary; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = colors.fg.quaternary; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.fg.secondary; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.fg.quaternary; }}
               >
+                <MessageSquare size={12} />
                 Share feedback
-              </a>
+              </button>
               <span style={{ color: colors.fg.quaternary, fontSize: typography.sizes.xs }}>·</span>
-              <a
-                href="https://tally.so/r/lby0Vv"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setShowBugModal(true)}
                 style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
                   fontSize: typography.sizes.xs,
                   color: colors.fg.quaternary,
                   fontFamily: typography.fonts.body,
-                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = colors.fg.secondary; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = colors.fg.quaternary; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.fg.secondary; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.fg.quaternary; }}
               >
+                <Bug size={12} />
                 Report a bug
-              </a>
+              </button>
             </div>
 
             {/* Footer */}
@@ -733,6 +754,11 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
         </motion.div>
       )}
     </AnimatePresence>
+
+      {/* Feedback / bug modals — rendered outside the AnimatePresence overlay */}
+      <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
+      <BugReportModal isOpen={showBugModal} onClose={() => setShowBugModal(false)} />
+    </>
   );
 }
 

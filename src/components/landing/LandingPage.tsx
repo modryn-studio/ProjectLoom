@@ -9,6 +9,7 @@ import bannerDark from '../../../assets/banner_trans_dark.png';
 import { colors, typography } from '@/lib/design-tokens';
 import { usePreferencesStore } from '@/stores/preferences-store';
 import { HeroCanvas } from './HeroCanvas';
+import { NewsletterSignup } from '@/components/NewsletterSignup';
 
 // =============================================================================
 // TYPES
@@ -242,6 +243,9 @@ export function LandingPage({ onEnter }: LandingPageProps) {
 
       {/* ─── FOOTER ─── */}
       <footer style={styles.footer}>
+        <div style={{ marginBottom: 24 }}>
+          <NewsletterSignup />
+        </div>
         <span style={styles.footerText}>
           ProjectLoom — BYOK, open canvas, your data stays local.
         </span>
