@@ -125,7 +125,7 @@ function buildHtml(body: FeedbackRequestBody): string {
         <tr>
           <td style="background:#ffffff;border-radius:0 0 10px 10px;padding:24px 28px;border:1px solid #e4e4e7;border-top:none">
             ${table}
-            <p style="margin:24px 0 0;font-size:11px;color:#a1a1aa;text-align:center">Sent via ProjectLoom &mdash; <a href="https://projectloom.app" style="color:#a1a1aa">projectloom.app</a></p>
+            <p style="margin:24px 0 0;font-size:11px;color:#a1a1aa;text-align:center">Sent via ProjectLoom &mdash; <a href="https://projectloom.space" style="color:#a1a1aa">projectloom.space</a></p>
           </td>
         </tr>
 
