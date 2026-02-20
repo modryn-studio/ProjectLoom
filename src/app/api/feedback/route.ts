@@ -123,8 +123,8 @@ export async function POST(req: Request): Promise<Response> {
     if (body.type === 'newsletter' && !body.email) {
       return Response.json({ error: 'email required for newsletter' }, { status: 400 });
     }
-    if (body.type !== 'newsletter' && !body.message?.trim() && !body.email?.trim()) {
-      return Response.json({ error: 'message or email required' }, { status: 400 });
+    if (body.type !== 'newsletter' && !body.rating && !body.message?.trim() && !body.email?.trim()) {
+      return Response.json({ error: 'message, rating, or email required' }, { status: 400 });
     }
 
     // ── Configuration check ───────────────────────────────────────────────────

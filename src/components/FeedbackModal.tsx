@@ -16,7 +16,7 @@ type Severity = 'low' | 'medium' | 'high' | 'critical';
 export interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Which tab to open on â€” defaults to 'feedback' */
+  /** Which tab to open on — defaults to 'feedback' */
   defaultTab?: Tab;
 }
 
@@ -155,7 +155,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
   React.useEffect(() => { if (isOpen) setActiveTab(defaultTab); }, [isOpen, defaultTab]);
 
   const handleFeedbackSubmit = useCallback(async () => {
-    if (!fbMessage.trim() && !fbEmail.trim()) return;
+    if (fbRating === 0 && !fbMessage.trim() && !fbEmail.trim()) return;
     setFbSubmitting(true);
     try {
       const res = await fetch('/api/feedback', {
@@ -164,7 +164,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
         body: JSON.stringify({ type: 'feedback', rating: fbRating || undefined, message: fbMessage, email: fbEmail || undefined }),
       });
       if (!res.ok) throw new Error();
-      success('Thanks for your feedback! ðŸ™');
+      success('Thanks for your feedback! 🙏');
       handleClose();
     } catch {
       toastError('Failed to send. Please try again.');
@@ -190,7 +190,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
     }
   }, [bugSeverity, bugMessage, bugEmail, success, toastError, handleClose]);
 
-  const fbCanSubmit = (fbMessage.trim().length > 0 || fbEmail.trim().length > 0) && !fbSubmitting;
+  const fbCanSubmit = (fbRating > 0 || fbMessage.trim().length > 0 || fbEmail.trim().length > 0) && !fbSubmitting;
   const bugCanSubmit = bugMessage.trim().length > 0 && !bugSubmitting;
   const activeSeverity = SEVERITY_OPTIONS.find((o) => o.value === bugSeverity);
 
@@ -290,7 +290,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                     />
                   </div>
                   <div>
-                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.quaternary }}>(optional â€” for a reply)</span></span>
+                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.quaternary }}>(optional €” for a reply)</span></span>
                     <input type="email" value={fbEmail} onChange={(e) => setFbEmail(e.target.value)} placeholder="you@example.com" style={inputStyles} />
                   </div>
                 </motion.div>
@@ -379,7 +379,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                 }}
               >
                 {isSubmitting ? <Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Send size={14} />}
-                {isSubmitting ? 'Sendingâ€¦' : submitLabel}
+                {isSubmitting ? 'Sending€¦' : submitLabel}
               </button>
             </div>
           </motion.div>
