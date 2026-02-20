@@ -176,7 +176,9 @@ export async function POST(req: Request): Promise<Response> {
     const lastUserMsg = [...(messages ?? [])].reverse().find(m => m.role === 'user');
     const lastUserPreview = typeof lastUserMsg?.content === 'string'
       ? lastUserMsg.content.substring(0, 120)
-      : '[multipart]';
+      : Array.isArray(lastUserMsg?.parts)
+        ? (lastUserMsg.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text ?? '').substring(0, 120) || '[multipart]'
+        : '[multipart]';
 
     console.log(`[chat/route] [${reqId}] Request received:`, {
       model,
@@ -250,8 +252,13 @@ export async function POST(req: Request): Promise<Response> {
     }
     
     // Separate attachments by type
-    const textAttachments = attachments?.filter(att => att.contentType.startsWith('text/')) ?? [];
-    const imageAttachments = attachments?.filter(att => att.contentType.startsWith('image/')) ?? [];
+    // Also handle empty/undefined contentType (Windows .md files before normalizeContentType fix)
+    const textAttachments = attachments?.filter(att => {
+      const ct = att.contentType ?? '';
+      const url = att.url ?? '';
+      return ct.startsWith('text/') || (!ct.startsWith('image/') && url.startsWith('data:'));
+    }) ?? [];
+    const imageAttachments = attachments?.filter(att => (att.contentType ?? '').startsWith('image/')) ?? [];
     
     // Process text attachments - extract content to prepend
     let textAttachmentContent = '';
@@ -259,8 +266,9 @@ export async function POST(req: Request): Promise<Response> {
       const textParts: string[] = [];
       for (const att of textAttachments) {
         try {
-          if (att.url.startsWith('data:')) {
-            const base64Data = att.url.split(',')[1];
+          const attUrl = att.url ?? '';
+          if (attUrl.startsWith('data:')) {
+            const base64Data = attUrl.split(',')[1];
             if (base64Data) {
               // Properly decode base64 with Unicode support
               const binaryString = atob(base64Data);

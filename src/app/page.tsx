@@ -28,12 +28,17 @@ const VISITED_KEY = 'loom_visited';
 // =============================================================================
 
 export default function CanvasPage() {
-  // Lazy initializer reads localStorage once on first render (client only)
-  const [showLanding, setShowLanding] = useState<boolean | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return !localStorage.getItem(VISITED_KEY);
-  });
+  // Always null on SSR; client sets the real value in useEffect to avoid hydration mismatch
+  const [showLanding, setShowLanding] = useState<boolean | null>(null);
   const [showAPIKeySetup, setShowAPIKeySetup] = useState(false);
+
+  // Read localStorage after mount — must match SSR initial state of null.
+  // Calling setState synchronously on mount is intentional: reading a browser API
+  // (localStorage) once after hydration is the correct pattern for SSR-safe init.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowLanding(!localStorage.getItem(VISITED_KEY));
+  }, []);
 
   // Expose store globally for debugging
   useEffect(() => {

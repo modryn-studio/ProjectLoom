@@ -80,6 +80,19 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || (ext ? IMAGE_EXTENSIONS.includes(ext) : false);
 }
 
+// Normalize content type for files where the browser reports empty MIME type (common
+// on Windows for .md/.markdown files). Falls back to extension-based detection.
+const EXT_TO_MIME: Record<string, string> = {
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.markdown': 'text/markdown',
+};
+function normalizeContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0] ?? '';
+  return EXT_TO_MIME[ext] ?? 'application/octet-stream';
+}
+
 export function MessageInput({ 
   conversationId,
   input: externalInput,
@@ -205,7 +218,7 @@ export function MessageInput({
             // Images: use data URL for display
             resolve({
               id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              contentType: file.type,
+              contentType: normalizeContentType(file),
               name: file.name,
               url: reader.result as string,
             });
@@ -213,11 +226,12 @@ export function MessageInput({
             // Text files: encode as base64 data URL
             const textContent = reader.result as string;
             const base64Content = btoa(unescape(encodeURIComponent(textContent)));
+            const contentType = normalizeContentType(file);
             resolve({
               id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              contentType: file.type,
+              contentType,
               name: file.name,
-              url: `data:${file.type};base64,${base64Content}`,
+              url: `data:${contentType};base64,${base64Content}`,
             });
           }
         };

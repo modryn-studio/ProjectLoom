@@ -40,6 +40,41 @@ function getMessageText(message: UIMessage): string {
     .join('');
 }
 
+/**
+ * For a stored Message, inline any text file attachments back into the content
+ * so the model has access to file contents throughout the conversation history,
+ * not just in the turn the file was originally attached.
+ */
+function inlineTextAttachments(msg: { content: string; attachments?: MessageAttachment[] }): string {
+  const content = msg.content ?? '';
+  if (!msg.attachments?.length) return content;
+  const parts: string[] = [];
+  for (const att of msg.attachments) {
+    const contentType = att.contentType ?? '';
+    const url = att.url ?? '';
+    // Accept text/* content types, OR any non-image data URL (handles Windows .md files
+    // that the browser reports with empty MIME type before normalizeContentType was applied)
+    const isTextType = contentType.startsWith('text/');
+    const isNonImageDataUrl = !contentType.startsWith('image/') && url.startsWith('data:');
+    if ((isTextType || isNonImageDataUrl) && url.startsWith('data:')) {
+      try {
+        const base64Data = url.split(',')[1];
+        if (base64Data) {
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+          const text = new TextDecoder('utf-8').decode(bytes);
+          parts.push(`[Attached file: ${att.name}]\n\n${text}`);
+        }
+      } catch {
+        // Silently skip undecodable attachments
+      }
+    }
+  }
+  if (parts.length === 0) return content;
+  return parts.join('\n\n---\n\n') + '\n\n---\n\n' + content;
+}
+
 // =============================================================================
 // CHAT PANEL COMPONENT
 // =============================================================================
@@ -533,11 +568,12 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     const canvasContextPayload = await buildCanvasContextPayload(text);
 
     // 5. Load full conversation from store (includes user msg from step 2)
+    // inlineTextAttachments ensures file contents from earlier turns stay in history
     const storeMessages = getConversationMessages(activeConversationId);
     setMessages(storeMessages.map((msg, idx) => ({
       id: `msg-${idx}`,
       role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
+      parts: [{ type: 'text' as const, text: inlineTextAttachments(msg) }],
     })));
 
     // 6. Build request body (inline — don't rely on stale memoized chatBody)
@@ -616,11 +652,12 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     const canvasContextPayload = await buildCanvasContextPayload(targetMessage.content);
     
     // 4. Load full conversation from store (truncated, includes target user msg)
+    // inlineTextAttachments ensures file contents from earlier turns stay in history
     const storeMessages = getConversationMessages(activeConversation.id);
     setMessages(storeMessages.map((msg, idx) => ({
       id: `msg-${idx}`,
       role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
+      parts: [{ type: 'text' as const, text: inlineTextAttachments(msg) }],
     })));
     
     // 5. Build request body inline
@@ -710,11 +747,12 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     const canvasContextPayload = await buildCanvasContextPayload(content.trim());
 
     // 4. Load full conversation from store (truncated, includes edited user msg)
+    // inlineTextAttachments ensures file contents from earlier turns stay in history
     const storeMessages = getConversationMessages(activeConversation.id);
     setMessages(storeMessages.map((msg, idx) => ({
       id: `msg-${idx}`,
       role: msg.role as 'user' | 'assistant' | 'system',
-      parts: [{ type: 'text' as const, text: msg.content }],
+      parts: [{ type: 'text' as const, text: inlineTextAttachments(msg) }],
     })));
 
     // 5. Build request body inline
@@ -762,10 +800,11 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     if (activeConversationId) {
       const storeMessages = getConversationMessages(activeConversationId);
       // Convert to useChat UIMessage format (v6 uses parts instead of content)
+      // inlineTextAttachments ensures file contents from earlier turns stay in history
       const formattedMessages = storeMessages.map((msg, idx) => ({
         id: `msg-${idx}`,
         role: msg.role as 'user' | 'assistant' | 'system',
-        parts: [{ type: 'text' as const, text: msg.content }],
+        parts: [{ type: 'text' as const, text: inlineTextAttachments(msg) }],
       }));
       setMessages(formattedMessages);
     } else {

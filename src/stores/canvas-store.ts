@@ -496,7 +496,7 @@ interface WorkspaceState {
   addAIMessage: (conversationId: string, content: string, model: string, metadata?: MessageMetadata) => void;
   setConversationModel: (conversationId: string, model: string) => void;
   getConversationModel: (conversationId: string) => string | undefined;
-  getConversationMessages: (conversationId: string) => Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  getConversationMessages: (conversationId: string) => Array<{ role: 'user' | 'assistant' | 'system'; content: string; attachments?: import('@/types').MessageAttachment[] }>;
 
   // Actions - Drag State
   setIsAnyNodeDragging: (isDragging: boolean) => void;
@@ -2578,7 +2578,7 @@ export const useCanvasStore = create<WorkspaceState>()(
         return [];
       }
 
-      const result: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+      const result: Array<{ role: 'user' | 'assistant' | 'system'; content: string; attachments?: import('@/types').MessageAttachment[] }> = [];
 
       // --- Collect inherited context from parent cards ---
       const hasParents = conversation.parentCardIds.length > 0;
@@ -2723,7 +2723,11 @@ export const useCanvasStore = create<WorkspaceState>()(
         // Skip messages with no meaningful content
         if (!msg.content?.trim()) continue;
 
-        result.push({ role: msg.role, content: msg.content });
+        result.push({
+          role: msg.role,
+          content: msg.content,
+          ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
+        });
       }
 
       return result;
