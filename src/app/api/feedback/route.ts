@@ -52,52 +52,86 @@ function buildSubject(body: FeedbackRequestBody): string {
 }
 
 function buildHtml(body: FeedbackRequestBody): string {
+  // ── Header badge ────────────────────────────────────────────────────────────
+  const typeLabel = body.type === 'feedback' ? 'Feedback' : body.type === 'bug' ? 'Bug Report' : 'Newsletter';
+  const badgeColor = body.type === 'feedback' ? '#6366f1' : body.type === 'bug' ? '#ef4444' : '#10b981';
+
+  // ── Rows ────────────────────────────────────────────────────────────────────
   const rows: string[] = [];
 
+  const row = (label: string, value: string) =>
+    `<tr>
+      <td style="padding:12px 16px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#888;white-space:nowrap;width:100px;border-bottom:1px solid #f0f0f0">${label}</td>
+      <td style="padding:12px 16px;font-size:14px;color:#1a1a1a;border-bottom:1px solid #f0f0f0">${value}</td>
+    </tr>`;
+
   if (body.type === 'feedback' && body.rating) {
-    const filled = '★'.repeat(body.rating);
-    const empty = '☆'.repeat(5 - body.rating);
-    rows.push(`<tr><td><b>Rating</b></td><td>${filled}${empty} (${body.rating}/5)</td></tr>`);
+    const stars = Array.from({ length: 5 }, (_, i) =>
+      `<span style="font-size:18px;color:${i < body.rating! ? '#f59e0b' : '#d1d5db'}">${i < body.rating! ? '★' : '☆'}</span>`
+    ).join('');
+    rows.push(row('Rating', `${stars} <span style="font-size:13px;color:#888;margin-left:6px">${body.rating}/5</span>`));
   }
 
   if (body.type === 'bug' && body.severity) {
-    const colorMap: Record<Severity, string> = {
-      low: '#4caf50',
-      medium: '#ff9800',
-      high: '#f44336',
-      critical: '#9c27b0',
+    const severityStyles: Record<Severity, string> = {
+      low:      'background:#dcfce7;color:#166534',
+      medium:   'background:#fef9c3;color:#854d0e',
+      high:     'background:#fee2e2;color:#991b1b',
+      critical: 'background:#f3e8ff;color:#6b21a8',
     };
-    const color = colorMap[body.severity] ?? '#666';
-    rows.push(
-      `<tr><td><b>Severity</b></td><td><span style="color:${color};font-weight:bold">${body.severity.toUpperCase()}</span></td></tr>`,
-    );
+    const s = severityStyles[body.severity] ?? 'background:#f3f4f6;color:#374151';
+    rows.push(row('Severity', `<span style="display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:0.05em;${s}">${body.severity.toUpperCase()}</span>`));
   }
 
   if (body.email) {
-    rows.push(`<tr><td><b>Email</b></td><td>${body.email}</td></tr>`);
+    rows.push(row('Email', `<a href="mailto:${body.email}" style="color:#6366f1;text-decoration:none">${body.email}</a>`));
   }
 
   if (body.message) {
-    rows.push(
-      `<tr><td valign="top"><b>Message</b></td><td><pre style="margin:0;white-space:pre-wrap;font-family:inherit">${body.message.replace(/</g, '&lt;')}</pre></td></tr>`,
-    );
+    const escaped = body.message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    rows.push(row('Message', `<span style="white-space:pre-wrap;line-height:1.6">${escaped}</span>`));
   }
 
   const table =
     rows.length > 0
-      ? `<table cellpadding="8" cellspacing="0" border="0" style="border-collapse:collapse;font-family:sans-serif;font-size:14px">${rows.join('')}</table>`
-      : '<p style="color:#999">No additional details provided.</p>';
+      ? `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;border:1px solid #f0f0f0;border-radius:6px;overflow:hidden">${rows.join('')}</table>`
+      : `<p style="color:#999;font-size:14px;margin:0">No additional details provided.</p>`;
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8" /></head>
-<body style="background:#f6f6f6;padding:24px;font-family:sans-serif">
-  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:8px;padding:24px;border:1px solid #e0e0e0">
-    <h2 style="margin:0 0 16px;color:#222">${buildSubject(body).replace(/\[/g, '').replace(/\]/g, '')}</h2>
-    ${table}
-    <p style="margin:24px 0 0;font-size:12px;color:#999">Sent from ProjectLoom in-app form</p>
-  </div>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;padding:32px 16px">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#18181b;border-radius:10px 10px 0 0;padding:24px 28px;display:block">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td>
+                  <span style="font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.02em">ProjectLoom</span>
+                </td>
+                <td align="right">
+                  <span style="display:inline-block;background:${badgeColor};color:#fff;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:4px 10px;border-radius:99px">${typeLabel}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;border-radius:0 0 10px 10px;padding:24px 28px;border:1px solid #e4e4e7;border-top:none">
+            ${table}
+            <p style="margin:24px 0 0;font-size:11px;color:#a1a1aa;text-align:center">Sent via ProjectLoom &mdash; <a href="https://projectloom.app" style="color:#a1a1aa">projectloom.app</a></p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
 }
