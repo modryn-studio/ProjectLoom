@@ -87,11 +87,10 @@ const inputStyles: React.CSSProperties = {
 };
 
 const fieldLabelStyles: React.CSSProperties = {
-  fontSize: typography.sizes.xs,
+  fontSize: typography.sizes.sm,
   fontFamily: typography.fonts.body,
+  fontWeight: typography.weights.medium,
   color: colors.fg.secondary,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
   marginBottom: spacing[1],
   display: 'block',
 };
