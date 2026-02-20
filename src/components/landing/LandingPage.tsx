@@ -78,13 +78,13 @@ export function LandingPage({ onEnter }: LandingPageProps) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Lazy initializer reads matchMedia once on first render (client only)
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 767px)').matches;
-  });
+  // Start with false (matches SSR), then sync to real viewport after mount.
+  // Using a lazy initializer that reads matchMedia on first client render causes
+  // a hydration mismatch because SSR always returns false.
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
