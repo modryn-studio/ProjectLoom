@@ -311,7 +311,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                     />
                   </div>
                   <div>
-                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.tertiary }}>(optional \u2014 for a reply)</span></span>
+                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.tertiary }}>(optional {'\u2014'} for a reply)</span></span>
                     <input type="email" value={fbEmail} onChange={(e) => setFbEmail(e.target.value)} placeholder="you@example.com" style={inputStyles} />
                   </div>
                 </motion.div>
