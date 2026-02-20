@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, X, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon, MessageSquare, Bug } from 'lucide-react';
 import { FeedbackModal } from './FeedbackModal';
-import { BugReportModal } from './BugReportModal';
 
 import { usePreferencesStore, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
@@ -143,9 +142,9 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
 
-  // Feedback / bug-report modal state
+  // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showBugModal, setShowBugModal] = useState(false);
+  const [feedbackTab, setFeedbackTab] = useState<'feedback' | 'bug'>('feedback');
 
   // Load preferences and API keys on mount
   useEffect(() => {
@@ -670,7 +669,7 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
               gap: spacing[3],
             }}>
               <button
-                onClick={() => setShowFeedbackModal(true)}
+                onClick={() => { setFeedbackTab('feedback'); setShowFeedbackModal(true); }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -691,7 +690,7 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
               </button>
               <span style={{ color: colors.fg.quaternary, fontSize: typography.sizes.xs }}>·</span>
               <button
-                onClick={() => setShowBugModal(true)}
+                onClick={() => { setFeedbackTab('bug'); setShowFeedbackModal(true); }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -756,8 +755,7 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
     </AnimatePresence>
 
       {/* Feedback / bug modals — rendered outside the AnimatePresence overlay */}
-      <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} />
-      <BugReportModal isOpen={showBugModal} onClose={() => setShowBugModal(false)} />
+      <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} defaultTab={feedbackTab} />
     </>
   );
 }
