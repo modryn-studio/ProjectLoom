@@ -89,7 +89,7 @@ const inputStyles: React.CSSProperties = {
 const fieldLabelStyles: React.CSSProperties = {
   fontSize: typography.sizes.xs,
   fontFamily: typography.fonts.body,
-  color: colors.fg.tertiary,
+  color: colors.fg.secondary,
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
   marginBottom: spacing[1],
@@ -302,7 +302,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                   </div>
                   <div>
                     <span style={fieldLabelStyles}>
-                      Message <span style={{ color: colors.fg.quaternary }}>(optional if email provided)</span>
+                      Message <span style={{ color: colors.fg.tertiary }}>(optional if email provided)</span>
                     </span>
                     <textarea
                       value={fbMessage}
@@ -312,7 +312,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                     />
                   </div>
                   <div>
-                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.quaternary }}>(optional €” for a reply)</span></span>
+                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.tertiary }}>(optional \u2014 for a reply)</span></span>
                     <input type="email" value={fbEmail} onChange={(e) => setFbEmail(e.target.value)} placeholder="you@example.com" style={inputStyles} />
                   </div>
                 </motion.div>
@@ -366,7 +366,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                     />
                   </div>
                   <div>
-                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.quaternary }}>(optional)</span></span>
+                    <span style={fieldLabelStyles}>Your email <span style={{ color: colors.fg.tertiary }}>(optional)</span></span>
                     <input type="email" value={bugEmail} onChange={(e) => setBugEmail(e.target.value)} placeholder="you@example.com" style={inputStyles} />
                   </div>
                 </motion.div>
