@@ -200,6 +200,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
   // Feedback modal state
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+
+  // True once ReactFlow has called onInit — gates Background/MiniMap to avoid NaN SVG attributes
+  const [rfReady, setRfReady] = useState(false);
   
   // Sidebar state
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -765,6 +768,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   // Handle React Flow initialization
   const handleInit = useCallback((instance: ReactFlowInstance<Node<ConversationNodeData>, Edge>) => {
     reactFlowInstance.current = instance;
+    setRfReady(true);
 
     // Fit view on mount with padding and animation
     setTimeout(() => {
@@ -1083,21 +1087,25 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
                 proOptions={{ hideAttribution: true }}
               >
                 {/* Dot grid background */}
-                <Background
-                  variant={BackgroundVariant.Dots}
-                  gap={canvasConfig.background.dotGap}
-                  size={canvasConfig.background.dotSize}
-                  color={canvasConfig.background.dotColor}
-                />
+                {rfReady && (
+                  <Background
+                    variant={BackgroundVariant.Dots}
+                    gap={canvasConfig.background.dotGap}
+                    size={canvasConfig.background.dotSize}
+                    color={canvasConfig.background.dotColor}
+                  />
+                )}
 
                 {/* Minimap */}
-                <MiniMap
-                  style={minimapStyle}
-                  nodeColor={canvasConfig.minimap.nodeColor}
-                  maskColor={canvasConfig.minimap.maskColor}
-                  zoomable
-                  pannable
-                />
+                {rfReady && (
+                  <MiniMap
+                    style={minimapStyle}
+                    nodeColor={canvasConfig.minimap.nodeColor}
+                    maskColor={canvasConfig.minimap.maskColor}
+                    zoomable
+                    pannable
+                  />
+                )}
 
                 {/* Viewport controls */}
                 <Controls
