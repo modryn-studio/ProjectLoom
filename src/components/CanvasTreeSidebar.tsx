@@ -828,6 +828,7 @@ function WorkspaceItem({
 interface CanvasTreeSidebarProps {
   onOpenSettings: () => void;
   onOpenAgents?: () => void;
+  onOpenFeedback?: () => void;
   onRequestDeleteWorkspace: (workspaceId: string) => void;
   onRequestCreateWorkspace: (suggestedName: string) => void;
   isOpen: boolean;
@@ -840,6 +841,7 @@ interface CanvasTreeSidebarProps {
 export function CanvasTreeSidebar({
   onOpenSettings,
   onOpenAgents,
+  onOpenFeedback,
   onRequestDeleteWorkspace,
   onRequestCreateWorkspace,
   isOpen: externalIsOpen,
@@ -1166,6 +1168,36 @@ export function CanvasTreeSidebar({
             }}
           >
             <Bot size={20} color={colors.fg.secondary} />
+          </button>
+        )}
+
+        {/* Feedback Button */}
+        {onOpenFeedback && (
+          <button
+            onClick={onOpenFeedback}
+            style={{
+              width: `${ACTIVITY_BAR_WIDTH - 8}px`,
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderLeft: '2px solid transparent',
+              borderRadius: 0,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              flexShrink: 0,
+            }}
+            title="Share feedback"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = colors.bg.tertiary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <MessageSquare size={20} color={colors.fg.secondary} />
           </button>
         )}
 

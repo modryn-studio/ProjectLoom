@@ -38,6 +38,7 @@ import { CanvasTreeSidebar } from './CanvasTreeSidebar';
 import { SettingsPanel } from './SettingsPanel';
 import { CanvasContextModal } from './CanvasContextModal';
 import { AgentDialog } from './AgentDialog';
+import { FeedbackModal } from './FeedbackModal';
 import { ChatPanel } from './ChatPanel';
 import { UsageSidebar } from './UsageSidebar';
 import { WorkspaceNameModal } from './WorkspaceNameModal';
@@ -196,6 +197,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
   // Agent dialog state
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+
+  // Feedback modal state
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   
   // Sidebar state
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -939,6 +943,10 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const openAgents = useCallback(() => setAgentDialogOpen(true), []);
   const closeAgents = useCallback(() => setAgentDialogOpen(false), []);
 
+  // Feedback modal handlers
+  const openFeedback = useCallback(() => setFeedbackModalOpen(true), []);
+  const closeFeedback = useCallback(() => setFeedbackModalOpen(false), []);
+
   // Focus on a specific node with smooth animation
   const focusOnNode = useCallback((nodeId: string) => {
     if (reactFlowInstance.current) {
@@ -962,6 +970,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
         <CanvasTreeSidebar 
           onOpenSettings={openSettings}
           onOpenAgents={openAgents}
+          onOpenFeedback={openFeedback}
           onRequestDeleteWorkspace={requestDeleteWorkspace}
           onRequestCreateWorkspace={openWorkspaceNameModal}
           isOpen={isSidebarOpen}
@@ -1135,6 +1144,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
       {/* Agent Dialog */}
       <AgentDialog isOpen={agentDialogOpen} onClose={closeAgents} />
+      <FeedbackModal isOpen={feedbackModalOpen} onClose={closeFeedback} />
 
       <WorkspaceNameModal
         isOpen={Boolean(workspaceNameModal)}
