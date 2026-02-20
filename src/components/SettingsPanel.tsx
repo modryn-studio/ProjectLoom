@@ -111,9 +111,11 @@ const footerStyles: React.CSSProperties = {
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When true, rendered inline (no overlay) as a full-screen panel */
+  isMobile?: boolean;
 }
 
-export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
+export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPanelProps) {
 
   // Preferences state
   const uiPrefs = usePreferencesStore(selectUIPreferences);
@@ -281,6 +283,27 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     reader.readAsText(file);
   }, [toast]);
 
+  // Mobile: use full-screen panel styles instead of centered modal
+  const mobileOverlayStyles: React.CSSProperties = isMobile ? {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: colors.bg.secondary,
+  } : overlayStyles;
+
+  const mobilePanelStyles: React.CSSProperties = isMobile ? {
+    ...panelStyles,
+    width: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    height: '100%',
+    borderRadius: 0,
+    border: 'none',
+    boxShadow: 'none',
+  } : panelStyles;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -288,7 +311,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          style={overlayStyles}
+          style={isMobile ? mobileOverlayStyles : overlayStyles}
           onMouseDown={(e) => {
             overlayMouseDownRef.current = e.target === e.currentTarget;
           }}
@@ -304,7 +327,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={animation.spring.snappy}
-            style={panelStyles}
+            style={mobilePanelStyles}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

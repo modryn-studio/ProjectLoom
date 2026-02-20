@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
@@ -16,6 +16,14 @@ const geistMono = Geist_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://projectloom.space';
 const ogDescription = 'Branching AI conversations on an infinite canvas. Explore multiple threads simultaneously, merge insights, and never lose a thought. BYOK — your keys, your data.';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',

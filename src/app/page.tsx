@@ -10,9 +10,12 @@ import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
 import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
 import { APIKeySetupModal } from '@/components/APIKeySetupModal';
 import { LandingPage } from '@/components/landing/LandingPage';
+import { MobileLayout } from '@/components/MobileLayout';
+import { MobileTabContent } from '@/components/MobileTabContent';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import { colors } from '@/lib/design-tokens';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 // =============================================================================
 // STORAGE KEY
@@ -106,11 +109,14 @@ export default function CanvasPage() {
 // =============================================================================
 
 /**
- * Canvas wrapper handles initialization and provides full viewport layout
+ * Canvas wrapper handles initialization and provides full viewport layout.
+ * On mobile (< 1024px), renders the MobileLayout with bottom nav.
+ * On desktop (≥ 1024px), renders the existing InfiniteCanvas layout.
  */
 function CanvasWrapper() {
   const initializeFromStorage = useCanvasStore((s) => s.initializeFromStorage);
   const isInitialized = useCanvasStore((s) => s.isInitialized);
+  const isMobile = useIsMobile();
 
   // Initialize on mount
   useEffect(() => {
@@ -119,13 +125,25 @@ function CanvasWrapper() {
     }
   }, [initializeFromStorage, isInitialized]);
 
+  if (!isInitialized) {
+    return (
+      <main style={styles.main}>
+        <LoadingState />
+      </main>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <MobileLayout canvasElement={<InfiniteCanvas isMobile />}>
+        <MobileTabContent />
+      </MobileLayout>
+    );
+  }
+
   return (
     <main style={styles.main}>
-      {!isInitialized ? (
-        <LoadingState />
-      ) : (
-        <InfiniteCanvas />
-      )}
+      <InfiniteCanvas />
     </main>
   );
 }

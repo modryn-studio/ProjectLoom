@@ -119,7 +119,9 @@ export function MessageInput({
     }
     
     // Auto-focus the textarea on conversation change (not on streaming state change)
-    if (textareaRef.current) {
+    // Skip auto-focus on touch devices to prevent the virtual keyboard from popping up
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (textareaRef.current && !isTouchDevice) {
       textareaRef.current.focus();
     }
   }, [conversationId, externalSetInput]);
@@ -276,8 +278,11 @@ export function MessageInput({
       onAttachmentsChange?.([]);
     }
     
-    // Refocus textarea after send
-    textareaRef.current?.focus();
+    // Refocus textarea after send (skip on touch devices to avoid keyboard popup)
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouchDevice) {
+      textareaRef.current?.focus();
+    }
   }, [inputValue, isStreaming, onSubmit, sendMessage, conversationId, setDraftMessage, attachments, onAttachmentsChange]);
 
   // Handle keyboard events

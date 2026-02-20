@@ -164,7 +164,12 @@ const emptyCardStyles: React.CSSProperties = {
 // Height of the full top overlay (breadcrumb + gap + header controls + padding), measured at runtime
 const OVERLAY_HEIGHT_FALLBACK = 120; // px — 12px pad + 56px breadcrumb + 8px gap + 28px controls + 12px pad
 
-export function InfiniteCanvas() {
+interface InfiniteCanvasProps {
+  /** When true, hides sidebar/ChatPanel/UsageSidebar (rendered in mobile tabs) and fixes touch */
+  isMobile?: boolean;
+}
+
+export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const reactFlowInstance = useRef<ReactFlowInstance<Node<ConversationNodeData>, Edge> | null>(null);
   const suppressNextPaneClickRef = useRef(false);
   const hasFitInitialView = useRef(false);
@@ -952,8 +957,8 @@ export function InfiniteCanvas() {
 
   return (
     <div style={containerStyles}>
-      {/* Unified Sidebar with Activity Bar */}
-      {isPrefsLoaded && (
+      {/* Unified Sidebar with Activity Bar — hidden on mobile (rendered in its own tab) */}
+      {!isMobile && isPrefsLoaded && (
         <CanvasTreeSidebar 
           onOpenSettings={openSettings}
           onOpenAgents={openAgents}
@@ -1061,11 +1066,11 @@ export function InfiniteCanvas() {
                 zoomOnScroll={true}
                 zoomOnPinch={true}
                 zoomOnDoubleClick={false}
-                selectionOnDrag={true}
+                selectionOnDrag={!isMobile}
                 selectNodesOnDrag={false}
                 snapToGrid={false}
                 deleteKeyCode={null}
-                multiSelectionKeyCode="Shift"
+                multiSelectionKeyCode={isMobile ? null : "Shift"}
                 proOptions={{ hideAttribution: true }}
               >
                 {/* Dot grid background */}
@@ -1366,11 +1371,11 @@ export function InfiniteCanvas() {
         </div>
       )}
 
-      {/* Chat Panel (right side) */}
-      <ChatPanel />
+      {/* Chat Panel (right side) — hidden on mobile (rendered in its own tab) */}
+      {!isMobile && <ChatPanel />}
 
-      {/* Usage Sidebar (right side) */}
-      <UsageSidebar />
+      {/* Usage Sidebar (right side) — hidden on mobile (rendered in its own tab) */}
+      {!isMobile && <UsageSidebar />}
     </div>
   );
 }

@@ -44,7 +44,12 @@ function getMessageText(message: UIMessage): string {
 // CHAT PANEL COMPONENT
 // =============================================================================
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  /** When true, renders as full-width panel without SidePanel wrapper or resize handles */
+  isMobile?: boolean;
+}
+
+export function ChatPanel({ isMobile = false }: ChatPanelProps) {
   const panelRef = useRef<HTMLElement>(null);
   const panelWidthRef = useRef<number>(480); // Track current width for mouseup handler
   
@@ -897,26 +902,47 @@ export function ChatPanel() {
   }, [isMaximized]);
 
   // Memoized panel styles to prevent object recreation on every render
-  const panelStyles = useMemo<React.CSSProperties>(() => ({
-    position: isMaximized ? 'fixed' : 'relative',
-    top: isMaximized ? 0 : 'auto',
-    left: isMaximized ? 0 : 'auto',
-    right: isMaximized ? 0 : 'auto',
-    width: isMaximized ? '100vw' : effectivePanelWidth,
-    minWidth: isMaximized ? '100vw' : (chatPanelOpen ? MIN_PANEL_WIDTH : 0),
-    maxWidth: isMaximized ? '100vw' : (chatPanelOpen ? MAX_PANEL_WIDTH : 0),
-    backgroundColor: colors.bg.secondary,
-    borderLeft: isMaximized || !chatPanelOpen ? 'none' : `1px solid ${colors.border.default}`,
-    display: 'flex',
-    flexDirection: 'column',
-    height: isMaximized ? '100vh' : '100%',
-    maxHeight: isMaximized ? '100vh' : '100%',
-    overflow: 'hidden',
-    userSelect: isResizing ? 'none' : 'auto',
-    zIndex: isMaximized ? zIndex.ui.sidePanelMaximized : zIndex.ui.sidePanel,
-    flexShrink: 1,
-    pointerEvents: chatPanelOpen ? 'auto' : 'none',
-  }), [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen]);
+  const panelStyles = useMemo<React.CSSProperties>(() => {
+    if (isMobile) {
+      return {
+        position: 'relative',
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        backgroundColor: colors.bg.secondary,
+        borderLeft: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        maxHeight: '100%',
+        overflow: 'hidden',
+        userSelect: 'auto',
+        zIndex: 'auto',
+        flexShrink: 1,
+        pointerEvents: 'auto',
+      } as React.CSSProperties;
+    }
+    return {
+      position: isMaximized ? 'fixed' : 'relative',
+      top: isMaximized ? 0 : 'auto',
+      left: isMaximized ? 0 : 'auto',
+      right: isMaximized ? 0 : 'auto',
+      width: isMaximized ? '100vw' : effectivePanelWidth,
+      minWidth: isMaximized ? '100vw' : (chatPanelOpen ? MIN_PANEL_WIDTH : 0),
+      maxWidth: isMaximized ? '100vw' : (chatPanelOpen ? MAX_PANEL_WIDTH : 0),
+      backgroundColor: colors.bg.secondary,
+      borderLeft: isMaximized || !chatPanelOpen ? 'none' : `1px solid ${colors.border.default}`,
+      display: 'flex',
+      flexDirection: 'column',
+      height: isMaximized ? '100vh' : '100%',
+      maxHeight: isMaximized ? '100vh' : '100%',
+      overflow: 'hidden',
+      userSelect: isResizing ? 'none' : 'auto',
+      zIndex: isMaximized ? zIndex.ui.sidePanelMaximized : zIndex.ui.sidePanel,
+      flexShrink: 1,
+      pointerEvents: chatPanelOpen ? 'auto' : 'none',
+    };
+  }, [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen, isMobile]);
 
   // Memoized resize handle styles
   const resizeHandleStyles = useMemo<React.CSSProperties>(() => ({
@@ -951,6 +977,69 @@ export function ChatPanel() {
       setConversationModel(activeConversationId, model);
     }
   }, [activeConversationId, setConversationModel]);
+
+  // On mobile, render as a plain div (no SidePanel wrapper, no resize handle)
+  if (isMobile) {
+    return (
+      <div
+        ref={panelRef as React.RefObject<HTMLDivElement>}
+        style={panelStyles}
+      >
+        {/* Content */}
+        {activeConversation ? (
+          <>
+            <ChatPanelHeader
+              conversation={activeConversation}
+              onClose={handleClose}
+              onMaximize={handleMaximize}
+              isMobile
+            />
+            <MessageThread
+              conversation={activeConversation}
+              streamingMessages={
+                activeConversationId === streamingConversationId ? chatMessages : []
+              }
+              isStreaming={isStreaming && activeConversationId === streamingConversationId}
+              onHeightChange={setMessageListHeight}
+              isMaximized={false}
+              onRetry={handleRetry}
+              onEditClick={handleEditClick}
+              editingMessageIndex={editingMessageIndex}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
+            <MessageInput
+              conversationId={activeConversation.id}
+              input={input}
+              setInput={setInput}
+              onSubmit={handleSubmit}
+              isStreaming={isStreaming && activeConversationId === streamingConversationId}
+              onStop={stop}
+              hasApiKey={hasAnyApiKey}
+              error={chatError}
+              supportsVision={supportsVision}
+              attachments={pendingAttachments}
+              onAttachmentsChange={setPendingAttachments}
+              currentModel={currentModel}
+              onModelChange={handleModelChange}
+              maxTextareaHeight={messageListHeight > 0 ? Math.floor(messageListHeight * 0.5) : undefined}
+              isMaximized={false}
+            />
+          </>
+        ) : (
+          <div style={emptyStateStyles.container}>
+            <PanelRightClose size={48} style={emptyStateStyles.icon} />
+            <p style={emptyStateStyles.title}>
+              Tap a card on the canvas to chat
+            </p>
+            <p style={emptyStateStyles.subtitle}>
+              Open the Canvas tab and tap any conversation card
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <SidePanel

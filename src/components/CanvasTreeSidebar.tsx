@@ -833,6 +833,8 @@ interface CanvasTreeSidebarProps {
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onFocusNode?: (nodeId: string) => void;
+  /** When true, renders full-width without activity bar or resize handle */
+  isMobile?: boolean;
 }
 
 export function CanvasTreeSidebar({
@@ -843,6 +845,7 @@ export function CanvasTreeSidebar({
   isOpen: externalIsOpen,
   onToggle,
   onFocusNode,
+  isMobile = false,
 }: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
@@ -953,6 +956,120 @@ export function CanvasTreeSidebar({
     transition: isResizing ? 'none' : 'background-color 0.15s ease',
     pointerEvents: 'none',
   };
+
+  // Mobile mode: render full-width without activity bar or resize handle
+  if (isMobile) {
+    return (
+      <div
+        ref={sidebarRef}
+        style={{
+          position: 'relative',
+          width: '100%',
+          backgroundColor: colors.bg.secondary,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <div style={headerStyles}>
+          <span style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.semibold,
+            color: colors.fg.primary,
+            fontFamily: typography.fonts.heading,
+          }}>
+            Workspaces
+          </span>
+          <button
+            onClick={() => {
+              handleCreateWorkspace(`New Workspace ${workspaces.length + 1}`);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: spacing[1],
+              cursor: 'pointer',
+              borderRadius: effects.border.radius.default,
+              color: colors.accent.contrast,
+              backgroundColor: colors.accent.primary,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+            title="Create new workspace"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+
+        {/* Workspace list */}
+        <div style={{ ...contentStyles, WebkitOverflowScrolling: 'touch' }}>
+          {workspaces.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: spacing[4],
+              color: colors.fg.tertiary,
+              fontSize: typography.sizes.sm,
+              fontFamily: typography.fonts.body,
+            }}>
+              <Folder size={32} style={{ marginBottom: spacing[2], opacity: 0.5 }} />
+              <p>No workspaces yet</p>
+              <button
+                onClick={() => {
+                  handleCreateWorkspace('My First Workspace');
+                }}
+                style={{
+                  marginTop: spacing[2],
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  backgroundColor: colors.accent.primary,
+                  border: 'none',
+                  borderRadius: effects.border.radius.default,
+                  color: colors.accent.contrast,
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  cursor: 'pointer',
+                }}
+              >
+                Create Workspace
+              </button>
+            </div>
+          ) : (
+            workspaces.map((workspace) => (
+              <WorkspaceItem
+                key={workspace.id}
+                workspace={workspace}
+                isActive={workspace.id === activeWorkspaceId}
+                canDelete={workspaces.length > 0}
+                onSelect={handleSelect}
+                onDelete={handleDelete}
+                onRename={handleRename}
+                triggerRename={triggerF2Rename}
+                onRenameStart={handleRenameStart}
+                selectedNodeId={Array.from(selectedNodeIds)[0]}
+                onFocusNode={onFocusNode}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: spacing[2],
+          borderTop: '1px solid var(--border-secondary)',
+          fontSize: typography.sizes.xs,
+          color: colors.fg.tertiary,
+          fontFamily: typography.fonts.body,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <span>{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

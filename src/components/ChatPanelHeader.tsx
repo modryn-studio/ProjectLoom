@@ -16,12 +16,15 @@ interface ChatPanelHeaderProps {
   conversation: Conversation;
   onClose: () => void;
   onMaximize?: () => void;
+  /** Hide maximize/usage buttons on mobile */
+  isMobile?: boolean;
 }
 
 export const ChatPanelHeader = memo(function ChatPanelHeader({ 
   conversation, 
   onClose,
   onMaximize,
+  isMobile = false,
 }: ChatPanelHeaderProps) {
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const updateConversation = useCanvasStore((s) => s.updateConversation);
@@ -179,7 +182,8 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
             <GitBranch size={16} />
           </button>
 
-          {/* Usage button */}
+          {/* Usage button — hidden on mobile (has its own tab) */}
+          {!isMobile && (
           <button
             onClick={toggleUsagePanel}
             style={{
@@ -193,9 +197,10 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
           >
             <BarChart3 size={16} />
           </button>
+          )}
 
-          {/* Maximize button */}
-          {onMaximize && (
+          {/* Maximize button — hidden on mobile (already fullscreen) */}
+          {!isMobile && onMaximize && (
             <button
               onClick={onMaximize}
               style={headerStyles.actionButton}

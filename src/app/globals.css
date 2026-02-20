@@ -493,3 +493,58 @@ html {
     0 0 24px 8px var(--accent-primary),
     0 0 40px 10px var(--accent-muted);
 }
+
+/* =============================================================================
+ * MOBILE STYLES (< 1024px)
+ * ============================================================================= */
+
+/* Mobile bottom nav — env() only works in CSS stylesheets, not inline styles */
+.mobile-nav {
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  min-height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 1023px) {
+  /* Use dynamic viewport height (handles iOS keyboard) */
+  body {
+    height: 100dvh;
+  }
+
+  /* Make React Flow handles bigger for touch targets */
+  .react-flow__handle {
+    width: 12px !important;
+    height: 12px !important;
+    opacity: 1 !important;
+  }
+
+  /* Always show handles on mobile (no hover) */
+  .react-flow__node .react-flow__handle {
+    opacity: 1 !important;
+  }
+
+  /* Larger controls for touch */
+  .react-flow__controls-button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* Smaller minimap on mobile to save space */
+  .react-flow__minimap {
+    width: 120px !important;
+    height: 80px !important;
+  }
+
+  /* Prevent text selection on interactive elements */
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Disable hover effects that linger on touch (ghost hover) */
+  @media (hover: none) {
+    .react-flow__controls-button:hover {
+      background-color: var(--bg-secondary) !important;
+    }
+  }
+}
