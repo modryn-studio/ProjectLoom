@@ -14,6 +14,7 @@
     "@ai-sdk/anthropic": "^3.0.45",
     "@ai-sdk/openai": "^3.0.30",
     "@ai-sdk/react": "^3.0.88",
+    "@next/third-parties": "^16.1.6",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@vercel/analytics": "^1.6.1",
     "@xyflow/react": "^12.10.0",
