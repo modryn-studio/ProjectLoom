@@ -140,6 +140,10 @@ export async function POST(req: Request): Promise<Response> {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: gmailUser, pass: gmailPass },
+      // Fail fast instead of hanging for 30+ seconds on a bad connection
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
 
     const info = await transporter.sendMail({
@@ -153,6 +157,7 @@ export async function POST(req: Request): Promise<Response> {
     return log.end(ctx, Response.json({ ok: true }), { type: body.type, messageId: info.messageId });
   } catch (error) {
     log.err(ctx, error);
-    return Response.json({ error: 'Failed to send' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return Response.json({ error: 'Failed to send', detail: msg }, { status: 500 });
   }
 }

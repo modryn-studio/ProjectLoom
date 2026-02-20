@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -157,17 +157,28 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
   const handleFeedbackSubmit = useCallback(async () => {
     if (fbRating === 0 && !fbMessage.trim() && !fbEmail.trim()) return;
     setFbSubmitting(true);
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 20_000);
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'feedback', rating: fbRating || undefined, message: fbMessage, email: fbEmail || undefined }),
+        signal: abort.signal,
       });
-      if (!res.ok) throw new Error();
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.detail ?? `Server error ${res.status}`);
+      }
       success('Thanks for your feedback! 🙏');
       handleClose();
-    } catch {
-      toastError('Failed to send. Please try again.');
+    } catch (err) {
+      clearTimeout(timeout);
+      const msg = err instanceof Error && err.name === 'AbortError'
+        ? 'Request timed out. Check your connection and try again.'
+        : (err instanceof Error ? err.message : 'Failed to send. Please try again.');
+      toastError(msg, { duration: 10_000 });
       setFbSubmitting(false);
     }
   }, [fbRating, fbMessage, fbEmail, success, toastError, handleClose]);
@@ -175,17 +186,28 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
   const handleBugSubmit = useCallback(async () => {
     if (!bugMessage.trim()) return;
     setBugSubmitting(true);
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 20_000);
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'bug', severity: bugSeverity, message: bugMessage, email: bugEmail || undefined }),
+        signal: abort.signal,
       });
-      if (!res.ok) throw new Error();
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.detail ?? `Server error ${res.status}`);
+      }
       success('Bug report sent! Thanks for helping improve ProjectLoom.');
       handleClose();
-    } catch {
-      toastError('Failed to send. Please try again.');
+    } catch (err) {
+      clearTimeout(timeout);
+      const msg = err instanceof Error && err.name === 'AbortError'
+        ? 'Request timed out. Check your connection and try again.'
+        : (err instanceof Error ? err.message : 'Failed to send. Please try again.');
+      toastError(msg, { duration: 10_000 });
       setBugSubmitting(false);
     }
   }, [bugSeverity, bugMessage, bugEmail, success, toastError, handleClose]);
@@ -379,7 +401,7 @@ export function FeedbackModal({ isOpen, onClose, defaultTab = 'feedback' }: Feed
                 }}
               >
                 {isSubmitting ? <Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Send size={14} />}
-                {isSubmitting ? 'Sending€¦' : submitLabel}
+                {isSubmitting ? 'Sending\u2026' : submitLabel}
               </button>
             </div>
           </motion.div>
