@@ -9,16 +9,27 @@ import { ToastContainer } from '@/components/ToastContainer';
 import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
 import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
 import { APIKeySetupModal } from '@/components/APIKeySetupModal';
-import { WelcomeOverlay } from '@/components/WelcomeOverlay';
+import { LandingPage } from '@/components/landing/LandingPage';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { apiKeyManager } from '@/lib/api-key-manager';
 import { colors } from '@/lib/design-tokens';
+
+// =============================================================================
+// STORAGE KEY
+// =============================================================================
+
+const VISITED_KEY = 'loom_visited';
 
 // =============================================================================
 // MAIN PAGE COMPONENT
 // =============================================================================
 
 export default function CanvasPage() {
+  // Lazy initializer reads localStorage once on first render (client only)
+  const [showLanding, setShowLanding] = useState<boolean | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return !localStorage.getItem(VISITED_KEY);
+  });
   const [showAPIKeySetup, setShowAPIKeySetup] = useState(false);
 
   // Expose store globally for debugging
@@ -28,23 +39,24 @@ export default function CanvasPage() {
     }
   }, []);
 
-  // Check for first launch or missing API keys
+  // Check for first launch or missing API keys (only when canvas is shown)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (showLanding) return; // Don't show API key modal on landing page
 
-    // Check if this is first launch (no keys configured)
     const keysConfigured = localStorage.getItem('projectloom:keys-configured');
     const hasAnyKey = apiKeyManager.hasAnyKey();
 
-    // Show modal if:
-    // 1. Never configured keys before AND
-    // 2. No API keys currently available
     if (!keysConfigured && !hasAnyKey) {
-      // Small delay to let the app initialize first
       const timer = setTimeout(() => setShowAPIKeySetup(true), 500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [showLanding]);
+
+  const handleEnterCanvas = () => {
+    localStorage.setItem(VISITED_KEY, '1');
+    setShowLanding(false);
+  };
 
   const handleAPIKeySetupClose = () => {
     setShowAPIKeySetup(false);
@@ -55,6 +67,23 @@ export default function CanvasPage() {
     // Keys are marked as configured in the modal's save handler
   };
 
+  // Still checking localStorage — avoid flash
+  if (showLanding === null) {
+    return (
+      <div style={styles.loading}>
+        <div style={styles.loadingContent}>
+          <div style={styles.spinner} />
+        </div>
+      </div>
+    );
+  }
+
+  // First-time visitor: show landing page
+  if (showLanding) {
+    return <LandingPage onEnter={handleEnterCanvas} />;
+  }
+
+  // Returning visitor: show the canvas
   return (
     <ErrorBoundary>
       <ReactFlowProvider>
@@ -68,7 +97,6 @@ export default function CanvasPage() {
         onClose={handleAPIKeySetupClose}
         onSuccess={handleAPIKeySetupSuccess}
       />
-      <WelcomeOverlay />
     </ErrorBoundary>
   );
 }

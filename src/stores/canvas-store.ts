@@ -1487,7 +1487,12 @@ export const useCanvasStore = create<WorkspaceState>()(
             if (w.id === activeWorkspaceId) {
               return {
                 ...w,
-                conversations: Array.from(conversations.values()),
+                // Reconcile conv.position from live node positions so workspace
+                // switches restore cards to their current dragged locations
+                conversations: Array.from(conversations.values()).map(conv => ({
+                  ...conv,
+                  position: positions[conv.id] ?? conv.position,
+                })),
                 edges: connections,
                 metadata: { ...w.metadata, updatedAt: new Date() },
               };
@@ -1602,7 +1607,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     },
 
     navigateToWorkspace: (workspaceId: string) => {
-      const { workspaces, activeWorkspaceId, conversations: currentConversations, edges: currentEdges } = get();
+      const { workspaces, activeWorkspaceId, conversations: currentConversations, edges: currentEdges, nodes: currentNodes } = get();
 
       // Already on this workspace — do nothing to preserve live canvas state
       if (activeWorkspaceId === workspaceId) return;
@@ -1624,11 +1629,22 @@ export const useCanvasStore = create<WorkspaceState>()(
           animated: edge.animated ?? false,
         }));
 
+        // Reconcile conv.position from live node positions before snapshotting,
+        // so the saved workspace has accurate positions even if the user dragged
+        // cards since the last debounced save
+        const livePositions: Record<string, Position> = {};
+        currentNodes.forEach((node) => {
+          livePositions[node.id] = { x: node.position.x, y: node.position.y };
+        });
+
         const updatedWorkspaces = workspaces.map(w => {
           if (w.id === activeWorkspaceId) {
             return {
               ...w,
-              conversations: Array.from(currentConversations.values()),
+              conversations: Array.from(currentConversations.values()).map(conv => ({
+                ...conv,
+                position: livePositions[conv.id] ?? conv.position,
+              })),
               edges: currentConnections,
               metadata: { ...w.metadata, updatedAt: new Date() },
             };
@@ -1645,9 +1661,16 @@ export const useCanvasStore = create<WorkspaceState>()(
         conversations.set(conv.id, conv);
       });
 
+      // Use CANVAS_DATA positions as a migration fallback for workspaces that
+      // were saved before position reconciliation was in place; conv.position
+      // is authoritative once the fix is running
+      const storedCanvasData = storage.load();
+      const migratedPositions = storedCanvasData?.data?.positions ?? {};
+
       // Create nodes from conversations
       const nodes: ConversationNode[] = workspace.conversations.map((conv) => {
-        return conversationToNode(conv, conv.position, false, false);
+        const position = migratedPositions[conv.id] ?? conv.position ?? { x: 0, y: 0 };
+        return conversationToNode(conv, position, false, false);
       });
 
       // Restore edges (v4 with relation types)

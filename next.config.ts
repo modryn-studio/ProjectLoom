@@ -12,8 +12,8 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
-              "connect-src 'self' https://api.anthropic.com https://api.openai.com",
+              `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://va.vercel-scripts.com${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+              "connect-src 'self' https://api.anthropic.com https://api.openai.com https://www.googletagmanager.com https://www.google-analytics.com https://va.vercel-scripts.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
