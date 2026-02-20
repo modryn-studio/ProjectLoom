@@ -61,6 +61,14 @@ export function LandingPage({ onEnter }: LandingPageProps) {
   // Ensure the user's stored theme (dark/light/system) is applied to the
   // document root — identical to what the canvas does via the preferences store.
   const theme = usePreferencesStore((s) => s.preferences.ui.theme);
+  // mounted starts false so SSR and the initial client paint agree on the same
+  // value. Zustand's persist middleware rehydrates synchronously from localStorage
+  // on the client, so `theme` can differ between SSR and the first client render,
+  // causing a hydration mismatch on the banner <Image>. We defer theme-dependent
+  // rendering (the banner src) until after mount.
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'system') {
@@ -84,6 +92,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', handler);
@@ -99,7 +108,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           ...(isMobile && { padding: '12px 16px' }),
         }}>
           <Image
-            src={theme === 'light' ? bannerLight : bannerDark}
+            src={mounted && theme === 'light' ? bannerLight : bannerDark}
             alt="ProjectLoom"
             style={styles.wordmark}
             priority
