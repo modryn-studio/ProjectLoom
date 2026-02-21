@@ -27,18 +27,18 @@ interface LandingPageProps {
 const features = [
   {
     icon: GitBranch,
-    headline: 'Branch freely',
-    subtext: 'One conversation, infinite directions. Explore every "what if" without losing your original thread.',
+    headline: 'Branch from any message',
+    subtext: 'Hit a fork in your thinking? Spawn a new card from any point and explore a different direction — the original thread stays untouched.',
   },
   {
     icon: ArrowRight,
-    headline: 'Never lose a thread',
-    subtext: 'Every path you take is preserved on the canvas. Pick up any conversation right where you left off.',
+    headline: 'Every path, always visible',
+    subtext: 'No message history buried under a scroll. Every conversation lives as its own card on the canvas — pick up any thread instantly.',
   },
   {
     icon: Merge,
-    headline: 'Merge the best ideas',
-    subtext: 'Combine insights from different branches into a single conclusion. Your best thinking, unified.',
+    headline: 'Synthesize across branches',
+    subtext: 'Pull the best insights from multiple threads into a single merge card. Your AI sees every parent conversation and weaves them together.',
   },
 ];
 
@@ -144,9 +144,9 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
           >
-            Think in branches,
+            AI conversations,
             <br />
-            <span style={{ color: colors.accent.primary }}>not timelines.</span>
+            <span style={{ color: colors.accent.primary }}>mapped visually.</span>
           </motion.h1>
           <motion.p
             style={styles.heroSubtitle}
@@ -154,8 +154,9 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.35 }}
           >
-            Branch your AI conversations like a Choose Your Own Adventure —
-            and never lose a thread.
+            ProjectLoom is an infinite canvas where you branch, merge, and
+            navigate AI conversations like a visual map of your thinking.
+            No more digging through a single endless chat.
           </motion.p>
           <motion.button
             onClick={onEnter}
@@ -225,9 +226,10 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         ...(isMobile && { padding: '60px 24px 80px' }),
       }}>
         <motion.div {...fadeInUp} style={{ textAlign: 'center' }}>
-          <h2 style={styles.ctaTitle}>Your ideas deserve more than a single thread</h2>
+          <h2 style={styles.ctaTitle}>Stop thinking in a straight line</h2>
           <p style={styles.ctaSubtext}>
-            Open the canvas, start a conversation, and branch wherever your thinking takes you.
+            Start a conversation, branch the moment your thinking forks, and merge the best
+            threads when you&apos;re ready. Your API key, your data, your canvas.
           </p>
           <motion.button
             onClick={onEnter}

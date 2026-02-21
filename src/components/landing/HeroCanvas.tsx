@@ -87,32 +87,32 @@ const isLineVisible = (id: string, phase: number, showAt: Record<string, number>
 
 const CARDS: LandingCardData[] = [
   {
-    title: 'Ship a Side Project in 30 Days',
-    preview: 'I want to build and ship a side project in 30 days. How do I actually do this?',
-    timestamp: '3d ago',
+    title: 'New product idea',
+    preview: 'I want to build a tool for indie hackers to track their MRR. Should I build this?',
+    timestamp: '2d ago',
   },
   {
-    title: 'Tech Stack',
-    preview: 'What stack should I use? I know React and Node. I want to ship fast without fighting the tools.',
+    title: 'Build it',
+    preview: 'Yes — scratch your own itch. The market is small but passionate. Ship an MVP in 2 weeks.',
     timestamp: '2d ago',
     isBranch: true,
   },
   {
-    title: 'Finding Your Users',
-    preview: 'Who are my first users and how do I actually find them? "Post on social" feels vague.',
+    title: 'Validate first',
+    preview: 'Don\'t build yet. Post in communities, collect 10 emails, and see if anyone pays before writing a line of code.',
     timestamp: '2d ago',
     isBranch: true,
   },
   {
-    title: 'App Router vs Pages Router',
-    preview: 'Should I use the App Router or stick with Pages Router for an MVP?',
+    title: 'Tech stack for the MVP',
+    preview: 'Next.js + Stripe + a simple Postgres table. Avoid complexity — charge on day one.',
     timestamp: '1d ago',
     isBranch: true,
   },
   {
-    title: 'Landing Page Copy',
-    preview: 'How do I write landing page copy that actually converts developers?',
-    timestamp: '18h ago',
+    title: 'Where to find early users',
+    preview: 'Indie Hackers, r/SideProject, and X. Be a person first, not a marketer. Share the build process.',
+    timestamp: '1d ago',
     isBranch: true,
   },
 ];

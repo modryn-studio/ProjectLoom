@@ -12,7 +12,6 @@ import { APIKeySetupModal } from '@/components/APIKeySetupModal';
 import { MobileLayout } from '@/components/MobileLayout';
 import { MobileTabContent } from '@/components/MobileTabContent';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { apiKeyManager } from '@/lib/api-key-manager';
 import { colors } from '@/lib/design-tokens';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
@@ -22,6 +21,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 export default function CanvasPage() {
   const [showAPIKeySetup, setShowAPIKeySetup] = useState(false);
+  const [showDemoBanner, setShowDemoBanner] = useState(false);
 
   // Expose store globally for debugging
   useEffect(() => {
@@ -30,18 +30,25 @@ export default function CanvasPage() {
     }
   }, []);
 
-  // Check for missing API keys on first visit to canvas
+  // Show demo banner on first-ever canvas visit (same condition as mock data load)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    const keysConfigured = localStorage.getItem('projectloom:keys-configured');
-    const hasAnyKey = apiKeyManager.hasAnyKey();
-
-    if (!keysConfigured && !hasAnyKey) {
-      const timer = setTimeout(() => setShowAPIKeySetup(true), 500);
-      return () => clearTimeout(timer);
-    }
+    const seen = localStorage.getItem('projectloom:demo-seen');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!seen) setShowDemoBanner(true);
   }, []);
+
+  // Listen for API key setup requests from deep in the component tree
+  useEffect(() => {
+    const handler = () => setShowAPIKeySetup(true);
+    window.addEventListener('projectloom:requestAPIKeySetup', handler);
+    return () => window.removeEventListener('projectloom:requestAPIKeySetup', handler);
+  }, []);
+
+  const handleDismissBanner = () => {
+    setShowDemoBanner(false);
+    localStorage.setItem('projectloom:demo-seen', '1');
+  };
 
   return (
     <ErrorBoundary>
@@ -56,6 +63,7 @@ export default function CanvasPage() {
         onClose={() => setShowAPIKeySetup(false)}
         onSuccess={() => setShowAPIKeySetup(false)}
       />
+      {showDemoBanner && <DemoBanner onDismiss={handleDismissBanner} />}
     </ErrorBoundary>
   );
 }
@@ -118,6 +126,31 @@ function LoadingState() {
 }
 
 // =============================================================================
+// DEMO BANNER
+// =============================================================================
+
+function DemoBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div style={styles.demoBanner}>
+      <span style={styles.demoBannerText}>
+        This is a demo workspace. Explore how branching works, then add an API key to start your own conversation.
+      </span>
+      <div style={styles.demoBannerActions}>
+        <button
+          onClick={() => window.dispatchEvent(new Event('projectloom:requestAPIKeySetup'))}
+          style={styles.demoBannerCTA}
+        >
+          Add API key
+        </button>
+        <button onClick={onDismiss} style={styles.demoBannerDismiss} aria-label="Dismiss">
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // STYLES
 // =============================================================================
 
@@ -159,5 +192,59 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     color: colors.fg.secondary,
     margin: 0,
+  },
+
+  demoBanner: {
+    position: 'fixed',
+    bottom: 24,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 290,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.bg.secondary,
+    border: `1px solid ${colors.border.default}`,
+    borderRadius: 10,
+    padding: '10px 16px',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+    maxWidth: 600,
+    width: 'calc(100vw - 48px)',
+  },
+
+  demoBannerText: {
+    fontSize: 13,
+    color: colors.fg.secondary,
+    flex: 1,
+    lineHeight: 1.4,
+  },
+
+  demoBannerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+
+  demoBannerCTA: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: colors.accent.primary,
+    background: 'none',
+    border: `1px solid ${colors.accent.primary}`,
+    borderRadius: 6,
+    padding: '4px 10px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+  },
+
+  demoBannerDismiss: {
+    fontSize: 16,
+    lineHeight: 1,
+    color: colors.fg.tertiary,
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '2px 4px',
   },
 };

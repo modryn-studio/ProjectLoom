@@ -216,7 +216,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
             <div>
               <h2 style={styles.title}>Configure API Keys</h2>
               <p style={styles.subtitle}>
-                Add your API keys to enable AI responses
+                You&apos;re one step away — add a key to send your first message.
               </p>
             </div>
             <button onClick={onClose} style={styles.closeButton}>

@@ -274,6 +274,12 @@ export function MessageInput({
     const hasContent = inputValue.trim() || attachments.length > 0;
     if (!hasContent || isStreaming) return;
 
+    // If no API key, open the key setup modal via window event instead of silently failing
+    if (!hasApiKey) {
+      window.dispatchEvent(new Event('projectloom:requestAPIKeySetup'));
+      return;
+    }
+
     // Use text content or a placeholder for image-only messages
     const messageContent = inputValue.trim() || (attachments.length > 0 ? '[Image]' : '');
 
@@ -297,7 +303,7 @@ export function MessageInput({
     if (!isTouchDevice) {
       textareaRef.current?.focus();
     }
-  }, [inputValue, isStreaming, onSubmit, sendMessage, conversationId, setDraftMessage, attachments, onAttachmentsChange]);
+  }, [inputValue, isStreaming, hasApiKey, onSubmit, sendMessage, conversationId, setDraftMessage, attachments, onAttachmentsChange]);
 
   // Handle keyboard events
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -307,8 +313,8 @@ export function MessageInput({
     }
   }, [handleSend]);
 
-  // Determine button state
-  const canSend = (inputValue.trim() || attachments.length > 0) && !isStreaming && hasApiKey;
+  // Determine button state — allow sending without a key so handleSend can open the key modal
+  const canSend = (inputValue.trim() || attachments.length > 0) && !isStreaming;
 
   return (
     <div style={inputStyles.container}>
@@ -337,10 +343,14 @@ export function MessageInput({
 
       {/* No API key warning */}
       {!hasApiKey && (
-        <div style={inputStyles.warningBanner}>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('projectloom:requestAPIKeySetup'))}
+          style={{ ...inputStyles.warningBanner, cursor: 'pointer', textAlign: 'left', width: '100%', background: 'none', border: 'none' }}
+        >
           <Settings size={14} />
-          <span>Configure an API key in Settings to chat with AI</span>
-        </div>
+          <span>Add an API key to start chatting →</span>
+        </button>
       )}
 
       {/* Attachment preview */}
@@ -408,14 +418,14 @@ export function MessageInput({
             value={inputValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={hasApiKey ? "Type a message..." : "Configure API key to start chatting..."}
+            placeholder={hasApiKey ? "Type a message..." : "Type a message and add an API key to send..."}
             className="chat-textarea"
             style={{
               ...inputStyles.textarea,
               maxHeight: maxTextareaHeight ?? MAX_INPUT_HEIGHT,
-              opacity: !hasApiKey ? 0.6 : 1,
+              opacity: 1,
             }}
-            disabled={isStreaming || !hasApiKey}
+            disabled={isStreaming}
             aria-label="Message input"
           />
 
