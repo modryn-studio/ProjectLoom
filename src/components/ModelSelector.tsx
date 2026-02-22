@@ -129,7 +129,7 @@ export function ModelSelector({
             role="listbox"
           >
             {/* Anthropic Models */}
-            {hasAnthropicKey && (
+            {(hasAnthropicKey || (!hasAnyKey && hasApiKey)) && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'anthropic')
@@ -145,12 +145,12 @@ export function ModelSelector({
             )}
 
             {/* Divider between providers */}
-            {hasAnthropicKey && hasOpenaiKey && (
+            {(hasAnthropicKey || (!hasAnyKey && hasApiKey)) && (hasOpenaiKey || (!hasAnyKey && hasApiKey)) && (
               <div style={styles.divider} />
             )}
 
             {/* OpenAI Models */}
-            {hasOpenaiKey && (
+            {(hasOpenaiKey || (!hasAnyKey && hasApiKey)) && (
               <>
                 {AVAILABLE_MODELS
                   .filter(m => m.provider === 'openai')
@@ -166,7 +166,7 @@ export function ModelSelector({
             )}
 
             {/* No key configured */}
-            {!hasAnyKey && (
+            {!hasAnyKey && !hasApiKey && (
               <div style={styles.noKeys}>
                 <Key size={16} />
                 <span>Configure API keys in Settings</span>

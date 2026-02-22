@@ -12,6 +12,7 @@ import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-s
 import { apiKeyManager } from '@/lib/api-key-manager';
 import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
 import { useUsageStore } from '@/stores/usage-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { buildKnowledgeBaseContext, buildRagIndex } from '@/lib/rag-utils';
 import { ChatPanelHeader } from './ChatPanelHeader';
@@ -95,6 +96,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     model: string;
     timestamp: number;
     requestId: string;
+    onboardingStep?: string;
   } | null>(null);
 
   // Stable ID for useChat — must NOT change when the user switches conversation cards.
@@ -167,6 +169,11 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       return getDefaultModel('openai').id;
     }
 
+    // During onboarding, use a placeholder model ID so the request can proceed
+    if (useOnboardingStore.getState().active) {
+      return 'anthropic/claude-sonnet-4-5';
+    }
+
     return null;
   }, [activeConversationId, conversationModel]);
 
@@ -179,8 +186,9 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId, conversationModel]);
 
-  // Check if we have any API key configured
-  const hasAnyApiKey = apiKeyManager.hasAnyKey();
+  // Check if we have any API key configured (onboarding mode counts as "has key")
+  const onboardingActive = useOnboardingStore((s) => s.active);
+  const hasAnyApiKey = apiKeyManager.hasAnyKey() || onboardingActive;
 
   // Check if current model supports vision
   const supportsVision = useMemo(() => {
@@ -351,9 +359,17 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       const serverMeta = message.metadata as MessageMetadata | undefined;
       const aiMessageMetadata: MessageMetadata = {
         ...serverMeta,
-        ...(webSearchUsed ? {
+        ...(metadata.onboardingStep ? {
           custom: {
             ...(serverMeta?.custom ?? {}),
+            onboardingStep: metadata.onboardingStep,
+          },
+        } : {}),
+        ...(webSearchUsed ? {
+          custom: {
+            ...(metadata.onboardingStep
+              ? { ...(serverMeta?.custom ?? {}), onboardingStep: metadata.onboardingStep }
+              : (serverMeta?.custom ?? {})),
             webSearch: { used: true, sources: webSearchSources },
           },
         } : {}),
@@ -543,6 +559,9 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       console.warn('[ChatPanel] Cannot start request: missing conversationId or model');
       return;
     }
+
+    const onboardingState = useOnboardingStore.getState();
+    const onboardingStep = onboardingState.active ? onboardingState.step : undefined;
     
     // 1. Lock sync effect — MUST be first to prevent races during setup
     streamingRequestMetadataRef.current = {
@@ -550,6 +569,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       model: currentModel,
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
+      onboardingStep,
     };
     setStreamingConversationId(activeConversationId);
 
@@ -577,10 +597,12 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     })));
 
     // 6. Build request body (inline — don't rely on stale memoized chatBody)
+    const isOnboarding = Boolean(onboardingStep);
     const body = {
       model: currentModel,
       anthropicKey: currentKeys.anthropic,
       openaiKey: currentKeys.openai,
+      ...(isOnboarding ? { onboarding: true, onboardingStep } : {}),
       ...(attachments?.length ? {
         attachments: attachments.map(a => ({
           contentType: a.contentType,
@@ -607,6 +629,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {
+    if (useOnboardingStore.getState().active) return;
     if (!activeConversation) return;
     
     const messages = activeConversation.content || [];
@@ -627,6 +650,9 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       console.warn('[ChatPanel] Cannot retry: missing conversationId or model');
       return;
     }
+
+    const onboardingState = useOnboardingStore.getState();
+    const onboardingStep = onboardingState.active ? onboardingState.step : undefined;
     
     // 1. Lock sync effect — MUST be before store mutation
     streamingRequestMetadataRef.current = {
@@ -634,6 +660,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       model: currentModel,
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
+      onboardingStep,
     };
     setStreamingConversationId(activeConversationId);
 
@@ -665,6 +692,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       model: currentModel,
       anthropicKey: currentKeys.anthropic,
       openaiKey: currentKeys.openai,
+      ...(onboardingStep ? { onboarding: true, onboardingStep } : {}),
       ...(messageAttachments.length > 0 ? {
         attachments: messageAttachments.map(a => ({
           contentType: a.contentType,
@@ -689,6 +717,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
   // Handle edit message click
   const handleEditClick = useCallback((messageIndex: number) => {
+    if (useOnboardingStore.getState().active) return;
     if (!activeConversation || isStreaming) return;
     const message = activeConversation.content[messageIndex];
     if (!message || message.role !== 'user') return;
@@ -697,6 +726,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
   // Handle edit save — truncates history after the edited message and re-sends
   const handleEditSave = useCallback(async (content: string, attachments: MessageAttachment[]) => {
+    if (useOnboardingStore.getState().active) return;
     if (!activeConversation || editingMessageIndex === null || !activeConversationId || !currentModel) return;
 
     // Stop any ongoing streaming
@@ -705,11 +735,15 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     }
 
     // 1. Lock sync effect — MUST be before store mutation
+    const onboardingState = useOnboardingStore.getState();
+    const onboardingStep = onboardingState.active ? onboardingState.step : undefined;
+
     streamingRequestMetadataRef.current = {
       conversationId: activeConversationId,
       model: currentModel,
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
+      onboardingStep,
     };
     setStreamingConversationId(activeConversationId);
 
@@ -760,6 +794,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       model: currentModel,
       anthropicKey: currentKeys.anthropic,
       openaiKey: currentKeys.openai,
+      ...(onboardingStep ? { onboarding: true, onboardingStep } : {}),
       ...(attachments.length > 0 ? {
         attachments: attachments.map(a => ({
           contentType: a.contentType,
@@ -877,12 +912,13 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
           const partialWebSearchMetadata = partialSearchSources.length > 0 ? {
             custom: {
+              ...(metadata.onboardingStep ? { onboardingStep: metadata.onboardingStep } : {}),
               webSearch: {
                 used: true,
                 sources: partialSearchSources,
               },
             },
-          } : undefined;
+          } : (metadata.onboardingStep ? { custom: { onboardingStep: metadata.onboardingStep } } : undefined);
           
           // Save partial message using CAPTURED values
           addAIMessage(metadata.conversationId, lastMessageText, metadata.model, partialWebSearchMetadata);
@@ -977,11 +1013,11 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       maxHeight: isMaximized ? '100vh' : '100%',
       overflow: 'hidden',
       userSelect: isResizing ? 'none' : 'auto',
-      zIndex: isMaximized ? zIndex.ui.sidePanelMaximized : zIndex.ui.sidePanel,
+      zIndex: isMaximized ? zIndex.ui.sidePanelMaximized : onboardingActive ? zIndex.overlay.modal : zIndex.ui.sidePanel,
       flexShrink: 1,
       pointerEvents: chatPanelOpen ? 'auto' : 'none',
     };
-  }, [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen, isMobile]);
+  }, [effectivePanelWidth, isResizing, isMaximized, chatPanelOpen, isMobile, onboardingActive]);
 
   // Memoized resize handle styles
   const resizeHandleStyles = useMemo<React.CSSProperties>(() => ({
@@ -1031,6 +1067,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
               conversation={activeConversation}
               onClose={handleClose}
               onMaximize={handleMaximize}
+              branchEnabled={!onboardingActive}
+              renameEnabled={!onboardingActive}
               isMobile
             />
             <MessageThread
@@ -1046,6 +1084,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
               editingMessageIndex={editingMessageIndex}
               onEditSave={handleEditSave}
               onEditCancel={handleEditCancel}
+              mutationActionsEnabled={!onboardingActive}
             />
             <MessageInput
               conversationId={activeConversation.id}
@@ -1105,6 +1144,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
             conversation={activeConversation}
             onClose={handleClose}
             onMaximize={handleMaximize}
+            branchEnabled={!onboardingActive}
+            renameEnabled={!onboardingActive}
           />
 
           {/* Message Thread
@@ -1126,6 +1167,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
             editingMessageIndex={editingMessageIndex}
             onEditSave={handleEditSave}
             onEditCancel={handleEditCancel}
+            mutationActionsEnabled={!onboardingActive}
           />
 
           {/* Message Input */}

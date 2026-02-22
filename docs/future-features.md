@@ -1,6 +1,8 @@
 # Future Features
 
-Last updated: February 19, 2026
+Last updated: February 22, 2026
+
+> Items tracked as GitHub issues are marked with their issue number.
 
 ---
 
@@ -26,7 +28,7 @@ Only render edges for cards visible in viewport. Needed when canvas grows to 100
 Simplify card and edge rendering when zoomed out (e.g., hide message previews, thin edges, no animations below 0.5x zoom).
 
 ### Credit System (Hosted Mode)
-Allow non-technical users to use the app without their own API keys via a credit-based payment system. Stack: Clerk (auth) + Stripe (payments) + Neon/Vercel Postgres (database). Users buy credits, app proxies API calls and deducts balance. BYOK mode remains for power users.
+Allow non-technical users to use the app without their own API keys via a credit-based payment system. Stack: Clerk (auth) + Stripe (payments) + Neon/Vercel Postgres (database). Users buy credits, app proxies API calls and deducts balance. BYOK mode remains for power users. *(See GitHub issue #17)*
 
 ### Server-Side KB Storage
 Currently KB lives only in browser IndexedDB. Sync to backend for multi-device access. IndexedDB remains as local cache.
@@ -46,3 +48,9 @@ Allow linking cards across workspaces without full branching/merging.
 
 ### Conversation Export
 Export workspace or individual conversations as markdown, JSON, or PDF.
+
+### Mobile-Responsive Canvas
+Touch-friendly canvas interaction, mobile-optimized layout, swipe navigation. *(See GitHub issue #16)*
+
+### Product Analytics
+Instrument key user actions (branch, merge, onboarding completion, session length) for data-driven decisions. *(See GitHub issue #18)*

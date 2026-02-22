@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, type TargetAndTransition, type VariantLabels, type Transition } from 'framer-motion';
 import { GitBranch } from 'lucide-react';
-import { colors, typography, spacing, effects, card } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 
 // =============================================================================
 // TYPES
@@ -87,8 +87,8 @@ const cardStyles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: spacing.card.gap,                    // 12px
-    width: card.size.minWidth,               // 280px
-    height: card.size.collapsedHeight,       // 160px
+    width: 280,      // Landing page card size (independent of canvas card tokens)
+    height: 160,
     boxSizing: 'border-box',
     pointerEvents: 'none',
     userSelect: 'none',

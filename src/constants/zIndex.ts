@@ -40,6 +40,8 @@ export const zIndex = {
     minimap: 200,
     /** Toolbar/controls */
     toolbar: 210,
+    /** Floating action bar (multi-select merge) */
+    floatingBar: 215,
     /** Context menus */
     contextMenu: 220,
     /** Dropdown menus */

@@ -9,6 +9,7 @@ import type { UIMessage } from 'ai';
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useToast } from '@/stores/toast-store';
 import type { Conversation, InheritedContextEntry, Message, MessageAttachment } from '@/types';
 import { InlineMessageEditor } from './InlineMessageEditor';
@@ -156,6 +157,8 @@ interface MessageThreadProps {
   onEditSave?: (content: string, attachments: MessageAttachment[]) => void;
   /** Callback when edit is cancelled */
   onEditCancel?: () => void;
+  /** When false, hide mutation actions (branch/retry/edit) and keep read-only actions */
+  mutationActionsEnabled?: boolean;
 }
 
 export function MessageThread({
@@ -169,6 +172,7 @@ export function MessageThread({
   editingMessageIndex = null,
   onEditSave,
   onEditCancel,
+  mutationActionsEnabled = true,
 }: MessageThreadProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isPinnedToBottomRef = useRef(true);
@@ -179,6 +183,8 @@ export function MessageThread({
     typeof window !== 'undefined'
     && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   ));
+  const onboardingActive = useOnboardingStore((s) => s.active);
+  const canMutateFromActions = mutationActionsEnabled && !onboardingActive;
 
   // Detect live web search state from streaming message parts.
   // AI SDK v6: tool parts have type 'tool-${toolName}' with state/input/output.
@@ -451,6 +457,7 @@ export function MessageThread({
                 onBranchClick={handleBranchClick}
                 onRetryClick={handleRetryClick}
                 onEditClick={handleEditClickLocal}
+                mutationActionsEnabled={canMutateFromActions}
               />
             );
           })}
@@ -493,6 +500,7 @@ interface MessageBubbleProps {
   onBranchClick: (index: number, e: React.MouseEvent) => void;
   onRetryClick: (index: number, e: React.MouseEvent) => void;
   onEditClick: (index: number, e: React.MouseEvent) => void;
+  mutationActionsEnabled?: boolean;
 }
 
 const MessageBubble = memo(function MessageBubble({
@@ -506,6 +514,7 @@ const MessageBubble = memo(function MessageBubble({
   onBranchClick,
   onRetryClick,
   onEditClick,
+  mutationActionsEnabled = true,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
@@ -806,6 +815,7 @@ const MessageBubble = memo(function MessageBubble({
               onEditClick={handleEditClickLocal}
               onBranchClick={handleBranchClickLocal}
               onRetryClick={handleRetryClickLocal}
+              mutationActionsEnabled={mutationActionsEnabled}
             />
           </div>
         </div>
@@ -826,6 +836,7 @@ interface MessageActionButtonsProps {
   onEditClick: (e: React.MouseEvent) => void;
   onBranchClick: (e: React.MouseEvent) => void;
   onRetryClick: (e: React.MouseEvent) => void;
+  mutationActionsEnabled?: boolean;
 }
 
 const MessageActionButtons = memo(function MessageActionButtons({
@@ -836,12 +847,13 @@ const MessageActionButtons = memo(function MessageActionButtons({
   onEditClick,
   onBranchClick,
   onRetryClick,
+  mutationActionsEnabled = true,
 }: MessageActionButtonsProps) {
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
   return (
     <div style={actionButtonGroupStyles.container}>
-      {isUserMessage && (
+      {isUserMessage && mutationActionsEnabled && (
         <button
           onClick={onRetryClick}
           onMouseEnter={() => setHoveredButton('retry')}
@@ -872,7 +884,7 @@ const MessageActionButtons = memo(function MessageActionButtons({
       >
         {isCopied ? 'Copied' : <Copy size={12} />}
       </button>
-      {isUserMessage && (
+      {isUserMessage && mutationActionsEnabled && (
         <button
           onClick={onEditClick}
           onMouseEnter={() => setHoveredButton('edit')}
@@ -887,19 +899,21 @@ const MessageActionButtons = memo(function MessageActionButtons({
           <Edit2 size={12} />
         </button>
       )}
-      <button
-        onClick={onBranchClick}
-        onMouseEnter={() => setHoveredButton('branch')}
-        onMouseLeave={() => setHoveredButton(null)}
-        style={{
-          ...actionButtonGroupStyles.button,
-          color: hoveredButton === 'branch' ? colors.accent.emphasis : colors.accent.primary,
-        }}
-        title={`Branch from message ${messageIndex + 1}`}
-        aria-label={`Branch from message ${messageIndex + 1}`}
-      >
-        <GitBranch size={12} />
-      </button>
+      {mutationActionsEnabled && (
+        <button
+          onClick={onBranchClick}
+          onMouseEnter={() => setHoveredButton('branch')}
+          onMouseLeave={() => setHoveredButton(null)}
+          style={{
+            ...actionButtonGroupStyles.button,
+            color: hoveredButton === 'branch' ? colors.accent.emphasis : colors.accent.primary,
+          }}
+          title={`Branch from message ${messageIndex + 1}`}
+          aria-label={`Branch from message ${messageIndex + 1}`}
+        >
+          <GitBranch size={12} />
+        </button>
+      )}
     </div>
   );
 });

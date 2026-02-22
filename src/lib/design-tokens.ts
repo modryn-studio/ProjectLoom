@@ -391,7 +391,7 @@ export const canvas = {
   viewport: {
     minZoom: 0.1,
     maxZoom: 2,
-    defaultZoom: 1,
+    defaultZoom: 0.75,
     fitViewPadding: 0.2,  // 20% padding
   },
   

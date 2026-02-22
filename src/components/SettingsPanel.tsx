@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, X, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon, MessageSquare, Bug } from 'lucide-react';
+import { Settings, X, RotateCcw, Key, Eye, EyeOff, Trash2, CheckCircle, Monitor, Sun, Moon, MessageSquare, Bug, PlayCircle } from 'lucide-react';
 import { FeedbackModal } from './FeedbackModal';
 
 import { usePreferencesStore, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
 import { STORAGE_KEYS, createBackupPayload, applyBackupPayload } from '@/lib/storage';
+import { launchOnboardingInDemoWorkspace } from '@/lib/onboarding-demo-workspace';
 import { useToast } from '@/stores/toast-store';
 import { colors, spacing, effects, typography, animation } from '@/lib/design-tokens';
 
@@ -240,6 +241,11 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
     localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_EXPORT, payload.exportedAt);
     toast.success('Backup exported');
   }, [toast]);
+
+  const handleReplayOnboarding = useCallback(() => {
+    launchOnboardingInDemoWorkspace();
+    onClose();
+  }, [onClose]);
 
   const handleImportClick = useCallback(() => {
     backupInputRef.current?.click();
@@ -713,6 +719,25 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
 
             {/* Footer */}
             <div style={footerStyles}>
+              <button
+                onClick={handleReplayOnboarding}
+                style={{
+                  padding: `${spacing[2]} ${spacing[3]}`,
+                  backgroundColor: 'transparent',
+                  border: `1px solid var(--border-primary)`,
+                  borderRadius: effects.border.radius.default,
+                  color: colors.fg.tertiary,
+                  fontSize: typography.sizes.sm,
+                  fontFamily: typography.fonts.body,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[1],
+                }}
+              >
+                <PlayCircle size={14} />
+                Replay Tour
+              </button>
               <button
                 onClick={handleReset}
                 style={{

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { GitBranch, Merge, ArrowRight } from 'lucide-react';
+import { GitBranch, Merge, ArrowRight, Play, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import bannerLight from '../../../assets/banner_trans_light.png';
 import bannerDark from '../../../assets/banner_trans_dark.png';
@@ -27,18 +27,18 @@ interface LandingPageProps {
 const features = [
   {
     icon: GitBranch,
-    headline: 'Branch from any message',
-    subtext: 'Hit a fork in your thinking? Spawn a new card from any point and explore a different direction — the original thread stays untouched.',
+    headline: 'Split any conversation',
+    subtext: 'Take a different direction from any message. The original stays — explore both.',
   },
   {
-    icon: ArrowRight,
-    headline: 'Every path, always visible',
-    subtext: 'No message history buried under a scroll. Every conversation lives as its own card on the canvas — pick up any thread instantly.',
+    icon: Sparkles,
+    headline: 'See everything at once',
+    subtext: 'Every thread lives on a visual canvas. No scrolling, no lost messages.',
   },
   {
     icon: Merge,
-    headline: 'Synthesize across branches',
-    subtext: 'Pull the best insights from multiple threads into a single merge card. Your AI sees every parent conversation and weaves them together.',
+    headline: 'Combine the best parts',
+    subtext: 'Pull insights from multiple threads into one. The AI sees all of them.',
   },
 ];
 
@@ -123,7 +123,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
               e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
             }}
           >
-            Open Canvas
+            Try it free
           </button>
         </div>
       </nav>
@@ -144,9 +144,9 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
           >
-            AI conversations,
+            Explore every angle.
             <br />
-            <span style={{ color: colors.accent.primary }}>mapped visually.</span>
+            <span style={{ color: colors.accent.primary }}>Never start over.</span>
           </motion.h1>
           <motion.p
             style={styles.heroSubtitle}
@@ -154,31 +154,57 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.35 }}
           >
-            ProjectLoom is an infinite canvas where you branch, merge, and
-            navigate AI conversations like a visual map of your thinking.
-            No more digging through a single endless chat.
+            Split any AI conversation into different directions, explore them side by side,
+            and combine the best parts — all on one visual canvas.
           </motion.p>
-          <motion.button
-            onClick={onEnter}
+          <motion.div
             style={{
-              ...styles.heroCTA,
-              ...(isMobile && { alignSelf: 'stretch', justifyContent: 'center' }),
+              ...styles.heroCTARow,
+              ...(isMobile && { flexDirection: 'column', alignItems: 'stretch' }),
             }}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.55 }}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--accent-secondary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
-            }}
           >
-            Open the canvas
-            <ArrowRight size={18} style={{ marginLeft: 8 }} />
-          </motion.button>
+            <motion.button
+              onClick={onEnter}
+              style={{
+                ...styles.heroCTA,
+                ...(isMobile && { justifyContent: 'center' }),
+              }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent-secondary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+              }}
+            >
+              Try it now
+              <ArrowRight size={18} style={{ marginLeft: 8 }} />
+            </motion.button>
+            <motion.button
+              onClick={onEnter}
+              style={{
+                ...styles.heroSecondaryCTA,
+                ...(isMobile && { justifyContent: 'center' }),
+              }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                e.currentTarget.style.color = 'var(--accent-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-default)';
+                e.currentTarget.style.color = 'var(--fg-primary)';
+              }}
+            >
+              <Play size={16} style={{ marginRight: 8 }} />
+              Watch the demo
+            </motion.button>
+          </motion.div>
         </div>
 
         {/* Right: animated canvas — full panel on desktop, banner strip on mobile */}
@@ -226,10 +252,10 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         ...(isMobile && { padding: '60px 24px 80px' }),
       }}>
         <motion.div {...fadeInUp} style={{ textAlign: 'center' }}>
-          <h2 style={styles.ctaTitle}>Stop thinking in a straight line</h2>
+          <h2 style={styles.ctaTitle}>Your conversations deserve more than a scroll bar</h2>
           <p style={styles.ctaSubtext}>
-            Start a conversation, branch the moment your thinking forks, and merge the best
-            threads when you&apos;re ready. Your API key, your data, your canvas.
+            Try the demo first — no setup, no account, nothing to install.
+            Everything runs right here in your browser.
           </p>
           <motion.button
             onClick={onEnter}
@@ -246,7 +272,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
               e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
             }}
           >
-            Open your canvas
+            Try the interactive demo
             <ArrowRight size={18} style={{ marginLeft: 8 }} />
           </motion.button>
         </motion.div>
@@ -258,7 +284,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           <NewsletterSignup />
         </div>
         <span style={styles.footerText}>
-          ProjectLoom — BYOK, open canvas, your data stays local.
+          ProjectLoom — Your data stays in your browser. Always.
         </span>
       </footer>
     </div>
@@ -367,11 +393,18 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 0,
   },
 
+  heroCTARow: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '12px',
+    marginTop: 32,
+    alignItems: 'center',
+  },
+
   heroCTA: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '4px',
-    marginTop: 32,
     fontSize: typography.sizes.base,
     fontWeight: typography.weights.semibold,
     fontFamily: typography.fonts.body,
@@ -383,6 +416,22 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'background-color 150ms ease',
     boxShadow: `0 4px 20px var(--accent-muted)`,
+  },
+
+  heroSecondaryCTA: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.medium,
+    fontFamily: typography.fonts.body,
+    color: colors.fg.primary,
+    backgroundColor: 'transparent',
+    border: `1px solid var(--border-default)`,
+    borderRadius: '10px',
+    padding: '13px 24px',
+    cursor: 'pointer',
+    transition: 'border-color 150ms ease, color 150ms ease',
   },
 
   /* ── Features ── */
@@ -451,7 +500,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: colors.fg.secondary,
     lineHeight: 1.6,
     marginTop: 16,
-    marginBottom: 0,
+    marginBottom: 32,
   },
 
   /* ── Footer ── */

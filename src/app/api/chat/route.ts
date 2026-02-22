@@ -11,9 +11,10 @@
 
 export const runtime = 'edge';
 
-import { streamText } from 'ai';
+import { streamText, createUIMessageStream, createUIMessageStreamResponse, generateId } from 'ai';
 import { createModel, getWebSearchTools, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
+import { getMockResponse, getOnboardingResponse, chunkResponse } from '@/lib/mock-responses';
 
 // =============================================================================
 // TYPES
@@ -43,6 +44,10 @@ interface ChatRequestBody {
     name: string;
     url: string; // base64 data URL
   }>;
+  /** When true, allows mock responses without an API key (onboarding mode) */
+  onboarding?: boolean;
+  /** Onboarding step ID for step-keyed scripted responses */
+  onboardingStep?: string;
 }
 
 interface APIError {
@@ -170,7 +175,7 @@ export async function POST(req: Request): Promise<Response> {
   console.log(`[chat/route] ▶ START [${reqId}] ${new Date().toISOString()}`);
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, anthropicKey, openaiKey, attachments, canvasContext } = body;
+    const { messages, model, anthropicKey, openaiKey, attachments, canvasContext, onboarding } = body;
     
     const keys = { anthropic: anthropicKey, openai: openaiKey };
     const lastUserMsg = [...(messages ?? [])].reverse().find(m => m.role === 'user');
@@ -212,6 +217,39 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     if (!anthropicKey && !openaiKey) {
+      // ── Onboarding mock response ──
+      // When no API key is set and the client signals onboarding mode,
+      // return a canned streaming response so the user can experience
+      // the full interaction loop without paying for API calls.
+      if (onboarding) {
+        const stepId = body.onboardingStep;
+        console.log(`[chat/route] [${reqId}] 🎓 Onboarding mode — step: ${stepId ?? 'none'}`);
+        // Use step-keyed scripted response if available, else fall back to intent detection
+        const scriptedResponse = stepId ? getOnboardingResponse(stepId) : null;
+        const userText = lastUserPreview ?? '';
+        const mockText = scriptedResponse ?? getMockResponse(userText);
+        const chunks = chunkResponse(mockText);
+
+        const stream = createUIMessageStream({
+          execute: async ({ writer }) => {
+            const partId = generateId();
+            writer.write({ type: 'text-start', id: partId });
+            for (const chunk of chunks) {
+              writer.write({ type: 'text-delta', delta: chunk, id: partId });
+              // Simulate ~30 wpm typing speed
+              await new Promise((r) => setTimeout(r, 15 + Math.random() * 25));
+            }
+            writer.write({ type: 'text-end', id: partId });
+            writer.write({
+              type: 'finish',
+              finishReason: 'stop',
+            });
+          },
+        });
+
+        return createUIMessageStreamResponse({ stream });
+      }
+
       return createErrorResponse(
         'At least one API key is required. Configure Anthropic or OpenAI key in Settings.',
         'MISSING_API_KEY',

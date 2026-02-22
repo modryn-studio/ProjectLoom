@@ -4,15 +4,17 @@ import React, { memo, useMemo, useState, useCallback, useRef } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { motion } from 'framer-motion';
 
-import { colors, typography, spacing, effects, card } from '@/lib/design-tokens';
+import { colors, typography, spacing, effects, card, animation } from '@/lib/design-tokens';
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
 import { useCanvasStore, selectIsAnyNodeDragging, selectActiveConversationId } from '@/stores/canvas-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePreferencesStore, selectUIPreferences, getResolvedTheme, selectTheme } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
 import { InlineBranchPanel } from './InlineBranchPanel';
 import type { ConversationNodeData, Message } from '@/types';
 import { GitBranch, Zap } from 'lucide-react';
+import { canBranchFromCard, canDeleteConversations } from '@/lib/onboarding-guards';
 
 // =============================================================================
 // TYPES
@@ -99,6 +101,9 @@ function ConversationCardComponent({
   const isComplexMerge = mergeSourceCount >= 3; // WARNING_THRESHOLD
   const isAtMaxMerge = mergeSourceCount >= 5; // MAX_PARENTS
 
+  // Root cards (no parents) don't need a left handle — nothing connects into them
+  const isRootCard = conversation.parentCardIds.length === 0 && !isMergeNode;
+
   // Context menu state
   const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu, dynamicItems } = useContextMenu();
 
@@ -153,6 +158,9 @@ function ConversationCardComponent({
   // Context menu items (excluding branch - it opens dialog directly, no expand since cards are fixed)
   const menuItems = useMemo(() => getConversationMenuItems(conversation.id, {
     onDelete: () => {
+      const onboardingState = useOnboardingStore.getState();
+      if (!canDeleteConversations(onboardingState)) return;
+
       // Check if confirmation is required
       if (uiPrefs.confirmOnDelete) {
         requestDeleteConversation([conversation.id]);
@@ -172,6 +180,12 @@ function ConversationCardComponent({
     
     // Handle branch action based on preferences
     const handleBranchAction = () => {
+      const onboardingState = useOnboardingStore.getState();
+      if (!canBranchFromCard(onboardingState, conversation.id)) {
+        closeMenu();
+        return;
+      }
+
       closeMenu();
 
       const messageCount = Array.isArray(messages) ? messages.length : 0;
@@ -212,11 +226,13 @@ function ConversationCardComponent({
   return (
     <>
       {/* Connection handles */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        style={handleStyle}
-      />
+      {!isRootCard && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          style={handleStyle}
+        />
+      )}
       <Handle
         type="source"
         position={Position.Right}
@@ -226,10 +242,10 @@ function ConversationCardComponent({
       {/* Card container - fixed size, no expansion */}
       <motion.div
         ref={cardRef}
-        initial={false}
+        initial={isBranchedCard ? { scale: 0.5, opacity: 0 } : false}
         animate={{
           scale: dragging ? 1.02 : 1,
-          // Fixed size - no expansion in cards (chat panel handles conversation)
+          opacity: 1,
           width: card.size.minWidth,
           minHeight: card.size.collapsedHeight,
           maxHeight: card.size.collapsedHeight,
@@ -246,7 +262,8 @@ function ConversationCardComponent({
           }
         }
         transition={{
-          scale: { duration: 0.2, ease: 'easeOut' },
+          scale: isBranchedCard ? animation.spring.bouncy : { duration: 0.2, ease: 'easeOut' },
+          opacity: isBranchedCard ? { duration: 0.2 } : undefined,
           boxShadow: { duration: 0.2, ease: 'easeInOut' },
         }}
         style={{

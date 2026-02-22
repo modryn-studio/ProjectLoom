@@ -71,7 +71,7 @@ const DEFAULT_BRANCHING_PREFERENCES: BranchingPreferences = {
 const DEFAULT_UI_PREFERENCES: UserPreferences['ui'] = {
   confirmOnDelete: true,
   chatPanelWidth: 480, // Default 30% of 1600px viewport
-  sidebarOpen: true, // Left sidebar expanded by default
+  sidebarOpen: false, // Left sidebar hidden by default — users can open it
   theme: 'system', // Follow system preference by default
   hasSeenCanvasTip: false,
 };

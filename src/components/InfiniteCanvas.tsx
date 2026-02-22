@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useMemo, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ReactFlow,
   Background,
@@ -21,13 +22,14 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 
-import { colors, canvas as canvasConfig, animation, spacing, typography, effects } from '@/lib/design-tokens';
+import { colors, canvas as canvasConfig, spacing, typography, effects } from '@/lib/design-tokens';
 import { logger } from '@/lib/logger';
 import type { ConversationNodeData } from '@/types';
 import { ConversationCard } from './ConversationCard';
 import { CustomConnectionLine } from './CustomConnectionLine';
 import DevPerformanceOverlay from './DevPerformanceOverlay';
 import { CanvasSearch } from './CanvasSearch';
+import { MultiSelectFloatingBar } from './MultiSelectFloatingBar';
 import { useSearchStore } from '@/stores/search-store';
 import { treeLayout } from '@/lib/layout-utils';
 import { useToastStore } from '@/stores/toast-store';
@@ -44,9 +46,16 @@ import { UsageSidebar } from './UsageSidebar';
 import { WorkspaceNameModal } from './WorkspaceNameModal';
 import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useCanvasStore, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
+import { useCanvasStore, selectActiveConversationId, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { Plus } from 'lucide-react';
+import {
+  canBranchFromCard,
+  canCreateConversation,
+  canDeleteConversations,
+  canMutateWorkspaces,
+} from '@/lib/onboarding-guards';
 
 // =============================================================================
 // NODE TYPES
@@ -137,6 +146,16 @@ const pointerEventsAutoStyle: React.CSSProperties = {
   pointerEvents: 'auto',
 };
 
+const emptyCanvasHintStyles: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  pointerEvents: 'none',
+  zIndex: 5,
+};
+
 const emptyStateStyles: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
@@ -173,7 +192,6 @@ interface InfiniteCanvasProps {
 export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const reactFlowInstance = useRef<ReactFlowInstance<Node<ConversationNodeData>, Edge> | null>(null);
   const suppressNextPaneClickRef = useRef(false);
-  const hasFitInitialView = useRef(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
@@ -255,8 +273,10 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
   // Chat panel state
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
+  const activeConversationId = useCanvasStore(selectActiveConversationId);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const closeChatPanel = useCanvasStore((s) => s.closeChatPanel);
+  const onboardingActive = useOnboardingStore((s) => s.active);
 
   // Usage panel state
   const usagePanelOpen = useCanvasStore(selectUsagePanelOpen);
@@ -268,6 +288,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const currentWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
 
   const requestDeleteWorkspace = useCallback((workspaceId: string) => {
+    const onboardingState = useOnboardingStore.getState();
+    if (!canMutateWorkspaces(onboardingState)) return;
+
     const workspace = workspaces.find((w) => w.id === workspaceId);
     const label = workspace?.metadata.title || 'Canvas';
     setDeleteWorkspaceModal({ id: workspaceId, label, step: 'warn', confirmText: '' });
@@ -294,6 +317,12 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   }, [conversations, pendingDeleteConversationIds]);
 
   const confirmDeleteConversation = useCallback(() => {
+    const onboardingState = useOnboardingStore.getState();
+    if (!canDeleteConversations(onboardingState)) {
+      clearDeleteConversationRequest();
+      return;
+    }
+
     if (pendingDeleteConversationIds.length === 0) return;
     pendingDeleteConversationIds.forEach((id) => deleteConversation(id));
     clearDeleteConversationRequest();
@@ -424,54 +453,79 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
     };
   }, []);
 
-  // Force fitView once when nodes are initially loaded
-  useEffect(() => {
-    if (!hasFitInitialView.current && nodes.length > 0 && reactFlowInstance.current) {
-      hasFitInitialView.current = true;
-      setTimeout(() => {
-        reactFlowInstance.current?.fitView(
-          getFitViewOptions({ duration: 800 })
-        );
-      }, 300);
-    }
-  }, [nodes.length, getFitViewOptions]);
+  const centerNodeWithoutZoom = useCallback((nodeId: string, duration = 600) => {
+    if (!reactFlowInstance.current) return;
 
-  // Fit view when switching between workspaces
+    const node = reactFlowInstance.current.getNode(nodeId);
+    if (!node) return;
+
+    const nodeWidth = node.measured?.width ?? node.width ?? 280;
+    const nodeHeight = node.measured?.height ?? node.height ?? 160;
+    const centerX = node.position.x + nodeWidth / 2;
+    const centerY = node.position.y + nodeHeight / 2;
+    const currentZoom = reactFlowInstance.current.getViewport().zoom;
+
+    reactFlowInstance.current.setCenter(centerX, centerY, {
+      zoom: currentZoom,
+      duration,
+    });
+  }, []);
+
+  // Fit view when persisted nodes are loaded or when switching workspaces.
+  // Skipped when the user just created a card (userCreatedCard flag).
   const prevWorkspaceId = useRef<string | null>(null);
+  const userCreatedCard = useRef(false);
   useEffect(() => {
-    if (prevWorkspaceId.current !== null && prevWorkspaceId.current !== activeWorkspaceId) {
-      // Reset so the new workspace can re-trigger the initial fit if needed
-      hasFitInitialView.current = false;
-      setTimeout(() => {
-        reactFlowInstance.current?.fitView(
-          getFitViewOptions({ duration: 600 })
-        );
-        hasFitInitialView.current = true;
-      }, 100);
-    }
+    const isInitialMount = prevWorkspaceId.current === null;
+    const isWorkspaceSwitch = !isInitialMount && prevWorkspaceId.current !== activeWorkspaceId;
     prevWorkspaceId.current = activeWorkspaceId;
-  }, [activeWorkspaceId, getFitViewOptions]);
+
+    if (!reactFlowInstance.current || nodes.length === 0) return;
+
+    // User just created a card — don't fitView, let it appear at defaultViewport zoom
+    if (userCreatedCard.current) {
+      userCreatedCard.current = false;
+      return;
+    }
+
+    if (isInitialMount || isWorkspaceSwitch) {
+      const timer = setTimeout(() => {
+        const currentZoom = reactFlowInstance.current?.getViewport().zoom ?? canvasConfig.viewport.defaultZoom;
+        reactFlowInstance.current?.fitView(
+          getFitViewOptions({
+            duration: isWorkspaceSwitch ? 600 : 800,
+            minZoom: currentZoom,
+            maxZoom: currentZoom,
+          })
+        );
+      }, isWorkspaceSwitch ? 100 : 300);
+      return () => clearTimeout(timer);
+    }
+  }, [nodes.length, activeWorkspaceId, getFitViewOptions]);
 
   // Adjust canvas view when chat panel is opened/closed
   // This ensures the active card stays in view when the viewport changes
   useEffect(() => {
     if (!reactFlowInstance.current) return;
-    
-    const currentSelectedIds = useCanvasStore.getState().selectedNodeIds;
-    if (currentSelectedIds.size !== 1) return;
-    
+
+    let targetId = activeConversationId;
+    if (!targetId) {
+      const currentSelectedIds = useCanvasStore.getState().selectedNodeIds;
+      if (currentSelectedIds.size === 1) {
+        targetId = Array.from(currentSelectedIds)[0];
+      }
+    }
+    if (!targetId) return;
+
     // Small delay to allow panel animation to complete
     const timer = setTimeout(() => {
       if (reactFlowInstance.current) {
-        const selectedId = Array.from(currentSelectedIds)[0];
-        reactFlowInstance.current.fitView(
-          getFitViewOptions({ duration: 600, nodes: [{ id: selectedId }] })
-        );
+        centerNodeWithoutZoom(targetId, 600);
       }
     }, 350); // Match panel animation duration
-    
+
     return () => clearTimeout(timer);
-  }, [chatPanelOpen, getFitViewOptions]);
+  }, [chatPanelOpen, activeConversationId, centerNodeWithoutZoom]);
 
   // Persist sidebar state to preferences when toggled
   const handleSidebarToggle = useCallback((open: boolean) => {
@@ -481,6 +535,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
   // Adjust canvas view when sidebar is toggled
   useEffect(() => {
+    if (onboardingActive) return;
     if (!reactFlowInstance.current) return;
     
     const currentSelectedIds = useCanvasStore.getState().selectedNodeIds;
@@ -490,14 +545,12 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
     const timer = setTimeout(() => {
       if (reactFlowInstance.current) {
         const selectedId = Array.from(currentSelectedIds)[0];
-        reactFlowInstance.current.fitView(
-          getFitViewOptions({ duration: 600, nodes: [{ id: selectedId }] })
-        );
+        centerNodeWithoutZoom(selectedId, 600);
       }
     }, 350);
-    
+
     return () => clearTimeout(timer);
-  }, [isSidebarOpen, getFitViewOptions]);
+  }, [isSidebarOpen, centerNodeWithoutZoom, onboardingActive]);
 
   // Handle node changes (position updates)
   const handleNodesChange: OnNodesChange<Node<ConversationNodeData>> = useCallback(
@@ -518,6 +571,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   // Handle new connections (v4: supports merge creation)
   const handleConnect: OnConnect = useCallback(
     (connection: Connection) => {
+      const onboardingState = useOnboardingStore.getState();
+      if (onboardingState.active) return;
+
       if (!connection.source || !connection.target) return;
 
       // Read conversations from store state directly to avoid subscribing to the entire Map
@@ -631,6 +687,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
         if (targetIsPane) {
           // Compute drop position from pointer coordinates
           const sourceNodeId = connectionState.fromNode.id;
+          const onboardingState = useOnboardingStore.getState();
+          if (!canBranchFromCard(onboardingState, sourceNodeId)) return;
+
           const sourceConversation = conversations.get(sourceNodeId);
           const messageCount = Array.isArray(sourceConversation?.content)
             ? sourceConversation.content.length
@@ -659,13 +718,12 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
           if (newConversation) {
             suppressNextPaneClickRef.current = true;
-            openChatPanel(newConversation.id);
             requestFocusNode(newConversation.id);
           }
         }
       }
     },
-    [branchFromMessage, conversations, getClientPoint, openChatPanel, requestFocusNode]
+    [branchFromMessage, conversations, getClientPoint, requestFocusNode]
   );
 
   // Handle creating a new conversation
@@ -673,28 +731,50 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
     explicitPosition?: { x: number; y: number },
     options?: { workspaceId?: string; openChat?: boolean }
   ) => {
+    const onboardingState = useOnboardingStore.getState();
+    if (!canCreateConversation(onboardingState)) return;
+
     const workspaceId = options?.workspaceId ?? activeWorkspaceId;
     if (!workspaceId) return;
 
     let position = explicitPosition || canvasClickPosition;
 
-    // If no click position (keyboard shortcut), use center of viewport
+    // If no click position (keyboard shortcut), use center-left of visible canvas area
+    // so there's room to branch rightward from the first card
     if (!position && reactFlowInstance.current) {
       const viewport = reactFlowInstance.current.getViewport();
-      const centerX = -viewport.x / viewport.zoom + (window.innerWidth / 2) / viewport.zoom;
-      const centerY = -viewport.y / viewport.zoom + (window.innerHeight / 2) / viewport.zoom;
+      const containerWidth = canvasContainerRef.current?.clientWidth ?? window.innerWidth;
+      const containerHeight = canvasContainerRef.current?.clientHeight ?? window.innerHeight;
+      const centerX = -viewport.x / viewport.zoom + (containerWidth * 0.35) / viewport.zoom;
+      const centerY = -viewport.y / viewport.zoom + (containerHeight / 2) / viewport.zoom;
       position = { x: centerX, y: centerY };
     }
 
     const finalPosition = position || { x: 0, y: 0 };
 
-    createConversationCard(workspaceId, finalPosition, {
-      openChat: options?.openChat ?? true,
+    // Signal to the fitView effect that this node change is user-initiated
+    userCreatedCard.current = true;
+
+    // During onboarding idle step, auto-open chat and start the scripted flow
+    const onb = onboardingState;
+    const shouldOpenChat = (onb.active && onb.step === 'idle') || (options?.openChat ?? false);
+
+    const newCard = createConversationCard(workspaceId, finalPosition, {
+      openChat: shouldOpenChat,
     });
+
+    // Kick off onboarding auto-chat after first card creation
+    if (onb.active && onb.step === 'idle' && newCard) {
+      onb.setRootCardId(newCard.id);
+      onb.nextStep(); // idle → auto-chat-0
+    }
+
     setCanvasClickPosition(null);
   }, [canvasClickPosition, activeWorkspaceId, createConversationCard]);
 
   const openWorkspaceNameModal = useCallback((suggestedName: string) => {
+    const onboardingState = useOnboardingStore.getState();
+    if (!canMutateWorkspaces(onboardingState)) return;
     setWorkspaceNameModal({ suggestedName });
   }, []);
 
@@ -705,14 +785,13 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const confirmWorkspaceName = useCallback((name: string) => {
     const workspace = createWorkspace(name);
     navigateToWorkspace(workspace.id);
-    handleAddConversation(undefined, {
-      workspaceId: workspace.id,
-      openChat: true,
-    });
     setWorkspaceNameModal(null);
-  }, [createWorkspace, navigateToWorkspace, handleAddConversation]);
+  }, [createWorkspace, navigateToWorkspace]);
 
   const handleCreateWorkspace = useCallback(() => {
+    const onboardingState = useOnboardingStore.getState();
+    if (!canMutateWorkspaces(onboardingState)) return;
+
     const suggestedName = workspaces.length === 0
       ? 'My First Workspace'
       : `New Workspace ${workspaces.length + 1}`;
@@ -740,12 +819,17 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       }
 
       // Open context menu with canvas options
+      const onboardingState = useOnboardingStore.getState();
+      const canAddConversation = canCreateConversation(onboardingState);
+
       const menuItems: ContextMenuItem[] = [
         {
           id: 'add-conversation',
           label: 'Add Conversation',
           shortcut: 'N',
+          disabled: !canAddConversation,
           onClick: () => {
+            if (!canAddConversation) return;
             if (clickPosition) {
               handleAddConversation(clickPosition);
             }
@@ -769,14 +853,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const handleInit = useCallback((instance: ReactFlowInstance<Node<ConversationNodeData>, Edge>) => {
     reactFlowInstance.current = instance;
     setRfReady(true);
-
-    // Fit view on mount with padding and animation
-    setTimeout(() => {
-      instance.fitView(
-        getFitViewOptions({ duration: animation.duration.slow })
-      );
-    }, 100);
-  }, [getFitViewOptions]);
+  }, []);
 
   // Handle node drag start
   const handleNodeDragStart = useCallback(() => {
@@ -815,6 +892,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
     enabled: !isModalOpen,
     handlers: {
       onDelete: () => {
+        const onboardingState = useOnboardingStore.getState();
+        if (!canDeleteConversations(onboardingState)) return;
+
         const selectedIds = Array.from(selectedNodeIds);
         if (selectedIds.length === 0) {
           if (!activeWorkspaceId) return;
@@ -864,6 +944,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       onBranch: () => {
         // Ctrl+B: Branch from first selected card
         if (firstSelectedId) {
+          const onboardingState = useOnboardingStore.getState();
+          if (!canBranchFromCard(onboardingState, firstSelectedId)) return;
+
           const sourceConversation = conversations.get(firstSelectedId);
           const messageCount = Array.isArray(sourceConversation?.content)
             ? sourceConversation.content.length
@@ -879,7 +962,6 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
             branchReason: 'Branch from keyboard',
           });
           if (newConversation) {
-            openChatPanel(newConversation.id);
             requestFocusNode(newConversation.id);
           }
         }
@@ -902,7 +984,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       },
       onResetZoom: () => {
         reactFlowInstance.current?.setViewport(
-          { x: 0, y: 0, zoom: 1 },
+          { x: 0, y: 0, zoom: canvasConfig.viewport.defaultZoom },
           { duration: 400 }
         );
       },
@@ -951,14 +1033,10 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const openFeedback = useCallback(() => setFeedbackModalOpen(true), []);
   const closeFeedback = useCallback(() => setFeedbackModalOpen(false), []);
 
-  // Focus on a specific node with smooth animation
+  // Focus on a specific node with smooth animation.
   const focusOnNode = useCallback((nodeId: string) => {
-    if (reactFlowInstance.current) {
-      reactFlowInstance.current.fitView(
-        getFitViewOptions({ duration: 800, nodes: [{ id: nodeId }] })
-      );
-    }
-  }, [getFitViewOptions]);
+    centerNodeWithoutZoom(nodeId, 800);
+  }, [centerNodeWithoutZoom]);
 
   useEffect(() => {
     if (focusNodeId) {
@@ -977,6 +1055,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
           onOpenFeedback={openFeedback}
           onRequestDeleteWorkspace={requestDeleteWorkspace}
           onRequestCreateWorkspace={openWorkspaceNameModal}
+          mutationsDisabled={onboardingActive}
           isOpen={isSidebarOpen}
           onToggle={handleSidebarToggle}
           onFocusNode={focusOnNode}
@@ -1011,6 +1090,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
               </p>
               <button
                 onClick={handleCreateWorkspace}
+                disabled={onboardingActive}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1022,7 +1102,8 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
                   color: colors.accent.contrast,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
-                  cursor: 'pointer',
+                  cursor: onboardingActive ? 'not-allowed' : 'pointer',
+                  opacity: onboardingActive ? 0.5 : 1,
                 }}
               >
                 <Plus size={16} />
@@ -1048,6 +1129,44 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
             </div>
 
             <div ref={canvasContainerRef} style={canvasStyles}>
+              {/* Empty canvas hint — fades out once the first card is created */}
+              <AnimatePresence>
+                {nodes.length === 0 && rfReady && (
+                  <motion.div
+                    style={emptyCanvasHintStyles}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <div style={{
+                      textAlign: 'center',
+                      userSelect: 'none',
+                    }} data-onboarding="empty-canvas-hint">
+                      <p style={{
+                        margin: 0,
+                        fontSize: typography.sizes.sm,
+                        fontFamily: typography.fonts.body,
+                        color: colors.fg.tertiary,
+                        letterSpacing: '0.01em',
+                      }}>
+                        Right-click or press{' '}
+                        <kbd style={{
+                          fontFamily: typography.fonts.code,
+                          fontSize: typography.sizes.xs,
+                          color: colors.fg.secondary,
+                          background: colors.bg.tertiary,
+                          border: `1px solid ${colors.border.default}`,
+                          borderRadius: effects.border.radius.sm,
+                          padding: '1px 5px',
+                        }}>N</kbd>
+                        {' '}to start a conversation
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <ReactFlow<Node<ConversationNodeData>, Edge>
                 nodes={nodes}
                 edges={edges}
@@ -1119,6 +1238,9 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
                 {/* Canvas Search */}
                 <CanvasSearch />
+
+                {/* Multi-select floating merge bar */}
+                <MultiSelectFloatingBar />
               </ReactFlow>
 
               {/* Dev performance overlay */}

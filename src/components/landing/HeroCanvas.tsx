@@ -10,8 +10,8 @@ import { LandingCard, type LandingCardData } from './LandingCard';
 
 const CANVAS_W = 960;
 const CANVAS_H = 480;
-const CARD_W = 280; // card.size.minWidth
-const CARD_H = 160; // card.size.collapsedHeight
+const CARD_W = 280; // Landing page card width (independent of canvas card size)
+const CARD_H = 160; // Landing page card height
 
 const CARD_XY = [
   { x: 10,  y: 160 }, // 0: root

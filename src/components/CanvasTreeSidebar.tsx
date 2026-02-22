@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 import { useCanvasStore } from '@/stores/canvas-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useCanvasTreeStore, buildWorkspaceTree, type ConversationTreeNode } from '@/stores/canvas-tree-store';
 import { colors, spacing, effects, typography, layout, components } from '@/lib/design-tokens';
 import { enforceTitleWordLimit } from '@/utils/formatters';
@@ -70,6 +71,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
   const deleteConversation = useCanvasStore(state => state.deleteConversation);
   const requestDeleteConversation = useCanvasStore(state => state.requestDeleteConversation);
   const uiPrefs = usePreferencesStore(selectUIPreferences);
+  const onboardingActive = useOnboardingStore((s) => s.active);
   const setTree = useCanvasTreeStore((state) => state.setTree);
   const rootNodes = useCanvasTreeStore(
     (state) => state.treeCache[workspaceId]?.rootNodes ?? EMPTY_ROOT_NODES
@@ -130,10 +132,11 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
   }, [renamingId]);
 
   const handleStartRename = useCallback((conversation: Conversation, e?: React.MouseEvent) => {
+    if (onboardingActive) return;
     e?.stopPropagation();
     setRenamingId(conversation.id);
     setRenamingValue(conversation.metadata.title);
-  }, []);
+  }, [onboardingActive]);
 
   const handleFinishRename = useCallback((conversation: Conversation) => {
     const trimmed = renamingValue.trim();
@@ -393,12 +396,17 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
           >
             <button
               onClick={() => {
+                if (onboardingActive) {
+                  setShowConversationMenu(false);
+                  return;
+                }
                 const conv = useCanvasStore.getState().conversations.get(conversationMenuId);
                 if (conv) {
                   handleStartRename(conv);
                 }
                 setShowConversationMenu(false);
               }}
+              disabled={onboardingActive}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -411,7 +419,8 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
                 color: colors.fg.primary,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
-                cursor: 'pointer',
+                cursor: onboardingActive ? 'not-allowed' : 'pointer',
+                opacity: onboardingActive ? 0.5 : 1,
                 textAlign: 'left',
                 transition: 'background-color 0.15s ease',
               }}
@@ -423,6 +432,11 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
             </button>
             <button
               onClick={() => {
+                if (onboardingActive) {
+                  setShowConversationMenu(false);
+                  return;
+                }
+
                 if (uiPrefs.confirmOnDelete) {
                   requestDeleteConversation([conversationMenuId]);
                 } else {
@@ -430,6 +444,7 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
                 }
                 setShowConversationMenu(false);
               }}
+              disabled={onboardingActive}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -442,7 +457,8 @@ function ConversationTree({ workspaceId, isExpanded, onFocusNode }: Conversation
                 color: colors.semantic.error,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
-                cursor: 'pointer',
+                cursor: onboardingActive ? 'not-allowed' : 'pointer',
+                opacity: onboardingActive ? 0.5 : 1,
                 textAlign: 'left',
                 transition: 'background-color 0.15s ease',
               }}
@@ -488,6 +504,7 @@ interface WorkspaceItemProps {
   workspace: Workspace;
   isActive: boolean;
   canDelete: boolean;
+  canRename?: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, newName: string) => void;
@@ -501,6 +518,7 @@ function WorkspaceItem({
   workspace, 
   isActive, 
   canDelete,
+  canRename = true,
   onSelect,
   onDelete,
   onRename,
@@ -548,20 +566,21 @@ function WorkspaceItem({
   }, [isRenaming]);
 
   const handleStartRename = useCallback(() => {
+    if (!canRename) return;
     setRenamingValue(workspace.metadata.title);
     setIsRenaming(true);
     setShowContextMenu(false);
-  }, [workspace.metadata.title]);
+  }, [workspace.metadata.title, canRename]);
 
   // Trigger rename from F2 key
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
-    if (triggerRename && isActive) {
+    if (triggerRename && isActive && canRename) {
       handleStartRename();
       onRenameStart?.();
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [triggerRename, isActive, handleStartRename, onRenameStart]);
+  }, [triggerRename, isActive, canRename, handleStartRename, onRenameStart]);
 
   const handleFinishRename = () => {
     const trimmed = renamingValue.trim();
@@ -578,6 +597,7 @@ function WorkspaceItem({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canRename) return;
     handleStartRename();
   };
 
@@ -743,6 +763,7 @@ function WorkspaceItem({
           >
             <button
               onClick={handleStartRename}
+              disabled={!canRename}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -755,7 +776,8 @@ function WorkspaceItem({
                 color: colors.fg.primary,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
-                cursor: 'pointer',
+                cursor: canRename ? 'pointer' : 'not-allowed',
+                opacity: canRename ? 1 : 0.5,
                 textAlign: 'left',
                 transition: 'background-color 0.15s ease',
               }}
@@ -834,6 +856,7 @@ interface CanvasTreeSidebarProps {
   isOpen: boolean;
   onToggle: (open: boolean) => void;
   onFocusNode?: (nodeId: string) => void;
+  mutationsDisabled?: boolean;
   /** When true, renders full-width without activity bar or resize handle */
   isMobile?: boolean;
 }
@@ -847,6 +870,7 @@ export function CanvasTreeSidebar({
   isOpen: externalIsOpen,
   onToggle,
   onFocusNode,
+  mutationsDisabled = false,
   isMobile = false,
 }: CanvasTreeSidebarProps) {
   const [sidebarWidth, setSidebarWidth] = useState(MIN_SIDEBAR_WIDTH);
@@ -899,12 +923,14 @@ export function CanvasTreeSidebar({
   }, [navigateToWorkspace]);
 
   const handleDelete = useCallback((id: string) => {
+    if (mutationsDisabled) return;
     onRequestDeleteWorkspace(id);
-  }, [onRequestDeleteWorkspace]);
+  }, [onRequestDeleteWorkspace, mutationsDisabled]);
 
   const handleCreateWorkspace = useCallback((title: string) => {
+    if (mutationsDisabled) return;
     onRequestCreateWorkspace(title);
-  }, [onRequestCreateWorkspace]);
+  }, [onRequestCreateWorkspace, mutationsDisabled]);
 
 
   const handleRename = useCallback((workspaceId: string, newName: string) => {
@@ -988,11 +1014,13 @@ export function CanvasTreeSidebar({
             onClick={() => {
               handleCreateWorkspace(`New Workspace ${workspaces.length + 1}`);
             }}
+            disabled={mutationsDisabled}
             style={{
               background: 'none',
               border: 'none',
               padding: spacing[1],
-              cursor: 'pointer',
+              cursor: mutationsDisabled ? 'not-allowed' : 'pointer',
+              opacity: mutationsDisabled ? 0.5 : 1,
               borderRadius: effects.border.radius.default,
               color: colors.accent.contrast,
               backgroundColor: colors.accent.primary,
@@ -1021,6 +1049,7 @@ export function CanvasTreeSidebar({
                 onClick={() => {
                   handleCreateWorkspace('My First Workspace');
                 }}
+                disabled={mutationsDisabled}
                 style={{
                   marginTop: spacing[2],
                   padding: `${spacing[2]} ${spacing[3]}`,
@@ -1030,7 +1059,8 @@ export function CanvasTreeSidebar({
                   color: colors.accent.contrast,
                   fontSize: typography.sizes.sm,
                   fontFamily: typography.fonts.body,
-                  cursor: 'pointer',
+                  cursor: mutationsDisabled ? 'not-allowed' : 'pointer',
+                  opacity: mutationsDisabled ? 0.5 : 1,
                 }}
               >
                 Create Workspace
@@ -1042,7 +1072,8 @@ export function CanvasTreeSidebar({
                 key={workspace.id}
                 workspace={workspace}
                 isActive={workspace.id === activeWorkspaceId}
-                canDelete={workspaces.length > 0}
+                canDelete={!mutationsDisabled && workspaces.length > 0}
+                canRename={!mutationsDisabled}
                 onSelect={handleSelect}
                 onDelete={handleDelete}
                 onRename={handleRename}
@@ -1265,11 +1296,13 @@ export function CanvasTreeSidebar({
           onClick={() => {
             handleCreateWorkspace(`New Workspace ${workspaces.length + 1}`);
           }}
+          disabled={mutationsDisabled}
           style={{
             background: 'none',
             border: 'none',
             padding: spacing[1],
-            cursor: 'pointer',
+            cursor: mutationsDisabled ? 'not-allowed' : 'pointer',
+            opacity: mutationsDisabled ? 0.5 : 1,
             borderRadius: effects.border.radius.default,
             color: colors.accent.contrast,
             backgroundColor: colors.accent.primary,
@@ -1298,6 +1331,7 @@ export function CanvasTreeSidebar({
               onClick={() => {
                 handleCreateWorkspace('My First Workspace');
               }}
+              disabled={mutationsDisabled}
               style={{
                 marginTop: spacing[2],
                 padding: `${spacing[2]} ${spacing[3]}`,
@@ -1307,7 +1341,8 @@ export function CanvasTreeSidebar({
                 color: colors.accent.contrast,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fonts.body,
-                cursor: 'pointer',
+                cursor: mutationsDisabled ? 'not-allowed' : 'pointer',
+                opacity: mutationsDisabled ? 0.5 : 1,
               }}
             >
               Create Workspace
@@ -1319,7 +1354,8 @@ export function CanvasTreeSidebar({
               key={workspace.id}
               workspace={workspace}
               isActive={workspace.id === activeWorkspaceId}
-              canDelete={workspaces.length > 0}
+              canDelete={!mutationsDisabled && workspaces.length > 0}
+              canRename={!mutationsDisabled}
               onSelect={handleSelect}
               onDelete={handleDelete}
               onRename={handleRename}

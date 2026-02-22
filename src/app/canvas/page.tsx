@@ -9,11 +9,17 @@ import { ToastContainer } from '@/components/ToastContainer';
 import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
 import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
 import { APIKeySetupModal } from '@/components/APIKeySetupModal';
+import { OnboardingGuide } from '@/components/OnboardingGuide';
+import { WorkspaceNameModal } from '@/components/WorkspaceNameModal';
 import { MobileLayout } from '@/components/MobileLayout';
 import { MobileTabContent } from '@/components/MobileTabContent';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { hasSeenOnboarding } from '@/stores/onboarding-store';
 import { colors } from '@/lib/design-tokens';
+import { launchOnboardingInDemoWorkspace } from '@/lib/onboarding-demo-workspace';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { clearKnowledgeBaseStorage } from '@/lib/knowledge-base-db';
+import { STORAGE_KEYS } from '@/lib/storage';
 
 // =============================================================================
 // CANVAS PAGE — /canvas
@@ -21,7 +27,6 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 export default function CanvasPage() {
   const [showAPIKeySetup, setShowAPIKeySetup] = useState(false);
-  const [showDemoBanner, setShowDemoBanner] = useState(false);
 
   // Expose store globally for debugging
   useEffect(() => {
@@ -30,12 +35,40 @@ export default function CanvasPage() {
     }
   }, []);
 
-  // Show demo banner on first-ever canvas visit (same condition as mock data load)
+  // Handle reset URL params (for testing)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const seen = localStorage.getItem('projectloom:demo-seen');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!seen) setShowDemoBanner(true);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('onboarding') === 'reset') {
+      const firstTime = params.get('firstTime') === '1';
+
+      if (firstTime) {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const key = localStorage.key(i);
+          if (key?.startsWith('projectloom:')) {
+            keysToRemove.push(key);
+          }
+        }
+        // Usage is stored under a non-colon key (`projectloom-usage`), so
+        // clear it explicitly for true first-time resets.
+        keysToRemove.push(STORAGE_KEYS.USAGE);
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+        void clearKnowledgeBaseStorage().catch(() => {
+          // Best-effort in dev reset flow
+        }).finally(() => {
+          location.href = window.location.pathname;
+        });
+        return;
+      }
+
+      localStorage.removeItem('projectloom:onboarding-seen');
+      localStorage.removeItem('projectloom:onboarding-v2');
+      localStorage.removeItem('projectloom:canvas-data');
+      localStorage.removeItem('projectloom:workspaces');
+      localStorage.removeItem(STORAGE_KEYS.USAGE);
+      location.href = window.location.pathname;
+    }
   }, []);
 
   // Listen for API key setup requests from deep in the component tree
@@ -44,11 +77,6 @@ export default function CanvasPage() {
     window.addEventListener('projectloom:requestAPIKeySetup', handler);
     return () => window.removeEventListener('projectloom:requestAPIKeySetup', handler);
   }, []);
-
-  const handleDismissBanner = () => {
-    setShowDemoBanner(false);
-    localStorage.setItem('projectloom:demo-seen', '1');
-  };
 
   return (
     <ErrorBoundary>
@@ -63,7 +91,6 @@ export default function CanvasPage() {
         onClose={() => setShowAPIKeySetup(false)}
         onSuccess={() => setShowAPIKeySetup(false)}
       />
-      {showDemoBanner && <DemoBanner onDismiss={handleDismissBanner} />}
     </ErrorBoundary>
   );
 }
@@ -80,12 +107,30 @@ function CanvasWrapper() {
   const initializeFromStorage = useCanvasStore((s) => s.initializeFromStorage);
   const isInitialized = useCanvasStore((s) => s.isInitialized);
   const isMobile = useIsMobile();
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
   useEffect(() => {
     if (!isInitialized) {
       initializeFromStorage();
     }
   }, [initializeFromStorage, isInitialized]);
+
+  // Start guided onboarding for first-time desktop users
+  useEffect(() => {
+    if (!isInitialized || isMobile) return;
+    if (!hasSeenOnboarding() && useCanvasStore.getState().conversations.size === 0) {
+      // Short delay so the canvas renders before the overlay appears
+      const t = setTimeout(() => launchOnboardingInDemoWorkspace(), 300);
+      return () => clearTimeout(t);
+    }
+  }, [isInitialized, isMobile]);
+
+  const handleNewProjectConfirm = (name: string) => {
+    const store = useCanvasStore.getState();
+    const ws = store.createWorkspace(name);
+    store.navigateToWorkspace(ws.id);
+    setShowNewProjectModal(false);
+  };
 
   if (!isInitialized) {
     return (
@@ -106,6 +151,13 @@ function CanvasWrapper() {
   return (
     <main style={styles.main}>
       <InfiniteCanvas />
+      <OnboardingGuide />
+      <WorkspaceNameModal
+        isOpen={showNewProjectModal}
+        suggestedName="My Project"
+        onConfirm={handleNewProjectConfirm}
+        onClose={() => setShowNewProjectModal(false)}
+      />
     </main>
   );
 }
@@ -120,31 +172,6 @@ function LoadingState() {
       <div style={styles.loadingContent}>
         <div style={styles.spinner} />
         <p style={styles.loadingText}>Loading ProjectLoom...</p>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// DEMO BANNER
-// =============================================================================
-
-function DemoBanner({ onDismiss }: { onDismiss: () => void }) {
-  return (
-    <div style={styles.demoBanner}>
-      <span style={styles.demoBannerText}>
-        This is a demo workspace. Explore how branching works, then add an API key to start your own conversation.
-      </span>
-      <div style={styles.demoBannerActions}>
-        <button
-          onClick={() => window.dispatchEvent(new Event('projectloom:requestAPIKeySetup'))}
-          style={styles.demoBannerCTA}
-        >
-          Add API key
-        </button>
-        <button onClick={onDismiss} style={styles.demoBannerDismiss} aria-label="Dismiss">
-          ×
-        </button>
       </div>
     </div>
   );
@@ -192,59 +219,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     color: colors.fg.secondary,
     margin: 0,
-  },
-
-  demoBanner: {
-    position: 'fixed',
-    bottom: 24,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    zIndex: 290,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.bg.secondary,
-    border: `1px solid ${colors.border.default}`,
-    borderRadius: 10,
-    padding: '10px 16px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-    maxWidth: 600,
-    width: 'calc(100vw - 48px)',
-  },
-
-  demoBannerText: {
-    fontSize: 13,
-    color: colors.fg.secondary,
-    flex: 1,
-    lineHeight: 1.4,
-  },
-
-  demoBannerActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
-  },
-
-  demoBannerCTA: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: colors.accent.primary,
-    background: 'none',
-    border: `1px solid ${colors.accent.primary}`,
-    borderRadius: 6,
-    padding: '4px 10px',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap' as const,
-  },
-
-  demoBannerDismiss: {
-    fontSize: 16,
-    lineHeight: 1,
-    color: colors.fg.tertiary,
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: '2px 4px',
   },
 };

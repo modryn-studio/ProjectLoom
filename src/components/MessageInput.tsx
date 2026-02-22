@@ -5,6 +5,7 @@ import { Send, Square, AlertCircle, Settings, Paperclip, X, FileText } from 'luc
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { ModelSelector } from './ModelSelector';
 import type { MessageAttachment } from '@/types';
 
@@ -120,7 +121,58 @@ export function MessageInput({
   
   // Use controlled input from useChat, or fallback to draft
   const inputValue = externalInput ?? '';
-  
+
+  // ── Onboarding auto-typing ──
+  const isAutoTyping = useOnboardingStore((s) => s.isAutoTyping);
+  const autoTypeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPendingRef = useRef<{ cardId: string; text: string } | null>(null);
+
+  useEffect(() => {
+    const unsub = useOnboardingStore.subscribe(
+      (state) => {
+        const pending = state.pendingMessage;
+        // Only act when pendingMessage changes
+        if (pending === lastPendingRef.current) return;
+        lastPendingRef.current = pending;
+
+        if (!pending || pending.cardId !== conversationId || !externalSetInput) return;
+
+        // Claim the pending message immediately
+        useOnboardingStore.getState().clearPendingMessage();
+        useOnboardingStore.getState().setIsAutoTyping(true);
+
+        const text = pending.text;
+        let idx = 0;
+
+        const typeNext = () => {
+          if (idx <= text.length) {
+            externalSetInput(text.slice(0, idx));
+            idx++;
+            autoTypeTimerRef.current = setTimeout(typeNext, 35 + Math.random() * 20);
+          } else {
+            // Done typing — auto-send after a brief pause
+            autoTypeTimerRef.current = setTimeout(() => {
+              useOnboardingStore.getState().setIsAutoTyping(false);
+              // Trigger send via form submit
+              handleSendRef.current?.();
+            }, 400);
+          }
+        };
+
+        // Small delay before typing starts
+        autoTypeTimerRef.current = setTimeout(typeNext, 300);
+      },
+    );
+
+    return () => {
+      unsub();
+      if (autoTypeTimerRef.current) clearTimeout(autoTypeTimerRef.current);
+    };
+  }, [conversationId, externalSetInput]);
+
+  // Stable ref for handleSend so the auto-typing effect can call it
+  const handleSendRef = useRef<(() => void) | null>(null);
+
   // Load draft when conversation changes (only when not using external input)
   useEffect(() => {
     if (externalSetInput) {
@@ -305,6 +357,11 @@ export function MessageInput({
     }
   }, [inputValue, isStreaming, hasApiKey, onSubmit, sendMessage, conversationId, setDraftMessage, attachments, onAttachmentsChange]);
 
+  // Keep handleSendRef in sync for auto-typing callback
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  }, [handleSend]);
+
   // Handle keyboard events
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -317,7 +374,7 @@ export function MessageInput({
   const canSend = (inputValue.trim() || attachments.length > 0) && !isStreaming;
 
   return (
-    <div style={inputStyles.container}>
+    <div style={inputStyles.container} data-testid="message-input">
       <div style={isMaximized ? inputStyles.maximizedContent : undefined}>
       {/* Error banner */}
       {error && (
@@ -425,7 +482,7 @@ export function MessageInput({
               maxHeight: maxTextareaHeight ?? MAX_INPUT_HEIGHT,
               opacity: 1,
             }}
-            disabled={isStreaming}
+            disabled={isStreaming || isAutoTyping}
             aria-label="Message input"
           />
 

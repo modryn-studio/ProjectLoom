@@ -16,6 +16,8 @@ interface ChatPanelHeaderProps {
   conversation: Conversation;
   onClose: () => void;
   onMaximize?: () => void;
+  branchEnabled?: boolean;
+  renameEnabled?: boolean;
   /** Hide maximize/usage buttons on mobile */
   isMobile?: boolean;
 }
@@ -24,6 +26,8 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   conversation, 
   onClose,
   onMaximize,
+  branchEnabled = true,
+  renameEnabled = true,
   isMobile = false,
 }: ChatPanelHeaderProps) {
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
@@ -81,9 +85,10 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   }, [isRenaming]);
 
   const handleStartRename = useCallback(() => {
+    if (!renameEnabled) return;
     setDraftTitle(conversation.metadata.title);
     setIsRenaming(true);
-  }, [conversation.metadata.title]);
+  }, [conversation.metadata.title, renameEnabled]);
 
   const handleFinishRename = useCallback(() => {
     const trimmed = draftTitle.trim();
@@ -164,7 +169,7 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
               aria-label="Rename conversation"
             />
           ) : (
-            <h2 style={headerStyles.title} onDoubleClick={handleStartRename}>
+            <h2 style={headerStyles.title} onDoubleClick={renameEnabled ? handleStartRename : undefined}>
               {conversation.metadata.title}
             </h2>
           )}
@@ -173,14 +178,16 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
         {/* Right side: Actions */}
         <div style={headerStyles.actions}>
           {/* Branch button */}
-          <button
-            onClick={handleBranch}
-            style={headerStyles.actionButton}
-            title="Branch from this conversation (Ctrl+B)"
-            aria-label="Branch from this conversation"
-          >
-            <GitBranch size={16} />
-          </button>
+          {branchEnabled && (
+            <button
+              onClick={handleBranch}
+              style={headerStyles.actionButton}
+              title="Branch from this conversation (Ctrl+B)"
+              aria-label="Branch from this conversation"
+            >
+              <GitBranch size={16} />
+            </button>
+          )}
 
           {/* Usage button — hidden on mobile (has its own tab) */}
           {!isMobile && (
