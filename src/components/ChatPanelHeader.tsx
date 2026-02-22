@@ -18,6 +18,7 @@ interface ChatPanelHeaderProps {
   onMaximize?: () => void;
   branchEnabled?: boolean;
   renameEnabled?: boolean;
+  closeEnabled?: boolean;
   /** Hide maximize/usage buttons on mobile */
   isMobile?: boolean;
 }
@@ -28,6 +29,7 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
   onMaximize,
   branchEnabled = true,
   renameEnabled = true,
+  closeEnabled = true,
   isMobile = false,
 }: ChatPanelHeaderProps) {
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
@@ -221,8 +223,13 @@ export const ChatPanelHeader = memo(function ChatPanelHeader({
           {/* Close button */}
           <button
             onClick={onClose}
-            style={headerStyles.closeButton}
-            title="Close panel (Escape)"
+            disabled={!closeEnabled}
+            style={{
+              ...headerStyles.closeButton,
+              opacity: closeEnabled ? 1 : 0.45,
+              cursor: closeEnabled ? 'pointer' : 'not-allowed',
+            }}
+            title={closeEnabled ? 'Close panel (Escape)' : 'Close disabled during onboarding'}
             aria-label="Close chat panel"
           >
             <X size={16} />

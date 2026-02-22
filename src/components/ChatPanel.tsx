@@ -13,6 +13,7 @@ import { apiKeyManager } from '@/lib/api-key-manager';
 import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
 import { useUsageStore } from '@/stores/usage-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { canUserCloseChatPanel } from '@/lib/onboarding-guards';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { buildKnowledgeBaseContext, buildRagIndex } from '@/lib/rag-utils';
 import { ChatPanelHeader } from './ChatPanelHeader';
@@ -968,6 +969,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
   // Handle close
   const handleClose = useCallback(() => {
+    const onboardingState = useOnboardingStore.getState();
+    if (!canUserCloseChatPanel(onboardingState)) return;
     closeChatPanel();
     setIsMaximized(false);
   }, [closeChatPanel]);
@@ -1069,6 +1072,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
               onMaximize={handleMaximize}
               branchEnabled={!onboardingActive}
               renameEnabled={!onboardingActive}
+              closeEnabled={!onboardingActive}
               isMobile
             />
             <MessageThread
@@ -1146,6 +1150,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
             onMaximize={handleMaximize}
             branchEnabled={!onboardingActive}
             renameEnabled={!onboardingActive}
+            closeEnabled={!onboardingActive}
           />
 
           {/* Message Thread

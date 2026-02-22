@@ -55,6 +55,7 @@ import {
   canCreateConversation,
   canDeleteConversations,
   canMutateWorkspaces,
+  canUserCloseChatPanel,
 } from '@/lib/onboarding-guards';
 
 // =============================================================================
@@ -653,6 +654,8 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       suppressNextPaneClickRef.current = false;
       return;
     }
+    const onboardingState = useOnboardingStore.getState();
+    if (!canUserCloseChatPanel(onboardingState)) return;
     // Close chat panel (also clears selection and active conversation)
     closeChatPanel();
   }, [closeChatPanel]);
@@ -914,6 +917,8 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
         if (usagePanelOpen) {
           closeUsagePanel();
         } else if (chatPanelOpen) {
+          const onboardingState = useOnboardingStore.getState();
+          if (!canUserCloseChatPanel(onboardingState)) return;
           closeChatPanel();
         } else {
           clearSelection();

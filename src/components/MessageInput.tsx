@@ -126,52 +126,71 @@ export function MessageInput({
   const isAutoTyping = useOnboardingStore((s) => s.isAutoTyping);
   const autoTypeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPendingRef = useRef<{ cardId: string; text: string } | null>(null);
+  // Stable ref for handleSend so the auto-typing effect can call it
+  const handleSendRef = useRef<(() => void) | null>(null);
+
+  const startAutoTypingForPending = useCallback((pending: { cardId: string; text: string } | null) => {
+    if (!pending || pending.cardId !== conversationId || !externalSetInput) return;
+
+    if (autoTypeTimerRef.current) {
+      clearTimeout(autoTypeTimerRef.current);
+      autoTypeTimerRef.current = null;
+    }
+
+    // Claim the pending message immediately
+    useOnboardingStore.getState().clearPendingMessage();
+    useOnboardingStore.getState().setIsAutoTyping(true);
+
+    const text = pending.text;
+    let idx = 0;
+
+    const typeNext = () => {
+      if (idx <= text.length) {
+        externalSetInput(text.slice(0, idx));
+        idx++;
+        autoTypeTimerRef.current = setTimeout(typeNext, 35 + Math.random() * 20);
+      } else {
+        // Done typing — auto-send after a brief pause
+        autoTypeTimerRef.current = setTimeout(() => {
+          useOnboardingStore.getState().setIsAutoTyping(false);
+          // Trigger send via form submit
+          handleSendRef.current?.();
+        }, 400);
+      }
+    };
+
+    // Small delay before typing starts
+    autoTypeTimerRef.current = setTimeout(typeNext, 300);
+  }, [conversationId, externalSetInput]);
 
   useEffect(() => {
+    const consumePending = (pending: { cardId: string; text: string } | null) => {
+      // Only act when pendingMessage changes
+      if (pending === lastPendingRef.current) return;
+      lastPendingRef.current = pending;
+      startAutoTypingForPending(pending);
+    };
+
+    // Handle any pending message that was set while this input was unmounted
+    consumePending(useOnboardingStore.getState().pendingMessage);
+
     const unsub = useOnboardingStore.subscribe(
       (state) => {
-        const pending = state.pendingMessage;
-        // Only act when pendingMessage changes
-        if (pending === lastPendingRef.current) return;
-        lastPendingRef.current = pending;
-
-        if (!pending || pending.cardId !== conversationId || !externalSetInput) return;
-
-        // Claim the pending message immediately
-        useOnboardingStore.getState().clearPendingMessage();
-        useOnboardingStore.getState().setIsAutoTyping(true);
-
-        const text = pending.text;
-        let idx = 0;
-
-        const typeNext = () => {
-          if (idx <= text.length) {
-            externalSetInput(text.slice(0, idx));
-            idx++;
-            autoTypeTimerRef.current = setTimeout(typeNext, 35 + Math.random() * 20);
-          } else {
-            // Done typing — auto-send after a brief pause
-            autoTypeTimerRef.current = setTimeout(() => {
-              useOnboardingStore.getState().setIsAutoTyping(false);
-              // Trigger send via form submit
-              handleSendRef.current?.();
-            }, 400);
-          }
-        };
-
-        // Small delay before typing starts
-        autoTypeTimerRef.current = setTimeout(typeNext, 300);
+        consumePending(state.pendingMessage);
       },
     );
 
     return () => {
       unsub();
-      if (autoTypeTimerRef.current) clearTimeout(autoTypeTimerRef.current);
+      if (autoTypeTimerRef.current) {
+        clearTimeout(autoTypeTimerRef.current);
+        autoTypeTimerRef.current = null;
+      }
+      if (useOnboardingStore.getState().isAutoTyping) {
+        useOnboardingStore.getState().setIsAutoTyping(false);
+      }
     };
-  }, [conversationId, externalSetInput]);
-
-  // Stable ref for handleSend so the auto-typing effect can call it
-  const handleSendRef = useRef<(() => void) | null>(null);
+  }, [startAutoTypingForPending]);
 
   // Load draft when conversation changes (only when not using external input)
   useEffect(() => {

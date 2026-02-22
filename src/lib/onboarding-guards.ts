@@ -20,6 +20,10 @@ export function canDeleteConversations(state: OnboardingGuardState): boolean {
   return !state.active;
 }
 
+export function canUserCloseChatPanel(state: OnboardingGuardState): boolean {
+  return !state.active;
+}
+
 export function canBranchFromCard(state: OnboardingGuardState, sourceCardId: string): boolean {
   if (!state.active) return true;
 
