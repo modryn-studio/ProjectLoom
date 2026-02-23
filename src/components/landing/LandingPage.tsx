@@ -338,7 +338,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             style={styles.videoEl}
           >
             <source src={DEMO_VIDEO_URL} type="video/mp4" />
-            <track kind="captions" src={DEMO_VIDEO_CAPTIONS_URL} srcLang="en" label="English" default />
+            <track kind="captions" src={DEMO_VIDEO_CAPTIONS_URL} srcLang="en" label="English" />
             Your browser does not support HTML5 video.{' '}
             <a href={DEMO_VIDEO_URL} style={styles.inlineMediaLink}>Open the demo video</a>.
           </video>
