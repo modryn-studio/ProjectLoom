@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     siteName: 'ProjectLoom',
     images: [
       {
-        url: '/og-image.png',
+        url: '/og-image.jpg',
         width: 1103,
         height: 630,
         alt: 'ProjectLoom — branching AI conversations on an infinite canvas',
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: ogTitle,
     description: ogDescription,
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
 };
 
