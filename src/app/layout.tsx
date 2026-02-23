@@ -15,7 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://projectloom.space';
-const ogDescription = 'Split any AI conversation into different directions, explore them side by side, and combine the best parts — all on one visual canvas. Your data stays in your browser. Always.';
+// 57 chars — within 50-60 optimal range
+const ogTitle = 'ProjectLoom — Branching AI Conversations, Infinite Canvas';
+// 134 chars — within 110-160 optimal range
+const ogDescription = 'Split any AI conversation into different directions, explore them side by side, and combine the best parts — all on one visual canvas.';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -26,14 +29,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
+  title: ogTitle,
   description: ogDescription,
   metadataBase: new URL(siteUrl),
   manifest: '/manifest.json',
   openGraph: {
     type: 'website',
     url: siteUrl,
-    title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
+    title: ogTitle,
     description: ogDescription,
     siteName: 'ProjectLoom',
     images: [
@@ -47,7 +50,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
+    title: ogTitle,
     description: ogDescription,
     images: ['/banner.png'],
   },

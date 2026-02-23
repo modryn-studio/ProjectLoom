@@ -1,9 +1,6 @@
 # Demo Recording Mode
 
-Navigate to:
-```
-/canvas?demo=record
-```
+Navigate to: [/canvas?demo=record](http://localhost:3000/canvas?demo=record)
 
 That's it. The system takes over from there.
 
