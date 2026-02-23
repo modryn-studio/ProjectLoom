@@ -1228,7 +1228,7 @@ export function CanvasTreeSidebar({
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            <MessageSquare size={20} color={colors.fg.secondary} />
+            <MessageSquare size={20} color={colors.accent.primary} />
           </button>
         )}
 

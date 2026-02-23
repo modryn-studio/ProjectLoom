@@ -394,7 +394,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             <Headphones size={32} strokeWidth={1.5} color='var(--accent-primary)' />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={styles.podcastEyebrow}>Deep dive · 20 min</p>
+            <p style={styles.podcastEyebrow}>AI-generated overview · 20 min</p>
             <h3 style={styles.podcastTitle}>The story behind ProjectLoom</h3>
             <p style={styles.podcastDesc}>
               Why linear chat is broken, how the canvas changes the way you think,
