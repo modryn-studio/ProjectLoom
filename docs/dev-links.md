@@ -14,7 +14,7 @@
 | Link | Description |
 |------|-------------|
 | [localhost:3000/canvas?onboarding=reset](http://localhost:3000/canvas?onboarding=reset) | Reset onboarding + clear canvas data, then reload |
-| [localhost:3000/canvas?onboarding=reset&firstTime=1](http://localhost:3000/canvas?onboarding=reset&firstTime=1) | Full first-time reset (clears all ProjectLoom local data + KB), then reload |
+| [localhost:3000/canvas?onboarding=reset&firstTime=1](http://localhost:3000/canvas?onboarding=reset&firstTime=1) | Full first-time reset (clears all ProjectLoom local data + KB + trial cookie), then reload |
 
 ## Dev Server
 

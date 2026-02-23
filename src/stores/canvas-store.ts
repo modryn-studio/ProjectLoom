@@ -28,8 +28,6 @@ import type {
 import { logger } from '@/lib/logger';
 import { estimateTokens } from '@/lib/context-utils';
 import { useToastStore } from '@/stores/toast-store';
-import { usePreferencesStore } from '@/stores/preferences-store';
-import { useOnboardingStore } from '@/stores/onboarding-store';
 import { generateConversationTitle } from '@/utils/formatters';
 
 // Debounce helper for performance
@@ -329,9 +327,15 @@ async function generateAITitle(
     const openaiKey = apiKeyManager.getKey('openai') ?? undefined;
 
     if (!anthropicKey && !openaiKey) {
-      console.warn('[Auto-Title] No API keys available for title generation');
-      logger.warn('No API keys available for title generation');
-      return;
+      // If trial mode is active, the server will inject its own key.
+      // Check using the public env var (client-accessible).
+      const trialEnabled = process.env.NEXT_PUBLIC_TRIAL_REQUEST_CAP !== undefined;
+      if (!trialEnabled) {
+        console.warn('[Auto-Title] No API keys available for title generation');
+        logger.warn('No API keys available for title generation');
+        return;
+      }
+      console.log('[Auto-Title] No user keys, but trial mode active — server will inject key');
     }
     
     console.log('[Auto-Title] Fetching AI-generated title...');
@@ -464,6 +468,9 @@ interface WorkspaceState {
   isInitialized: boolean;
   isAnyNodeDragging: boolean;
   focusNodeId: string | null;
+
+  // Transient flag: suppresses Framer Motion mount animations during workspace switch
+  _skipMountAnimation: boolean;
 
   // Hierarchical Merge Dialog State
   hierarchicalMergeDialogOpen: boolean;
@@ -724,6 +731,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     isInitialized: false,
     isAnyNodeDragging: false,
     focusNodeId: null,
+    _skipMountAnimation: false,
     
     // Hierarchical Merge Dialog State
     hierarchicalMergeDialogOpen: false,
@@ -1761,6 +1769,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       const edges: Edge[] = (workspace.edges || []).map(connectionToEdge);
 
       set({
+        _skipMountAnimation: true,
         activeWorkspaceId: workspaceId,
         nodes,
         edges,
@@ -1776,6 +1785,9 @@ export const useCanvasStore = create<WorkspaceState>()(
         }],
         historyIndex: 0,
       });
+
+      // Clear the flag after React has committed the new nodes
+      requestAnimationFrame(() => set({ _skipMountAnimation: false }));
 
       // Persist the workspace switch
       get().saveToStorage();
@@ -2413,15 +2425,6 @@ export const useCanvasStore = create<WorkspaceState>()(
       
       logger.debug(`Sent message to conversation ${activeConversationId}`);
 
-      const prefs = usePreferencesStore.getState().preferences;
-      const onboardingActive = useOnboardingStore.getState().active;
-      if (!onboardingActive && !prefs.ui.hasSeenCanvasTip) {
-        useToastStore.getState().info('Tip: Right-click the canvas to add more conversations.', {
-          duration: 6000,
-        });
-        usePreferencesStore.getState().setUIPreferences({ hasSeenCanvasTip: true });
-      }
-      
       // AI response is now handled by ChatPanel via useChat hook
     },
 
@@ -2936,6 +2939,7 @@ export const selectIsInitialized = (state: WorkspaceState) => state.isInitialize
 export const selectExpandedNodeIds = (state: WorkspaceState) => state.expandedNodeIds;
 export const selectSelectedNodeIds = (state: WorkspaceState) => state.selectedNodeIds;
 export const selectIsAnyNodeDragging = (state: WorkspaceState) => state.isAnyNodeDragging;
+export const selectSkipMountAnimation = (state: WorkspaceState) => state._skipMountAnimation;
 
 // Workspace selectors (v4 - flat)
 export const selectWorkspaces = (state: WorkspaceState) => state.workspaces;

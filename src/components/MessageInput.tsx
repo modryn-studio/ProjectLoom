@@ -35,6 +35,8 @@ interface MessageInputProps {
   onStop?: () => void;
   /** Whether any API key is configured */
   hasApiKey?: boolean;
+  /** Whether the trial is exhausted (show exhaustion message instead of generic no-key message) */
+  isTrialExhausted?: boolean;
   /** Error from chat */
   error?: Error | null;
   /** Whether current model supports vision */
@@ -103,6 +105,7 @@ export function MessageInput({
   isStreaming = false,
   onStop,
   hasApiKey = true,
+  isTrialExhausted = false,
   error,
   supportsVision = false,
   attachments = [],
@@ -164,7 +167,7 @@ export function MessageInput({
       if (idx <= text.length) {
         externalSetInput(text.slice(0, idx));
         idx++;
-        autoTypeTimerRef.current = setTimeout(typeNext, 35 + Math.random() * 20);
+        autoTypeTimerRef.current = setTimeout(typeNext, 17 + Math.random() * 10);
       } else {
         // Done typing — auto-send after a brief pause
         autoTypeTimerRef.current = setTimeout(() => {
@@ -175,7 +178,7 @@ export function MessageInput({
           }
           // Trigger send via form submit
           handleSendRef.current?.();
-        }, 400);
+        }, 200);
       }
     };
 
@@ -464,7 +467,10 @@ export function MessageInput({
           style={{ ...inputStyles.warningBanner, cursor: 'pointer', textAlign: 'left', width: '100%', background: 'none', border: 'none' }}
         >
           <Settings size={14} />
-          <span>Add an API key to start chatting →</span>
+          {isTrialExhausted
+            ? <span>You&apos;ve used all your free messages — add your API key to keep chatting →</span>
+            : <span>Add an API key to start chatting →</span>
+          }
         </button>
       )}
 
@@ -533,7 +539,7 @@ export function MessageInput({
             value={inputValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={hasApiKey ? "Type a message..." : "Type a message and add an API key to send..."}
+            placeholder={hasApiKey ? "Type a message..." : isTrialExhausted ? "Add your API key to keep chatting..." : "Type a message and add an API key to send..."}
             className="chat-textarea"
             style={{
               ...inputStyles.textarea,

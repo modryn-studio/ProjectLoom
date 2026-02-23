@@ -14,6 +14,7 @@ import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-i
 import { useUsageStore } from '@/stores/usage-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useDemoRecordStore } from '@/stores/demo-record-store';
+import { useTrialStore, selectIsTrialActive, selectIsTrialExhausted } from '@/stores/trial-store';
 import { canUserCloseChatPanel } from '@/lib/onboarding-guards';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { buildKnowledgeBaseContext, buildRagIndex } from '@/lib/rag-utils';
@@ -153,6 +154,13 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     panelWidthRef.current = panelWidth;
   }, [panelWidth]);
 
+  // Trial state — must be before currentModel useMemo which depends on isTrialActive
+  const onboardingActive = useOnboardingStore((s) => s.active);
+  const demoRecordActive = useDemoRecordStore((s) => s.active);
+  const isTrialActive = useTrialStore(selectIsTrialActive);
+  const isTrialExhausted = useTrialStore(selectIsTrialExhausted);
+  const syncTrialFromServer = useTrialStore((s) => s.syncFromServer);
+  const hasAnyApiKey = apiKeyManager.hasAnyKey() || onboardingActive || demoRecordActive || (isTrialActive && !isTrialExhausted);
 
   // Determine current model for conversation
   const currentModel = useMemo(() => {
@@ -176,8 +184,13 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       return 'anthropic/claude-sonnet-4-5';
     }
 
+    // Trial mode — default to GPT-5 Mini (server enforces this regardless)
+    if (isTrialActive) {
+      return 'openai/gpt-5-mini';
+    }
+
     return null;
-  }, [activeConversationId, conversationModel]);
+  }, [activeConversationId, conversationModel, isTrialActive]);
 
   // Get API keys for all providers (reads from module-level singleton — no reactive deps needed)
   const currentKeys = useMemo(() => {
@@ -187,11 +200,6 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId, conversationModel]);
-
-  // Check if we have any API key configured (onboarding/demo mode counts as "has key")
-  const onboardingActive = useOnboardingStore((s) => s.active);
-  const demoRecordActive = useDemoRecordStore((s) => s.active);
-  const hasAnyApiKey = apiKeyManager.hasAnyKey() || onboardingActive || demoRecordActive;
 
   // Check if current model supports vision
   const supportsVision = useMemo(() => {
@@ -402,7 +410,14 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
           cacheCreationInputTokens?: number;
           cacheReadInputTokens?: number;
         };
+        trial?: { messagesUsed: number };
       } | undefined;
+
+      // Sync trial usage from server cookie (authoritative count)
+      if (msgMetadata?.trial?.messagesUsed != null) {
+        syncTrialFromServer(msgMetadata.trial.messagesUsed);
+      }
+
       const usage = msgMetadata?.usage;
 
       if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0)) {
@@ -460,6 +475,13 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     },
     onError: (error: Error) => {
       console.error('[ChatPanel] AI Error:', error);
+
+      // If the trial is exhausted, sync the client state
+      if (error.message?.includes('free messages')) {
+        const trialState = useTrialStore.getState();
+        trialState.syncFromServer(trialState.cap);
+      }
+
       // Clear metadata ref on error to prevent stale data
       if (streamingRequestMetadataRef.current) {
         streamingRequestMetadataRef.current = null;
@@ -1104,6 +1126,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
               isStreaming={isStreaming && activeConversationId === streamingConversationId}
               onStop={stop}
               hasApiKey={hasAnyApiKey}
+              isTrialExhausted={isTrialExhausted}
               error={chatError}
               supportsVision={supportsVision}
               attachments={pendingAttachments}
@@ -1190,6 +1213,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
             isStreaming={isStreaming && activeConversationId === streamingConversationId}
             onStop={stop}
             hasApiKey={hasAnyApiKey}
+            isTrialExhausted={isTrialExhausted}
             error={chatError}
             supportsVision={supportsVision}
             attachments={pendingAttachments}

@@ -46,6 +46,8 @@ export function InlineBranchPanel({
   onComplete,
 }: InlineBranchPanelProps) {
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
+  const openChatPanel = useCanvasStore((s) => s.openChatPanel);
+  const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
   
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,8 @@ export function InlineBranchPanel({
       });
 
       if (result) {
+        openChatPanel(result.id);
+        requestFocusNode(result.id);
         onComplete?.();
         onClose();
       } else {
@@ -76,7 +80,7 @@ export function InlineBranchPanel({
     } finally {
       setIsCreating(false);
     }
-  }, [branchFromMessage, parentCardId, messageIndex, onClose, onComplete]);
+  }, [branchFromMessage, openChatPanel, requestFocusNode, parentCardId, messageIndex, onClose, onComplete]);
 
   return (
     <AnimatePresence>

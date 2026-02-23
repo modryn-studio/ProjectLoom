@@ -45,22 +45,28 @@ export default function CanvasPage() {
       const firstTime = params.get('firstTime') === '1';
 
       if (firstTime) {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const key = localStorage.key(i);
-          if (key?.startsWith('projectloom:')) {
-            keysToRemove.push(key);
+        void (async () => {
+          // Expire the HttpOnly trial cookie before clearing localStorage,
+          // so the next session truly starts fresh
+          await fetch('/api/trial/reset', { method: 'POST' }).catch(() => {/* best-effort */});
+
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i += 1) {
+            const key = localStorage.key(i);
+            if (key?.startsWith('projectloom:')) {
+              keysToRemove.push(key);
+            }
           }
-        }
-        // Usage is stored under a non-colon key (`projectloom-usage`), so
-        // clear it explicitly for true first-time resets.
-        keysToRemove.push(STORAGE_KEYS.USAGE);
-        keysToRemove.forEach((key) => localStorage.removeItem(key));
-        void clearKnowledgeBaseStorage().catch(() => {
-          // Best-effort in dev reset flow
-        }).finally(() => {
-          location.href = window.location.pathname;
-        });
+          // Usage is stored under a non-colon key (`projectloom-usage`), so
+          // clear it explicitly for true first-time resets.
+          keysToRemove.push(STORAGE_KEYS.USAGE);
+          keysToRemove.forEach((key) => localStorage.removeItem(key));
+          void clearKnowledgeBaseStorage().catch(() => {
+            // Best-effort in dev reset flow
+          }).finally(() => {
+            location.href = window.location.pathname;
+          });
+        })();
         return;
       }
 

@@ -2,10 +2,11 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Check, Key } from 'lucide-react';
+import { ChevronDown, Check, Key, Lock } from 'lucide-react';
 
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { apiKeyManager } from '@/lib/api-key-manager';
+import { useTrialStore, selectIsTrialActive } from '@/stores/trial-store';
 import { 
   AVAILABLE_MODELS, 
   getModelById,
@@ -35,7 +36,10 @@ export function ModelSelector({
   compact = false,
 }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [trialPopoverModel, setTrialPopoverModel] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isTrialActive = useTrialStore(selectIsTrialActive);
+  const TRIAL_MODEL_ID = 'openai/gpt-5-mini';
 
   // Check which providers have API keys configured
   const hasAnthropicKey = useMemo(() => {
@@ -77,9 +81,18 @@ export function ModelSelector({
 
   // Handle model selection
   const handleSelect = useCallback((modelId: string) => {
+    // In trial mode, only allow the trial model
+    if (isTrialActive && modelId !== TRIAL_MODEL_ID) {
+      const modelInfo = getModelById(modelId);
+      setTrialPopoverModel(modelInfo?.name ?? modelId);
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => setTrialPopoverModel(null), 3000);
+      return;
+    }
+    setTrialPopoverModel(null);
     onModelChange(modelId);
     setIsOpen(false);
-  }, [onModelChange]);
+  }, [onModelChange, isTrialActive]);
 
   // Format display name
   const displayName = currentModelInfo?.name || 'Select Model';
@@ -128,50 +141,98 @@ export function ModelSelector({
             style={styles.dropdown}
             role="listbox"
           >
-            {/* Anthropic Models */}
-            {(hasAnthropicKey || (!hasAnyKey && hasApiKey)) && (
+            {isTrialActive ? (
+              /* Trial mode: show all models, lock icon on non-trial ones */
               <>
-                {AVAILABLE_MODELS
-                  .filter(m => m.provider === 'anthropic')
-                  .map(model => (
+                {AVAILABLE_MODELS.map((model, idx) => (
+                  <React.Fragment key={model.id}>
+                    {idx > 0 && AVAILABLE_MODELS[idx - 1].provider !== model.provider && (
+                      <div style={styles.divider} />
+                    )}
                     <ModelOption
-                      key={model.id}
                       model={model}
                       isSelected={model.id === currentModel}
                       onSelect={handleSelect}
+                      locked={model.id !== TRIAL_MODEL_ID}
                     />
-                  ))}
+                  </React.Fragment>
+                ))}
               </>
-            )}
-
-            {/* Divider between providers */}
-            {(hasAnthropicKey || (!hasAnyKey && hasApiKey)) && (hasOpenaiKey || (!hasAnyKey && hasApiKey)) && (
-              <div style={styles.divider} />
-            )}
-
-            {/* OpenAI Models */}
-            {(hasOpenaiKey || (!hasAnyKey && hasApiKey)) && (
+            ) : (
+              /* BYOK mode: existing behavior — show models for configured providers */
               <>
-                {AVAILABLE_MODELS
-                  .filter(m => m.provider === 'openai')
-                  .map(model => (
-                    <ModelOption
-                      key={model.id}
-                      model={model}
-                      isSelected={model.id === currentModel}
-                      onSelect={handleSelect}
-                    />
-                  ))}
+                {/* Anthropic Models */}
+                {(hasAnthropicKey || (!hasAnyKey && hasApiKey)) && (
+                  <>
+                    {AVAILABLE_MODELS
+                      .filter(m => m.provider === 'anthropic')
+                      .map(model => (
+                        <ModelOption
+                          key={model.id}
+                          model={model}
+                          isSelected={model.id === currentModel}
+                          onSelect={handleSelect}
+                        />
+                      ))}
+                  </>
+                )}
+
+                {/* Divider between providers */}
+                {(hasAnthropicKey || (!hasAnyKey && hasApiKey)) && (hasOpenaiKey || (!hasAnyKey && hasApiKey)) && (
+                  <div style={styles.divider} />
+                )}
+
+                {/* OpenAI Models */}
+                {(hasOpenaiKey || (!hasAnyKey && hasApiKey)) && (
+                  <>
+                    {AVAILABLE_MODELS
+                      .filter(m => m.provider === 'openai')
+                      .map(model => (
+                        <ModelOption
+                          key={model.id}
+                          model={model}
+                          isSelected={model.id === currentModel}
+                          onSelect={handleSelect}
+                        />
+                      ))}
+                  </>
+                )}
+
+                {/* No key configured */}
+                {!hasAnyKey && !hasApiKey && (
+                  <div style={styles.noKeys}>
+                    <Key size={16} />
+                    <span>Configure API keys in Settings</span>
+                  </div>
+                )}
               </>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* No key configured */}
-            {!hasAnyKey && !hasApiKey && (
-              <div style={styles.noKeys}>
-                <Key size={16} />
-                <span>Configure API keys in Settings</span>
-              </div>
-            )}
+      {/* Trial mode popover — shown when user taps a locked model */}
+      <AnimatePresence>
+        {trialPopoverModel && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            style={styles.trialPopover}
+          >
+            <Lock size={12} />
+            <span style={styles.trialPopoverText}>Add your API key to use {trialPopoverModel}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setTrialPopoverModel(null);
+                window.dispatchEvent(new Event('projectloom:requestAPIKeySetup'));
+              }}
+              style={styles.trialPopoverLink}
+            >
+              Add key →
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -187,19 +248,21 @@ interface ModelOptionProps {
   model: ModelDefinition;
   isSelected: boolean;
   onSelect: (modelId: string) => void;
+  locked?: boolean;
 }
 
-function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
+function ModelOption({ model, isSelected, onSelect, locked = false }: ModelOptionProps) {
   const costInfo = getCostTierInfo(model.costTier);
 
   return (
     <button
       type="button"
       onClick={() => onSelect(model.id)}
-      title={model.description}
+      title={locked ? `Add your API key to use ${model.name}` : model.description}
       style={{
         ...styles.option,
         backgroundColor: isSelected ? 'var(--accent-muted)' : 'transparent',
+        opacity: locked ? 0.6 : 1,
       }}
       role="option"
       aria-selected={isSelected}
@@ -207,12 +270,16 @@ function ModelOption({ model, isSelected, onSelect }: ModelOptionProps) {
       <div style={styles.optionContent}>
         <div style={styles.optionHeader}>
           <span style={styles.optionName}>{model.name}</span>
-          <span style={{ ...styles.costBadge, color: costInfo.color }}>
-            {costInfo.label}
-          </span>
+          {locked ? (
+            <Lock size={12} style={{ color: colors.fg.tertiary, flexShrink: 0 }} />
+          ) : (
+            <span style={{ ...styles.costBadge, color: costInfo.color }}>
+              {costInfo.label}
+            </span>
+          )}
         </div>
       </div>
-      {isSelected && (
+      {isSelected && !locked && (
         <Check size={14} style={{ color: colors.accent.primary, flexShrink: 0 }} />
       )}
     </button>
@@ -326,6 +393,50 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.sm,
     fontFamily: typography.fonts.body,
   },
+
+  trialPopover: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    right: 'auto',
+    width: 'min(340px, calc(100vw - 24px))',
+    minWidth: 260,
+    marginBottom: spacing[1],
+    padding: `${spacing[2]} ${spacing[3]}`,
+    backgroundColor: colors.bg.inset,
+    border: '1px solid var(--border-primary)',
+    borderRadius: effects.border.radius.default,
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+    zIndex: 51,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing[2],
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fonts.body,
+    color: colors.fg.secondary,
+  } as React.CSSProperties,
+
+  trialPopoverText: {
+    flex: 1,
+    minWidth: 0,
+    lineHeight: 1.35,
+    whiteSpace: 'normal',
+  } as React.CSSProperties,
+
+  trialPopoverLink: {
+    color: colors.accent.primary,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fonts.body,
+    fontWeight: typography.weights.medium,
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    whiteSpace: 'nowrap',
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  } as React.CSSProperties,
 };
 
 export default ModelSelector;

@@ -49,6 +49,7 @@ const DEMO_VIDEO_CAPTIONS_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_CAPTIONS_URL 
 const DEMO_VIDEO_EXTERNAL_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_EXTERNAL_URL ?? '';
 const PODCAST_AUDIO_URL = process.env.NEXT_PUBLIC_PODCAST_AUDIO_URL ?? '/podcast.m4a';
 const PODCAST_EXTERNAL_URL = process.env.NEXT_PUBLIC_PODCAST_EXTERNAL_URL ?? '';
+const CANONICAL_SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(/\/$/, '');
 
 // =============================================================================
 // ANIMATION VARIANTS
@@ -110,20 +111,16 @@ export function LandingPage({ onEnter }: LandingPageProps) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const siteOrigin = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      return window.location.origin;
-    }
-    return process.env.NEXT_PUBLIC_SITE_URL ?? '';
-  }, []);
-
   const mediaSchema = useMemo(() => {
-    if (!siteOrigin) return null;
-    const resolvedVideoUrl = DEMO_VIDEO_URL.startsWith('http') ? DEMO_VIDEO_URL : `${siteOrigin}${DEMO_VIDEO_URL}`;
-    const resolvedVideoPoster = DEMO_VIDEO_POSTER_URL.startsWith('http')
-      ? DEMO_VIDEO_POSTER_URL
-      : `${siteOrigin}${DEMO_VIDEO_POSTER_URL}`;
-    const resolvedAudioUrl = PODCAST_AUDIO_URL.startsWith('http') ? PODCAST_AUDIO_URL : `${siteOrigin}${PODCAST_AUDIO_URL}`;
+    const resolveMediaUrl = (pathOrUrl: string) => {
+      if (pathOrUrl.startsWith('http')) return pathOrUrl;
+      if (CANONICAL_SITE_ORIGIN) return `${CANONICAL_SITE_ORIGIN}${pathOrUrl}`;
+      return pathOrUrl;
+    };
+
+    const resolvedVideoUrl = resolveMediaUrl(DEMO_VIDEO_URL);
+    const resolvedVideoPoster = resolveMediaUrl(DEMO_VIDEO_POSTER_URL);
+    const resolvedAudioUrl = resolveMediaUrl(PODCAST_AUDIO_URL);
 
     return {
       '@context': 'https://schema.org',
@@ -150,7 +147,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         },
       ],
     };
-  }, [siteOrigin]);
+  }, []);
 
   return (
     <div style={styles.page}>

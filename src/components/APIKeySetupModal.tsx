@@ -6,6 +6,7 @@ import { X, Key, AlertCircle, CheckCircle, Loader, ExternalLink } from 'lucide-r
 
 import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
+import { useTrialStore, selectIsTrialExhausted } from '@/stores/trial-store';
 
 // =============================================================================
 // API KEY SETUP MODAL
@@ -40,6 +41,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
   const [isSaving, setIsSaving] = useState(false);
   const [storagePreference, setStoragePreference] = useState<StorageType>('localStorage');
   const overlayMouseDownRef = useRef(false);
+  const isTrialExhausted = useTrialStore(selectIsTrialExhausted);
 
   // Load existing keys and storage preference on mount
   useEffect(() => {
@@ -151,6 +153,9 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
         localStorage.setItem('projectloom:keys-configured', 'true');
       }
 
+      // Dismiss trial mode — user now has their own keys
+      useTrialStore.getState().dismiss();
+
       onSuccess?.();
       onClose();
     } finally {
@@ -226,6 +231,26 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
 
           {/* Content */}
           <div style={styles.content}>
+            {/* Trial exhaustion banner */}
+            {isTrialExhausted && (
+              <div style={{
+                padding: `${spacing[3]} ${spacing[4]}`,
+                backgroundColor: 'var(--accent-muted)',
+                borderRadius: effects.border.radius.default,
+                border: `1px solid ${colors.accent.primary}`,
+                marginBottom: spacing[3],
+              }}>
+                <p style={{
+                  fontSize: typography.sizes.sm,
+                  color: colors.fg.primary,
+                  margin: 0,
+                  fontFamily: typography.fonts.body,
+                  fontWeight: typography.weights.medium,
+                }}>
+                  You&apos;ve used your free messages. Add a key below to keep going with any model.
+                </p>
+              </div>
+            )}
             {/* Info banner */}
             <div style={styles.infoBanner}>
               <p style={styles.infoText}>

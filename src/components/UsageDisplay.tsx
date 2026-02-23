@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
 import { formatUsd, getUsageTotals, type UsageRange, useUsageStore } from '@/stores/usage-store';
+import { useTrialStore, selectIsTrialActive, selectIsTrialExhausted, selectTrialRemaining } from '@/stores/trial-store';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -49,8 +50,78 @@ export function UsageDisplay() {
   const usageRecords = useUsageStore((s) => s.records);
   const clearUsage = useUsageStore((s) => s.clearAll);
 
+  const isTrialActive = useTrialStore(selectIsTrialActive);
+  const isTrialExhausted = useTrialStore(selectIsTrialExhausted);
+  const trialRemaining = useTrialStore(selectTrialRemaining);
+  const trialMessagesUsed = useTrialStore((s) => s.messagesUsed);
+  const trialCap = useTrialStore((s) => s.cap);
+
   const usageTotals = useMemo(() => getUsageTotals(usageRecords, usageRange), [usageRecords, usageRange]);
 
+  // Trial mode (active OR exhausted): show progress bar — never show dollar amounts without a BYOK key
+  if (isTrialActive || isTrialExhausted) {
+    const progress = trialCap > 0 ? (trialMessagesUsed / trialCap) * 100 : 0;
+    return (
+      <div>
+        <div style={{ marginBottom: spacing[3] }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: spacing[2] }}>
+            <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.medium, color: colors.fg.primary, fontFamily: typography.fonts.body }}>
+              Free messages
+            </span>
+            <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, fontFamily: typography.fonts.code, color: isTrialExhausted ? colors.accent.primary : colors.fg.primary }}>
+              {trialMessagesUsed} / {trialCap}
+            </span>
+          </div>
+          <div style={{
+            height: 6,
+            backgroundColor: colors.bg.inset,
+            borderRadius: 3,
+            overflow: 'hidden',
+            border: `1px solid ${colors.border.default}`,
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.min(progress, 100)}%`,
+              backgroundColor: isTrialExhausted ? colors.fg.tertiary : colors.accent.primary,
+              borderRadius: 3,
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
+          <p style={{
+            fontSize: typography.sizes.xs,
+            color: colors.fg.tertiary,
+            margin: `${spacing[2]} 0 0 0`,
+            fontFamily: typography.fonts.body,
+          }}>
+            {isTrialExhausted
+              ? 'Add your API key to keep chatting with any model.'
+              : `${trialRemaining} message${trialRemaining === 1 ? '' : 's'} remaining.`}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('projectloom:requestAPIKeySetup'))}
+          style={{
+            width: '100%',
+            padding: `${spacing[2]} ${spacing[3]}`,
+            backgroundColor: isTrialExhausted ? colors.accent.primary : 'transparent',
+            border: `1px solid ${isTrialExhausted ? colors.accent.primary : colors.border.default}`,
+            borderRadius: effects.border.radius.default,
+            color: isTrialExhausted ? '#fff' : colors.fg.secondary,
+            fontSize: typography.sizes.sm,
+            fontFamily: typography.fonts.body,
+            fontWeight: isTrialExhausted ? typography.weights.semibold : typography.weights.normal,
+            cursor: 'pointer',
+          }}
+        >
+          {isTrialExhausted ? 'Add API Key' : 'Add your API key →'}
+        </button>
+      </div>
+    );
+  }
+
+  // BYOK mode: show existing cost display
   return (
     <div>
       <div style={{ marginBottom: spacing[3] }}>

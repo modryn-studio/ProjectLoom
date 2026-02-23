@@ -15,6 +15,7 @@ import { streamText, createUIMessageStream, createUIMessageStreamResponse, gener
 import { createModel, getWebSearchTools, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
 import { getMockResponse, getOnboardingResponse, getDemoRecordResponse, chunkResponse } from '@/lib/mock-responses';
+import { readTrialCookie, createTrialCookieHeader, createFreshTrialPayload, getTrialCap, isTrialEnabled } from '@/lib/trial-cookie';
 
 // =============================================================================
 // TYPES
@@ -179,9 +180,14 @@ export async function POST(req: Request): Promise<Response> {
   console.log(`[chat/route] ▶ START [${reqId}] ${new Date().toISOString()}`);
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, anthropicKey, openaiKey, attachments, canvasContext, onboarding, demoRecord } = body;
+    const { messages, anthropicKey, openaiKey, attachments, canvasContext, onboarding, demoRecord } = body;
+    // `model` is mutable — trial mode overrides it to the cheapest model
+    let model = body.model;
     
     const keys = { anthropic: anthropicKey, openai: openaiKey };
+    // Trial mode state — populated if platform trial is used
+    let trialCookie: string | null = null;
+    let trialMessagesUsed: number | null = null;
     const lastUserMsg = [...(messages ?? [])].reverse().find(m => m.role === 'user');
     const lastUserPreview = typeof lastUserMsg?.content === 'string'
       ? lastUserMsg.content.substring(0, 120)
@@ -243,8 +249,8 @@ export async function POST(req: Request): Promise<Response> {
             writer.write({ type: 'text-start', id: partId });
             for (const chunk of chunks) {
               writer.write({ type: 'text-delta', delta: chunk, id: partId });
-              // Simulate ~30 wpm typing speed
-              await new Promise((r) => setTimeout(r, 15 + Math.random() * 25));
+              // Simulate ~60 wpm typing speed (2× onboarding/demo pace)
+              await new Promise((r) => setTimeout(r, 7 + Math.random() * 12));
             }
             writer.write({ type: 'text-end', id: partId });
             writer.write({
@@ -257,17 +263,53 @@ export async function POST(req: Request): Promise<Response> {
         return createUIMessageStreamResponse({ stream });
       }
 
-      return createErrorResponse(
-        'At least one API key is required. Configure Anthropic or OpenAI key in Settings.',
-        'MISSING_API_KEY',
-        401,
-        { recoverable: true, suggestion: 'add_api_key' }
-      );
+      // ── Platform-funded trial access ──
+      // When no user key is provided and trial mode is enabled,
+      // use the platform's OpenAI key with GPT-5 Mini (cheapest model).
+      // Usage is tracked via a signed httpOnly cookie.
+      if (isTrialEnabled()) {
+        const trialCap = getTrialCap();
+        const trialPayload = await readTrialCookie(req) ?? createFreshTrialPayload();
+
+        if (trialPayload.messagesUsed >= trialCap) {
+          console.log(`[chat/route] [${reqId}] Trial exhausted — ${trialPayload.messagesUsed}/${trialCap} messages used`);
+          return createErrorResponse(
+            `You've used all ${trialCap} free messages. Add your own API key to keep chatting.`,
+            'TRIAL_EXHAUSTED',
+            402,
+            { recoverable: true, suggestion: 'add_api_key' }
+          );
+        }
+
+        // Force cheap model + inject platform key — server enforces this
+        // regardless of what model ID the client sent
+        const trialModelId = 'openai/gpt-5-mini';
+        const trialKey = process.env.TRIAL_OPENAI_KEY!;
+        keys.openai = trialKey;
+        model = trialModelId;
+
+        console.log(`[chat/route] [${reqId}] 🆓 Trial mode — message ${trialPayload.messagesUsed + 1}/${trialCap}, forcing model: ${trialModelId}`);
+
+        // Increment usage and create cookie header — will be set on the response
+        trialPayload.messagesUsed += 1;
+        const trialCookieHeader = await createTrialCookieHeader(trialPayload);
+
+        // Store for later use when building the response
+        trialCookie = trialCookieHeader;
+        trialMessagesUsed = trialPayload.messagesUsed;
+      } else {
+        return createErrorResponse(
+          'At least one API key is required. Configure Anthropic or OpenAI key in Settings.',
+          'MISSING_API_KEY',
+          401,
+          { recoverable: true, suggestion: 'add_api_key' }
+        );
+      }
     }
 
     // Validate that the selected model's provider key is present
     const providerType = detectProvider(model);
-    const providerKey = providerType === 'anthropic' ? anthropicKey : openaiKey;
+    const providerKey = providerType === 'anthropic' ? keys.anthropic : keys.openai;
     if (!providerKey) {
       return createErrorResponse(
         `${providerType === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key is required for this model. Configure it in Settings.`,
@@ -514,7 +556,7 @@ export async function POST(req: Request): Promise<Response> {
       },
     });
 
-    return result.toUIMessageStreamResponse({
+    const streamResponse = result.toUIMessageStreamResponse({
       // Forward source parts (web search citations) to the client.
       // Without this, source-url parts are generated server-side but never sent.
       sendSources: true,
@@ -552,6 +594,11 @@ export async function POST(req: Request): Promise<Response> {
           if (capturedTokenDetails) {
             metadata.tokenDetails = capturedTokenDetails;
           }
+
+          // Include trial usage info so the client can sync its display
+          if (trialMessagesUsed !== null) {
+            metadata.trial = { messagesUsed: trialMessagesUsed };
+          }
         }
 
         return Object.keys(metadata).length > 0 ? metadata : undefined;
@@ -562,6 +609,13 @@ export async function POST(req: Request): Promise<Response> {
         return error instanceof Error ? error.message : 'An error occurred';
       },
     });
+
+    // If this was a trial request, set the httpOnly cookie on the response
+    if (trialCookie) {
+      streamResponse.headers.set('Set-Cookie', trialCookie);
+    }
+
+    return streamResponse;
   } catch (error) {
     // Log the full error object for debugging
     console.error('[Chat API Error]', {

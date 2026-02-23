@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { colors, typography, spacing, effects, card, animation } from '@/lib/design-tokens';
 import { getCardZIndex } from '@/constants/zIndex';
 import { getTextStyles } from '@/lib/language-utils';
-import { useCanvasStore, selectIsAnyNodeDragging, selectActiveConversationId } from '@/stores/canvas-store';
+import { useCanvasStore, selectIsAnyNodeDragging, selectActiveConversationId, selectSkipMountAnimation } from '@/stores/canvas-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { usePreferencesStore, selectUIPreferences, getResolvedTheme, selectTheme } from '@/stores/preferences-store';
 import { ContextMenu, useContextMenu, getConversationMenuItems } from './ContextMenu';
@@ -103,6 +103,7 @@ function ConversationCardComponent({
 
   // Root cards (no parents) don't need a left handle — nothing connects into them
   const isRootCard = conversation.parentCardIds.length === 0 && !isMergeNode;
+  const skipMountAnimation = useCanvasStore(selectSkipMountAnimation);
 
   // Context menu state
   const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu, dynamicItems } = useContextMenu();
@@ -242,7 +243,7 @@ function ConversationCardComponent({
       {/* Card container - fixed size, no expansion */}
       <motion.div
         ref={cardRef}
-        initial={isBranchedCard ? { scale: 0.5, opacity: 0 } : false}
+        initial={isBranchedCard && !skipMountAnimation ? { scale: 0.5, opacity: 0 } : false}
         animate={{
           scale: dragging ? 1.02 : 1,
           opacity: 1,

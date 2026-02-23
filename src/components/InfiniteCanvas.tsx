@@ -474,37 +474,42 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
     });
   }, []);
 
-  // Fit view when persisted nodes are loaded or when switching workspaces.
-  // Skipped when the user just created a card (userCreatedCard flag).
+  // Center all workspace nodes on initial mount or workspace switch.
+  // Uses the same getFitViewOptions() pattern as the keyboard shortcut (Ctrl+Shift+F)
+  // and the <Controls> fit-view button, so breadcrumb overlay padding is consistent.
+  // maxZoom is clamped to the current zoom to prevent automatic zoom-in.
   const prevWorkspaceId = useRef<string | null>(null);
   const userCreatedCard = useRef(false);
   useEffect(() => {
+    if (!rfReady) return;
+
     const isInitialMount = prevWorkspaceId.current === null;
     const isWorkspaceSwitch = !isInitialMount && prevWorkspaceId.current !== activeWorkspaceId;
     prevWorkspaceId.current = activeWorkspaceId;
 
     if (!reactFlowInstance.current || nodes.length === 0) return;
 
-    // User just created a card — don't fitView, let it appear at defaultViewport zoom
+    // User just created a card — skip, let it appear at current zoom
     if (userCreatedCard.current) {
       userCreatedCard.current = false;
       return;
     }
 
     if (isInitialMount || isWorkspaceSwitch) {
-      const timer = setTimeout(() => {
-        const currentZoom = reactFlowInstance.current?.getViewport().zoom ?? canvasConfig.viewport.defaultZoom;
-        reactFlowInstance.current?.fitView(
+      // Use requestAnimationFrame so React Flow has measured node dimensions first
+      const raf = requestAnimationFrame(() => {
+        if (!reactFlowInstance.current) return;
+        const currentZoom = reactFlowInstance.current.getViewport().zoom;
+        reactFlowInstance.current.fitView(
           getFitViewOptions({
-            duration: isWorkspaceSwitch ? 600 : 800,
-            minZoom: currentZoom,
+            duration: isWorkspaceSwitch ? 0 : 400,
             maxZoom: currentZoom,
           })
         );
-      }, isWorkspaceSwitch ? 100 : 300);
-      return () => clearTimeout(timer);
+      });
+      return () => cancelAnimationFrame(raf);
     }
-  }, [nodes.length, activeWorkspaceId, getFitViewOptions]);
+  }, [rfReady, nodes.length, activeWorkspaceId, getFitViewOptions]);
 
   // Adjust canvas view when chat panel is opened/closed
   // This ensures the active card stays in view when the viewport changes
@@ -745,12 +750,13 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
           if (newConversation) {
             suppressNextPaneClickRef.current = true;
+            openChatPanel(newConversation.id);
             requestFocusNode(newConversation.id);
           }
         }
       }
     },
-    [branchFromMessage, conversations, getClientPoint, requestFocusNode]
+    [branchFromMessage, conversations, getClientPoint, openChatPanel, requestFocusNode]
   );
 
   // Handle creating a new conversation
@@ -991,6 +997,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
             branchReason: 'Branch from keyboard',
           });
           if (newConversation) {
+            openChatPanel(newConversation.id);
             requestFocusNode(newConversation.id);
           }
         }

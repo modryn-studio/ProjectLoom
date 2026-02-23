@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createModel, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
+import { isTrialEnabled } from '@/lib/trial-cookie';
 
 export const runtime = 'edge';
 export const maxDuration = 30;
@@ -39,7 +40,8 @@ function detectProvider(model: string): ProviderType {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as GenerateTitleRequest;
-    const { userMessage, assistantMessage, model, anthropicKey, openaiKey } = body;
+    const { userMessage, assistantMessage, anthropicKey, openaiKey } = body;
+    let model = body.model;
     const keys = { anthropic: anthropicKey, openai: openaiKey };
 
     console.log('[Generate Title API] Request received:', {
@@ -56,9 +58,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!model || (!anthropicKey && !openaiKey)) {
+    // Allow trial mode: inject platform key when no user key exists
+    if (!anthropicKey && !openaiKey) {
+      if (isTrialEnabled()) {
+        keys.openai = process.env.TRIAL_OPENAI_KEY!;
+        model = 'openai/gpt-5-mini';
+        console.log('[Generate Title API] 🆓 Trial mode — using platform key for title generation');
+      } else if (!model) {
+        return NextResponse.json(
+          { error: 'model and at least one API key are required' },
+          { status: 400 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: 'model and at least one API key are required' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (!model) {
       return NextResponse.json(
-        { error: 'model and at least one API key are required' },
+        { error: 'model is required' },
         { status: 400 }
       );
     }
