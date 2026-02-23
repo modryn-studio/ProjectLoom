@@ -13,6 +13,7 @@ import { apiKeyManager } from '@/lib/api-key-manager';
 import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
 import { useUsageStore } from '@/stores/usage-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useDemoRecordStore } from '@/stores/demo-record-store';
 import { canUserCloseChatPanel } from '@/lib/onboarding-guards';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { buildKnowledgeBaseContext, buildRagIndex } from '@/lib/rag-utils';
@@ -170,8 +171,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       return getDefaultModel('openai').id;
     }
 
-    // During onboarding, use a placeholder model ID so the request can proceed
-    if (useOnboardingStore.getState().active) {
+    // During onboarding or demo recording, use a placeholder model ID so the request can proceed
+    if (useOnboardingStore.getState().active || useDemoRecordStore.getState().active) {
       return 'anthropic/claude-sonnet-4-5';
     }
 
@@ -187,9 +188,10 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversationId, conversationModel]);
 
-  // Check if we have any API key configured (onboarding mode counts as "has key")
+  // Check if we have any API key configured (onboarding/demo mode counts as "has key")
   const onboardingActive = useOnboardingStore((s) => s.active);
-  const hasAnyApiKey = apiKeyManager.hasAnyKey() || onboardingActive;
+  const demoRecordActive = useDemoRecordStore((s) => s.active);
+  const hasAnyApiKey = apiKeyManager.hasAnyKey() || onboardingActive || demoRecordActive;
 
   // Check if current model supports vision
   const supportsVision = useMemo(() => {
@@ -563,6 +565,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
     const onboardingState = useOnboardingStore.getState();
     const onboardingStep = onboardingState.active ? onboardingState.step : undefined;
+    const demoRecordState = useDemoRecordStore.getState();
+    const demoRecordStep = demoRecordState.active ? demoRecordState.step : undefined;
     
     // 1. Lock sync effect — MUST be first to prevent races during setup
     streamingRequestMetadataRef.current = {
@@ -570,7 +574,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       model: currentModel,
       timestamp: Date.now(),
       requestId: crypto.randomUUID(),
-      onboardingStep,
+      onboardingStep: onboardingStep ?? demoRecordStep,
     };
     setStreamingConversationId(activeConversationId);
 
@@ -599,11 +603,13 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
     // 6. Build request body (inline — don't rely on stale memoized chatBody)
     const isOnboarding = Boolean(onboardingStep);
+    const isDemoRecord = Boolean(demoRecordStep);
     const body = {
       model: currentModel,
       anthropicKey: currentKeys.anthropic,
       openaiKey: currentKeys.openai,
       ...(isOnboarding ? { onboarding: true, onboardingStep } : {}),
+      ...(isDemoRecord ? { demoRecord: true, demoRecordStep } : {}),
       ...(attachments?.length ? {
         attachments: attachments.map(a => ({
           contentType: a.contentType,

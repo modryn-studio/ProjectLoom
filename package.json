@@ -1,5 +1,6 @@
 {
   "name": "project-loom",
+  "description": "Branching AI conversations on an infinite canvas",
   "version": "0.1.0",
   "private": true,
   "scripts": {

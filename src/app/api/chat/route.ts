@@ -14,7 +14,7 @@ export const runtime = 'edge';
 import { streamText, createUIMessageStream, createUIMessageStreamResponse, generateId } from 'ai';
 import { createModel, getWebSearchTools, detectProvider as detectModelProvider } from '@/lib/provider-factory';
 import { getModelConfig } from '@/lib/model-configs';
-import { getMockResponse, getOnboardingResponse, chunkResponse } from '@/lib/mock-responses';
+import { getMockResponse, getOnboardingResponse, getDemoRecordResponse, chunkResponse } from '@/lib/mock-responses';
 
 // =============================================================================
 // TYPES
@@ -48,6 +48,10 @@ interface ChatRequestBody {
   onboarding?: boolean;
   /** Onboarding step ID for step-keyed scripted responses */
   onboardingStep?: string;
+  /** When true, allows mock responses without an API key (demo recording mode) */
+  demoRecord?: boolean;
+  /** Demo recording step ID for step-keyed scripted responses */
+  demoRecordStep?: string;
 }
 
 interface APIError {
@@ -175,7 +179,7 @@ export async function POST(req: Request): Promise<Response> {
   console.log(`[chat/route] ▶ START [${reqId}] ${new Date().toISOString()}`);
   try {
     const body = await req.json() as ChatRequestBody;
-    const { messages, model, anthropicKey, openaiKey, attachments, canvasContext, onboarding } = body;
+    const { messages, model, anthropicKey, openaiKey, attachments, canvasContext, onboarding, demoRecord } = body;
     
     const keys = { anthropic: anthropicKey, openai: openaiKey };
     const lastUserMsg = [...(messages ?? [])].reverse().find(m => m.role === 'user');
@@ -217,15 +221,18 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     if (!anthropicKey && !openaiKey) {
-      // ── Onboarding mock response ──
-      // When no API key is set and the client signals onboarding mode,
+      // ── Onboarding / Demo Recording mock response ──
+      // When no API key is set and the client signals onboarding or demo mode,
       // return a canned streaming response so the user can experience
       // the full interaction loop without paying for API calls.
-      if (onboarding) {
-        const stepId = body.onboardingStep;
-        console.log(`[chat/route] [${reqId}] 🎓 Onboarding mode — step: ${stepId ?? 'none'}`);
+      if (onboarding || demoRecord) {
+        const stepId = demoRecord ? body.demoRecordStep : body.onboardingStep;
+        const modeLabel = demoRecord ? '🎬 Demo record' : '🎓 Onboarding';
+        console.log(`[chat/route] [${reqId}] ${modeLabel} mode — step: ${stepId ?? 'none'}`);
         // Use step-keyed scripted response if available, else fall back to intent detection
-        const scriptedResponse = stepId ? getOnboardingResponse(stepId) : null;
+        const scriptedResponse = stepId
+          ? (demoRecord ? getDemoRecordResponse(stepId) : getOnboardingResponse(stepId))
+          : null;
         const userText = lastUserPreview ?? '';
         const mockText = scriptedResponse ?? getMockResponse(userText);
         const chunks = chunkResponse(mockText);

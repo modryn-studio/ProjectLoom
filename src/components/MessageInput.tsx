@@ -6,6 +6,7 @@ import { Send, Square, AlertCircle, Settings, Paperclip, X, FileText } from 'luc
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useDemoRecordStore } from '@/stores/demo-record-store';
 import { ModelSelector } from './ModelSelector';
 import type { MessageAttachment } from '@/types';
 
@@ -122,14 +123,24 @@ export function MessageInput({
   // Use controlled input from useChat, or fallback to draft
   const inputValue = externalInput ?? '';
 
-  // ── Onboarding auto-typing ──
-  const isAutoTyping = useOnboardingStore((s) => s.isAutoTyping);
+  // ── Auto-typing (shared by onboarding & demo recording) ──
+  const isOnboardingAutoTyping = useOnboardingStore((s) => s.isAutoTyping);
+  const isDemoAutoTyping = useDemoRecordStore((s) => s.isAutoTyping);
+  const isAutoTyping = isOnboardingAutoTyping || isDemoAutoTyping;
   const autoTypeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPendingRef = useRef<{ cardId: string; text: string } | null>(null);
+  const lastDemoPendingRef = useRef<{ cardId: string; text: string } | null>(null);
   // Stable ref for handleSend so the auto-typing effect can call it
   const handleSendRef = useRef<(() => void) | null>(null);
 
-  const startAutoTypingForPending = useCallback((pending: { cardId: string; text: string } | null) => {
+  /**
+   * Start auto-typing a pending message. Works for both onboarding and demo.
+   * The `source` param selects which store to notify for claim/typing callbacks.
+   */
+  const startAutoTypingGeneric = useCallback((
+    pending: { cardId: string; text: string } | null,
+    source: 'onboarding' | 'demo',
+  ) => {
     if (!pending || pending.cardId !== conversationId || !externalSetInput) return;
 
     if (autoTypeTimerRef.current) {
@@ -137,9 +148,14 @@ export function MessageInput({
       autoTypeTimerRef.current = null;
     }
 
-    // Claim the pending message immediately
-    useOnboardingStore.getState().clearPendingMessage();
-    useOnboardingStore.getState().setIsAutoTyping(true);
+    // Claim the pending message from the correct store immediately
+    if (source === 'onboarding') {
+      useOnboardingStore.getState().clearPendingMessage();
+      useOnboardingStore.getState().setIsAutoTyping(true);
+    } else {
+      useDemoRecordStore.getState().clearPendingMessage();
+      useDemoRecordStore.getState().setIsAutoTyping(true);
+    }
 
     const text = pending.text;
     let idx = 0;
@@ -152,7 +168,11 @@ export function MessageInput({
       } else {
         // Done typing — auto-send after a brief pause
         autoTypeTimerRef.current = setTimeout(() => {
-          useOnboardingStore.getState().setIsAutoTyping(false);
+          if (source === 'onboarding') {
+            useOnboardingStore.getState().setIsAutoTyping(false);
+          } else {
+            useDemoRecordStore.getState().setIsAutoTyping(false);
+          }
           // Trigger send via form submit
           handleSendRef.current?.();
         }, 400);
@@ -163,21 +183,18 @@ export function MessageInput({
     autoTypeTimerRef.current = setTimeout(typeNext, 300);
   }, [conversationId, externalSetInput]);
 
+  // Subscribe to onboarding store pendingMessage
   useEffect(() => {
     const consumePending = (pending: { cardId: string; text: string } | null) => {
-      // Only act when pendingMessage changes
       if (pending === lastPendingRef.current) return;
       lastPendingRef.current = pending;
-      startAutoTypingForPending(pending);
+      startAutoTypingGeneric(pending, 'onboarding');
     };
 
-    // Handle any pending message that was set while this input was unmounted
     consumePending(useOnboardingStore.getState().pendingMessage);
 
     const unsub = useOnboardingStore.subscribe(
-      (state) => {
-        consumePending(state.pendingMessage);
-      },
+      (state) => { consumePending(state.pendingMessage); },
     );
 
     return () => {
@@ -190,7 +207,29 @@ export function MessageInput({
         useOnboardingStore.getState().setIsAutoTyping(false);
       }
     };
-  }, [startAutoTypingForPending]);
+  }, [startAutoTypingGeneric]);
+
+  // Subscribe to demo-record store pendingMessage
+  useEffect(() => {
+    const consumePending = (pending: { cardId: string; text: string } | null) => {
+      if (pending === lastDemoPendingRef.current) return;
+      lastDemoPendingRef.current = pending;
+      startAutoTypingGeneric(pending, 'demo');
+    };
+
+    consumePending(useDemoRecordStore.getState().pendingMessage);
+
+    const unsub = useDemoRecordStore.subscribe(
+      (state) => { consumePending(state.pendingMessage); },
+    );
+
+    return () => {
+      unsub();
+      if (useDemoRecordStore.getState().isAutoTyping) {
+        useDemoRecordStore.getState().setIsAutoTyping(false);
+      }
+    };
+  }, [startAutoTypingGeneric]);
 
   // Load draft when conversation changes (only when not using external input)
   useEffect(() => {

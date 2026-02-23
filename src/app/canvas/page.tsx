@@ -10,11 +10,13 @@ import { HierarchicalMergeDialog } from '@/components/HierarchicalMergeDialog';
 import { KeyboardShortcutsPanelProvider } from '@/components/KeyboardShortcutsPanel';
 import { APIKeySetupModal } from '@/components/APIKeySetupModal';
 import { OnboardingGuide } from '@/components/OnboardingGuide';
+import { DemoRecordGuide } from '@/components/DemoRecordGuide';
 import { WorkspaceNameModal } from '@/components/WorkspaceNameModal';
 import { MobileLayout } from '@/components/MobileLayout';
 import { MobileTabContent } from '@/components/MobileTabContent';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { hasSeenOnboarding } from '@/stores/onboarding-store';
+import { useDemoRecordStore } from '@/stores/demo-record-store';
 import { colors } from '@/lib/design-tokens';
 import { launchOnboardingInDemoWorkspace } from '@/lib/onboarding-demo-workspace';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -125,6 +127,27 @@ function CanvasWrapper() {
     }
   }, [isInitialized, isMobile]);
 
+  // Launch demo recording mode when ?demo=record is in the URL
+  useEffect(() => {
+    if (!isInitialized || isMobile) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') !== 'record') return;
+    // Already active — don't re-trigger
+    if (useDemoRecordStore.getState().active) return;
+
+    // Create a fresh demo workspace and start demo recording
+    const canvas = useCanvasStore.getState();
+    const demoWs = canvas.createWorkspace('Demo Recording');
+    canvas.navigateToWorkspace(demoWs.id);
+    useDemoRecordStore.getState().startDemoRecord();
+
+    // Strip the ?demo=record param so reload doesn't re-trigger
+    const url = new URL(window.location.href);
+    url.searchParams.delete('demo');
+    window.history.replaceState({}, '', url.pathname);
+  }, [isInitialized, isMobile]);
+
   const handleNewProjectConfirm = (name: string) => {
     const store = useCanvasStore.getState();
     const ws = store.createWorkspace(name);
@@ -152,6 +175,7 @@ function CanvasWrapper() {
     <main style={styles.main}>
       <InfiniteCanvas />
       <OnboardingGuide />
+      <DemoRecordGuide />
       <WorkspaceNameModal
         isOpen={showNewProjectModal}
         suggestedName="My Project"

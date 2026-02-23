@@ -4,13 +4,13 @@
   <img src="assets/banner.png" alt="ProjectLoom" width="100%" />
 </p>
 
-**Visual canvas for AI conversations.** Escape the linear chat window — branch, merge, and spatially organize your AI conversations as an infinite canvas of connected nodes.
+**Branching AI conversations on an infinite canvas.** Split any AI conversation into different directions, explore them side by side, and combine the best parts — all on one visual canvas.
 
 ---
 
 ## What it is
 
-ProjectLoom lets you treat AI conversations the way a developer treats code: branch from any point, explore multiple directions in parallel, merge threads back together, and navigate your entire conversation history as a structured graph rather than a scrolling list.
+ProjectLoom lets you explore every angle of an AI conversation without starting over. Branch from any point, explore multiple directions side by side, merge the best parts back together, and see your entire conversation history as a visual map — not a scroll bar.
 
 - **Infinite canvas** — drag and position conversation cards freely in 2D space
 - **Branching** — fork any conversation at any message to explore alternate paths
@@ -24,12 +24,12 @@ ProjectLoom lets you treat AI conversations the way a developer treats code: bra
 
 ---
 
-## Bring Your Own Key
+## Privacy & API access
 
-ProjectLoom is **BYOK** — your API keys are sent directly from your browser to Anthropic/OpenAI and are never stored on any server. You need at least one of:
+ProjectLoom uses your own AI provider account. Your keys go directly from your browser to Anthropic or OpenAI — we never see or store them. You need at least one of:
 
-- [Anthropic API key](https://console.anthropic.com/) — for Claude models
-- [OpenAI API key](https://platform.openai.com/) — for GPT / o-series models
+- [Anthropic account](https://console.anthropic.com/) — for Claude models
+- [OpenAI account](https://platform.openai.com/) — for GPT / o-series models
 
 ---
 

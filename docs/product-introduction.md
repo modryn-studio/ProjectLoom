@@ -14,11 +14,11 @@ That's what ProjectLoom fixes.
 
 ## The Idea
 
-**Think of it like Git branches, but for your thinking.** At any point in a conversation, you can:
-- **Branch** — fork the conversation to explore a different angle
-- **Explore** — go down that new path without erasing the original
-- **Merge** — pull the best ideas from multiple branches back together
-- **Navigate** — see everything at once on a spatial canvas, not buried in a scroll
+At any point in a conversation, you can:
+- **Branch** — take the conversation in a different direction without losing where you were
+- **Explore** — go down that new path while the original stays exactly as it was
+- **Merge** — pull the best thinking from multiple directions back together
+- **Navigate** — see everything at once on a visual canvas, not buried in a scroll
 
 Every conversation card sits where you put it. Every connection is visible. Your entire thinking history is mapped, not hidden.
 
@@ -54,7 +54,7 @@ You can click on any card. Edit the original question. See how changes ripple th
 
 3. **Better synthesis** — When you merge branches, the AI sees all the context. Its answer is smarter because it knows what you explored and why.
 
-4. **No more context debt** — In linear chat, you spend half the conversation re-explaining the setup. Here, the AI knows the full DAG of your thinking.
+4. **No more re-explaining** — In linear chat, you spend half the conversation re-explaining what you already covered. Here, the AI knows the full history of your thinking.
 
 5. **Flexible thinking** — You can change your mind halfway through. Branch off in a new direction. The old one is still there if you want to come back.
 
@@ -66,18 +66,18 @@ You can click on any card. Edit the original question. See how changes ripple th
 - **Product strategists** — Model different user segments, market angles, and GTM approaches in parallel
 - **Developers** — Work through architectural decisions, try different approaches, merge the best parts
 - **Indie hackers** — Validate ideas, plan launches, think through business models without losing threads
-- **Anyone who thinks in branches** — If your natural thinking process involves "what if" and "yes, and," this is for you
+- **Anyone who thinks in "what if"** — If you've ever wanted to explore two directions at once, this is for you
 
 ---
 
-## The Technical Bit (Skip If You Want)
+## Privacy (Skip If You Want)
 
-Everything runs in your browser. Your API keys (for Claude, GPT, etc.) never hit our servers — they go straight to OpenAI or Anthropic from your computer. Your conversations stay local until you choose to export them. No login required. No data collection. This is your private thinking space.
+Everything runs in your browser. When you connect your Anthropic or OpenAI account, your credentials go directly from your browser to that provider — we never see them, store them, or touch them. Your conversations stay on your device. No login required. No data collection. This is your private thinking space.
 
 ---
 
 ## One More Thing
 
-The demo you'll see on first visit is a real example: planning a product launch. Try branching from a message. Try connecting two branches. See how it feels to think this way. Then add your API key and start mapping your own thinking.
+The demo you'll see on first visit is a real example: planning a product launch. Try branching from a message. Try connecting two branches. See how it feels to think this way. Then connect your AI account and start mapping your own thinking.
 
 It's weird at first. Then it clicks. After that, linear chat feels limiting.

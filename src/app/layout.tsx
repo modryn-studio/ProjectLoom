@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://projectloom.space';
-const ogDescription = 'Branching AI conversations on an infinite canvas. Explore multiple threads simultaneously, merge insights, and never lose a thought. BYOK — your keys, your data.';
+const ogDescription = 'Split any AI conversation into different directions, explore them side by side, and combine the best parts — all on one visual canvas. Your data stays in your browser. Always.';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -29,6 +29,7 @@ export const metadata: Metadata = {
   title: 'ProjectLoom — Branching AI Conversations on an Infinite Canvas',
   description: ogDescription,
   metadataBase: new URL(siteUrl),
+  manifest: '/manifest.json',
   openGraph: {
     type: 'website',
     url: siteUrl,
@@ -40,7 +41,7 @@ export const metadata: Metadata = {
         url: '/banner.png',
         width: 1280,
         height: 320,
-        alt: 'ProjectLoom — infinite canvas for branching AI conversations',
+        alt: 'ProjectLoom — branching AI conversations on an infinite canvas',
       },
     ],
   },
@@ -60,6 +61,30 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'ProjectLoom',
+              applicationCategory: 'ProductivityApplication',
+              operatingSystem: 'Web',
+              url: siteUrl,
+              description: 'Split any AI conversation into different directions, explore them side by side, and combine the best parts — all on one visual canvas.',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'USD',
+              },
+              creator: {
+                '@type': 'Organization',
+                name: 'Modryn Studio',
+                url: 'https://modrynstudio.com',
+              },
+            }),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
