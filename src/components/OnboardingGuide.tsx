@@ -29,6 +29,7 @@ import { colors, typography, animation, effects } from '@/lib/design-tokens';
 import { zIndex } from '@/constants/zIndex';
 import { useOnboardingStore, ONBOARDING_PROMPTS } from '@/stores/onboarding-store';
 import { useCanvasStore } from '@/stores/canvas-store';
+import { analytics } from '@/lib/analytics';
 
 // =============================================================================
 // CONSTANTS
@@ -280,6 +281,16 @@ function CanvasOverlay({
 
 export function OnboardingGuide() {
   const { active, step, rootCardId, branch1CardId, branch2CardId, dismissOnboarding, completeOnboarding } = useOnboardingStore();
+
+  // Track step transitions (skip the very first render when step is initialised)
+  const prevStepRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    if (prevStepRef.current !== null && prevStepRef.current !== step) {
+      analytics.onboardingStepReached(step);
+    }
+    prevStepRef.current = step;
+  }, [active, step]);
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const knownIdsRef = useRef<Set<string>>(new Set());
 
@@ -611,10 +622,12 @@ export function OnboardingGuide() {
   }, [active, step]);
 
   const handleDismiss = useCallback(() => {
+    analytics.onboardingAbandoned(step);
     dismissOnboarding();
-  }, [dismissOnboarding]);
+  }, [dismissOnboarding, step]);
 
   const handleClearCanvas = useCallback(() => {
+    analytics.onboardingCompleted('clear');
     const store = useCanvasStore.getState();
     // Delete all conversations in the active workspace
     const ids = Array.from(store.conversations.keys());
@@ -623,6 +636,7 @@ export function OnboardingGuide() {
   }, [completeOnboarding]);
 
   const handleKeepExploring = useCallback(() => {
+    analytics.onboardingCompleted('keep');
     completeOnboarding();
   }, [completeOnboarding]);
 

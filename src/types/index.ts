@@ -534,20 +534,10 @@ export interface BranchingPreferences {
 // =============================================================================
 
 /**
- * User preferences
+ * User preferences — canonical definition lives in src/stores/preferences-store.ts.
+ * ThemeMode = 'light' | 'dark' | 'system'; shape: { branching, ui: { theme, ... } }
+ * @see src/stores/preferences-store.ts
  */
-export interface UserPreferences {
-  /** Theme (dark-only in Phase 1) */
-  theme: 'dark';
-  /** Default inheritance mode */
-  defaultInheritanceMode: InheritanceMode;
-  /** Whether to show minimap */
-  showMinimap: boolean;
-  /** Whether to show dev overlay */
-  showDevOverlay: boolean;
-  /** Branching preferences */
-  branching: BranchingPreferences;
-}
 
 /**
  * Workspace storage data (v4 - flat workspaces)
@@ -573,7 +563,7 @@ export interface CanvasStorageData {
   activeCanvasId: string;
   /** User settings */
   settings: {
-    theme: 'dark';
+    theme: 'light' | 'dark';
     showMinimap: boolean;
     snapToGrid: boolean;
   };
@@ -597,7 +587,7 @@ export interface StorageData {
   draftMessages?: Record<string, string>;
   /** Canvas settings */
   settings: {
-    theme: 'dark';
+    theme: 'light' | 'dark';
     showMinimap: boolean;
     snapToGrid: boolean;
   };

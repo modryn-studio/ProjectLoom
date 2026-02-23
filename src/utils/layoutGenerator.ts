@@ -264,6 +264,8 @@ export function generateTreeLayout(
   
   // BFS traversal for tree layout
   function layoutSubtree(nodeIndex: number, depth: number, yOffset: number): number {
+    // Guard against extremely deep or malformed graphs (e.g. missed cycle in connections)
+    if (depth > 500) return yOffset;
     const x = opts.startX + depth * (opts.cardWidth + opts.gapX);
     const jitterX = getJitter(opts.jitter, random);
     const jitterY = getJitter(opts.jitter, random);

@@ -253,7 +253,7 @@ export class VersionedStorage<T> {
     let currentVersion = fromVersion;
 
     for (const migration of this.migrations) {
-      if (migration.fromVersion >= currentVersion && migration.toVersion <= this.version) {
+      if (migration.fromVersion === currentVersion && migration.toVersion <= this.version) {
         this.log(`Applying migration: v${migration.fromVersion} → v${migration.toVersion}`);
         try {
           currentData = migration.migrate(currentData);

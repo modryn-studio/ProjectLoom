@@ -15,6 +15,7 @@ import { InlineBranchPanel } from './InlineBranchPanel';
 import type { ConversationNodeData, Message } from '@/types';
 import { GitBranch, Zap } from 'lucide-react';
 import { canBranchFromCard, canDeleteConversations } from '@/lib/onboarding-guards';
+import { analytics } from '@/lib/analytics';
 
 // =============================================================================
 // TYPES
@@ -204,6 +205,7 @@ function ConversationCardComponent({
       
       // Open chat panel and focus the new card for immediate interaction
       if (newConversation) {
+        analytics.branchCreated('context_menu');
         openChatPanel(newConversation.id);
         requestFocusNode(newConversation.id);
       }

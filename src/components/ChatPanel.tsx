@@ -15,6 +15,7 @@ import { useUsageStore } from '@/stores/usage-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useDemoRecordStore } from '@/stores/demo-record-store';
 import { useTrialStore, selectIsTrialActive, selectIsTrialExhausted } from '@/stores/trial-store';
+import { analytics } from '@/lib/analytics';
 import { canUserCloseChatPanel } from '@/lib/onboarding-guards';
 import { getKnowledgeBaseContents } from '@/lib/knowledge-base-db';
 import { buildKnowledgeBaseContext, buildRagIndex } from '@/lib/rag-utils';
@@ -441,10 +442,13 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
           tokenDetails: msgMetadata?.tokenDetails,
         });
       } else {
-        // Fallback: estimate tokens when SDK doesn't provide usage data
+        // Fallback: estimate tokens when SDK doesn't provide usage data.
+        // Use actual conversation message lengths for a better input estimate.
         const CHARS_PER_TOKEN = 4;
-        const estimatedInputTokens = Math.ceil((messageText.length || 0) / CHARS_PER_TOKEN);
-        const estimatedOutputTokens = Math.ceil((messageText.length || 0) / CHARS_PER_TOKEN);
+        const conversationChars = (useCanvasStore.getState().conversations.get(metadata.conversationId)?.content ?? [])
+          .reduce((sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0), 0);
+        const estimatedInputTokens = Math.ceil(Math.max(conversationChars, messageText.length) / CHARS_PER_TOKEN);
+        const estimatedOutputTokens = Math.ceil(messageText.length / CHARS_PER_TOKEN);
         
         console.warn('[ChatPanel] Usage data missing, using estimation:', {
           model: metadata.model,
@@ -480,6 +484,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       if (error.message?.includes('free messages')) {
         const trialState = useTrialStore.getState();
         trialState.syncFromServer(trialState.cap);
+        analytics.trialExhausted();
       }
 
       // Clear metadata ref on error to prevent stale data
@@ -642,6 +647,22 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       ...(canvasContextPayload ? { canvasContext: canvasContextPayload } : {}),
     };
 
+    // Analytics: first real message + trial message tracking
+    if (!isOnboarding && !isDemoRecord) {
+      const firstMsgKey = 'projectloom:first-message-fired';
+      if (!localStorage.getItem(firstMsgKey)) {
+        localStorage.setItem(firstMsgKey, '1');
+        analytics.firstRealMessage({
+          has_api_key: !!(currentKeys.anthropic || currentKeys.openai),
+          model: currentModel,
+        });
+      }
+      if (isTrialActive) {
+        const trialState = useTrialStore.getState();
+        analytics.trialMessageSent(trialState.messagesUsed + 1);
+      }
+    }
+
     // 7. Send to API — undefined means "use current messages, don't add a new one"
     //    This eliminates the dual-send: no second user message is appended by useChat.
     try {
@@ -682,6 +703,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
     const onboardingState = useOnboardingStore.getState();
     const onboardingStep = onboardingState.active ? onboardingState.step : undefined;
+    const demoRecordState = useDemoRecordStore.getState();
+    const demoRecordStep = demoRecordState.active ? demoRecordState.step : undefined;
     
     // 1. Lock sync effect — MUST be before store mutation
     streamingRequestMetadataRef.current = {
@@ -717,11 +740,12 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     })));
     
     // 5. Build request body inline
-    const body = {
+    const retryBody = {
       model: currentModel,
       anthropicKey: currentKeys.anthropic,
       openaiKey: currentKeys.openai,
       ...(onboardingStep ? { onboarding: true, onboardingStep } : {}),
+      ...(demoRecordStep ? { demoRecord: true, demoRecordStep } : {}),
       ...(messageAttachments.length > 0 ? {
         attachments: messageAttachments.map(a => ({
           contentType: a.contentType,
@@ -734,7 +758,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
     // 6. Send to API — undefined means "use current messages, don't add a new one"
     try {
-      await sendMessage(undefined, { body });
+      await sendMessage(undefined, { body: retryBody });
     } finally {
       if (streamingRequestMetadataRef.current?.conversationId === activeConversationId) {
         streamingRequestMetadataRef.current = null;
@@ -766,6 +790,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     // 1. Lock sync effect — MUST be before store mutation
     const onboardingState = useOnboardingStore.getState();
     const onboardingStep = onboardingState.active ? onboardingState.step : undefined;
+    const demoRecordState = useDemoRecordStore.getState();
+    const demoRecordStep = demoRecordState.active ? demoRecordState.step : undefined;
 
     streamingRequestMetadataRef.current = {
       conversationId: activeConversationId,
@@ -824,6 +850,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       anthropicKey: currentKeys.anthropic,
       openaiKey: currentKeys.openai,
       ...(onboardingStep ? { onboarding: true, onboardingStep } : {}),
+      ...(demoRecordStep ? { demoRecord: true, demoRecordStep } : {}),
       ...(attachments.length > 0 ? {
         attachments: attachments.map(a => ({
           contentType: a.contentType,

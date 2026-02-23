@@ -22,6 +22,8 @@ import { launchOnboardingInDemoWorkspace } from '@/lib/onboarding-demo-workspace
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { clearKnowledgeBaseStorage } from '@/lib/knowledge-base-db';
 import { STORAGE_KEYS } from '@/lib/storage';
+import { analytics } from '@/lib/analytics';
+import { apiKeyManager } from '@/lib/api-key-manager';
 
 // =============================================================================
 // CANVAS PAGE — /canvas
@@ -122,6 +124,17 @@ function CanvasWrapper() {
       initializeFromStorage();
     }
   }, [initializeFromStorage, isInitialized]);
+
+  // Fire canvas_loaded once the store is ready
+  useEffect(() => {
+    if (!isInitialized) return;
+    analytics.canvasLoaded({
+      is_first_visit: !hasSeenOnboarding(),
+      has_api_key: apiKeyManager.hasAnyKey(),
+    });
+  // run exactly once after initialization
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized]);
 
   // Start guided onboarding for first-time desktop users
   useEffect(() => {

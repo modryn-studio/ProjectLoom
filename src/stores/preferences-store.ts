@@ -13,7 +13,16 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { 
   BranchingPreferences, 
 } from '@/types';
-import { STORAGE_KEYS, VersionedStorage, CURRENT_SCHEMA_VERSION } from '@/lib/storage';
+import { STORAGE_KEYS, VersionedStorage } from '@/lib/storage';
+
+/**
+ * Independent preferences schema version.
+ * Decoupled from CURRENT_SCHEMA_VERSION (workspace schema) so preferences
+ * migrations don't require bumping the global workspace version.
+ *
+ * v4 → v5: Restructured from flat { theme, branching } to nested { ui: { theme }, branching }.
+ */
+const PREFERENCES_SCHEMA_VERSION = 5;
 
 // =============================================================================
 // TYPES
@@ -87,9 +96,36 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 
 const preferencesStorage = new VersionedStorage<UserPreferences>({
   key: STORAGE_KEYS.PREFERENCES,
-  version: CURRENT_SCHEMA_VERSION,
+  version: PREFERENCES_SCHEMA_VERSION,
   defaultData: DEFAULT_PREFERENCES,
   debug: process.env.NODE_ENV === 'development',
+  migrations: [
+    {
+      // v4 used the flat shape: { theme: 'dark', branching, defaultInheritanceMode, ... }
+      // v5 uses the nested shape: { branching, ui: { theme, ... } }
+      fromVersion: 4,
+      toVersion: 5,
+      migrate: (data: unknown): UserPreferences => {
+        const d = data as Record<string, unknown>;
+        // Only apply if the old flat structure is detected (no `ui` key)
+        if (d?.ui === undefined) {
+          return {
+            branching: {
+              ...DEFAULT_BRANCHING_PREFERENCES,
+              ...(d?.branching as object | undefined),
+            },
+            ui: {
+              ...DEFAULT_UI_PREFERENCES,
+              // Preserve the user's saved theme — the whole point of this migration
+              ...(typeof d?.theme === 'string' ? { theme: d.theme as ThemeMode } : {}),
+            },
+          };
+        }
+        // Already in new shape — pass through
+        return data as UserPreferences;
+      },
+    },
+  ],
 });
 
 // =============================================================================

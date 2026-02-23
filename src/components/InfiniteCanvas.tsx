@@ -58,6 +58,7 @@ import {
   canMutateWorkspaces,
   canUserCloseChatPanel,
 } from '@/lib/onboarding-guards';
+import { analytics } from '@/lib/analytics';
 
 // =============================================================================
 // NODE TYPES
@@ -413,7 +414,11 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       // First visit — just record the timestamp so the 24-hour clock starts.
       // Don't trigger a download: the user has no real data yet and the
       // unexpected "Save As" dialog is intimidating for new users.
-      window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT, new Date().toISOString());
+      // Also stamp the reminder so it doesn't fire immediately on first load
+      // (needsBackup && canRemind would both be true for a brand-new user).
+      const firstVisitStamp = new Date().toISOString();
+      window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT, firstVisitStamp);
+      window.localStorage.setItem(STORAGE_KEYS.BACKUP_REMINDER_LAST_SHOWN, firstVisitStamp);
     } else if (needsAutoBackup) {
       const payload = createBackupPayload();
       const json = JSON.stringify(payload, null, 2);
@@ -749,6 +754,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
           });
 
           if (newConversation) {
+            analytics.branchCreated('drag');
             suppressNextPaneClickRef.current = true;
             openChatPanel(newConversation.id);
             requestFocusNode(newConversation.id);
@@ -997,6 +1003,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
             branchReason: 'Branch from keyboard',
           });
           if (newConversation) {
+            analytics.branchCreated('keyboard');
             openChatPanel(newConversation.id);
             requestFocusNode(newConversation.id);
           }

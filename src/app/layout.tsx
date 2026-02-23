@@ -96,7 +96,8 @@ export default function RootLayout({
                   const stored = localStorage.getItem('projectloom:preferences');
                   if (stored) {
                     const prefs = JSON.parse(stored);
-                    const theme = prefs?.data?.ui?.theme || 'system';
+                    // Support both new nested (data.ui.theme) and old flat (data.theme) formats
+                    const theme = prefs?.data?.ui?.theme ?? prefs?.data?.theme ?? 'system';
                     if (theme !== 'system') {
                       document.documentElement.setAttribute('data-theme', theme);
                     }

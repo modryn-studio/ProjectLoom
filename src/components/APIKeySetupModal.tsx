@@ -7,6 +7,7 @@ import { X, Key, AlertCircle, CheckCircle, Loader, ExternalLink } from 'lucide-r
 import { colors, typography, spacing, effects, animation } from '@/lib/design-tokens';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
 import { useTrialStore, selectIsTrialExhausted } from '@/stores/trial-store';
+import { analytics } from '@/lib/analytics';
 
 // =============================================================================
 // API KEY SETUP MODAL
@@ -155,6 +156,14 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
 
       // Dismiss trial mode — user now has their own keys
       useTrialStore.getState().dismiss();
+
+      // Analytics: which provider(s) were saved
+      const savedAnthropic = !!anthropicKey.value.trim();
+      const savedOpenai = !!openaiKey.value.trim();
+      analytics.apiKeySaved({
+        provider: savedAnthropic && savedOpenai ? 'both' : savedAnthropic ? 'anthropic' : 'openai',
+        was_trial_exhausted: isTrialExhausted,
+      });
 
       onSuccess?.();
       onClose();

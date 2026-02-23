@@ -532,7 +532,7 @@ interface WorkspaceState {
   getWorkspaces: () => Workspace[];
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
   deleteWorkspace: (workspaceId: string) => void;
-  clearCanvas: (workspaceId: string) => void;
+  clearWorkspaceKnowledgeBase: (workspaceId: string) => void;
 
   // Actions - Card-Level Branching (v4)
   branchFromMessage: (data: BranchFromMessageData) => Conversation | null;
@@ -1129,28 +1129,23 @@ export const useCanvasStore = create<WorkspaceState>()(
               return node;
             }
             
-            // Apply position change
-            if (newPosition !== undefined) {
-              return {
-                ...node,
-                position: newPosition,
-              };
-            }
-            
-            // Apply selection change
-            if (newSelected !== undefined) {
-              if (newSelected) {
-                newSelectedIds.add(node.id);
-              } else {
-                newSelectedIds.delete(node.id);
+            // Apply position and/or selection changes. Both can arrive in the same batch
+            // (e.g. drag-start: React Flow moves and selects simultaneously).
+            if (newPosition !== undefined || newSelected !== undefined) {
+              if (newSelected !== undefined) {
+                if (newSelected) {
+                  newSelectedIds.add(node.id);
+                } else {
+                  newSelectedIds.delete(node.id);
+                }
               }
               return {
                 ...node,
-                selected: newSelected,
-                data: {
-                  ...node.data,
-                  isSelected: newSelected,
-                },
+                ...(newPosition !== undefined ? { position: newPosition } : {}),
+                ...(newSelected !== undefined ? {
+                  selected: newSelected,
+                  data: { ...node.data, isSelected: newSelected },
+                } : {}),
               };
             }
             
@@ -1550,8 +1545,10 @@ export const useCanvasStore = create<WorkspaceState>()(
 
         storage.save(data);
         
-        // Save workspaces (v4 - flat, no hierarchy)
-        if (workspaces.length > 0) {
+        // Save workspaces (v4 - flat, no hierarchy).
+        // Always save, even when empty — otherwise a "delete all workspaces" action
+        // won't persist and the old list revives on next page load.
+        {
           const updatedWorkspaces = workspaces.map(w => {
             if (w.id === activeWorkspaceId) {
               return {
@@ -1861,7 +1858,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       get().saveToStorage();
     },
 
-    clearCanvas: (workspaceId: string) => {
+    clearWorkspaceKnowledgeBase: (workspaceId: string) => {
       const { workspaces } = get();
       const targetWorkspace = workspaces.find(w => w.id === workspaceId);
 
@@ -1932,11 +1929,6 @@ export const useCanvasStore = create<WorkspaceState>()(
         logger.error(`Source node not found: ${sourceCardId}`);
         return null;
       }
-
-      // CRITICAL: Record history BEFORE making any changes
-      // This ensures undo will restore to the current state (with all messages intact)
-      // Without this, undo might revert to the last recorded state (e.g., when card was created empty)
-      get().recordHistory();
 
       // Calculate position for new branch.
       // If no explicit target is provided, place sibling branches into separate
@@ -2029,6 +2021,7 @@ export const useCanvasStore = create<WorkspaceState>()(
       // Create branch edge
       get().createEdge(sourceCardId, newConversation.id, 'branch');
 
+      // Record history AFTER all changes so undo restores to this exact state.
       get().recordHistory();
 
       return newConversation;
@@ -2078,11 +2071,6 @@ export const useCanvasStore = create<WorkspaceState>()(
         logger.error('One or more source cards not found');
         return null;
       }
-
-      // CRITICAL: Record history BEFORE making any changes
-      // This ensures undo will restore to the current state (with all messages intact)
-      // After validation so we don't record unnecessary history on errors
-      get().recordHistory();
 
       // Build inherited context from all parents
       const now = new Date();
@@ -2136,6 +2124,8 @@ export const useCanvasStore = create<WorkspaceState>()(
 
       // Add conversation to store
       get().addConversation(mergeNode, position);
+
+      // Record history AFTER all changes so undo restores to this exact state.
 
       // Create merge edges from all source cards
       // Use edge bundling visual style if 4+ parents for visual simplification

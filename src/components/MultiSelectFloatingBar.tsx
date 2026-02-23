@@ -13,6 +13,7 @@ import React, { useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
+import { analytics } from '@/lib/analytics';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { colors, typography, effects } from '@/lib/design-tokens';
@@ -102,6 +103,7 @@ export function MultiSelectFloatingBar() {
     });
 
     if (mergeNode) {
+      analytics.mergeCompleted(selectedIds.length);
       // Open the chat panel for the new merge card
       openChatPanel(mergeNode.id);
       requestFocusNode(mergeNode.id);

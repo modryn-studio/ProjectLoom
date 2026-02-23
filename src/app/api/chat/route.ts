@@ -460,6 +460,17 @@ export async function POST(req: Request): Promise<Response> {
       })
       .filter((msg): msg is NonNullable<typeof msg> => msg !== null);
 
+    // Guard: if every message was a system message, there's nothing to send.
+    // Some providers (Anthropic) reject an empty messages array with 400.
+    if (conversationMessages.length === 0) {
+      return createErrorResponse(
+        'No user or assistant messages provided.',
+        'INVALID_REQUEST',
+        400,
+        { recoverable: false }
+      );
+    }
+
     // Get per-model tuning (temperature, maxTokens)
     const modelConfig = getModelConfig(model);
 

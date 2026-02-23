@@ -73,6 +73,9 @@ function buildTokenFreq(tokens: string[]): Map<string, number> {
 }
 
 function chunkText(text: string, maxChars: number, overlapChars: number): string[] {
+  // Guard: overlap must be strictly less than maxChars to avoid an infinite loop
+  // in the large-paragraph chunker where start = end - overlapChars.
+  const safeOverlap = Math.min(overlapChars, Math.floor(maxChars / 2));
   const normalized = text.replace(/\r\n/g, '\n');
   if (normalized.length <= maxChars) return [normalized];
 
@@ -96,7 +99,7 @@ function chunkText(text: string, maxChars: number, overlapChars: number): string
         const end = Math.min(start + maxChars, paragraph.length);
         const slice = paragraph.slice(start, end).trim();
         if (slice) chunks.push(slice);
-        start = end - overlapChars;
+        start = end - safeOverlap;
         if (start < 0) start = 0;
         if (start >= paragraph.length) break;
       }
