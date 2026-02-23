@@ -127,8 +127,9 @@ function CanvasWrapper() {
     }
   }, [isInitialized, isMobile]);
 
-  // Launch demo recording mode when ?demo=record is in the URL
+  // Launch demo recording mode when ?demo=record is in the URL (dev only)
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
     if (!isInitialized || isMobile) return;
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);

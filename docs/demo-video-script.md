@@ -165,6 +165,22 @@ Last updated: February 22, 2026
 
 ---
 
+## Clueso Transcript (Sync Points)
+
+**1.** This is ProjectLoom — an AI canvas where each conversation lives as its own node. You type a question, the AI responds, and that exchange becomes a card you can build on.
+
+**2.** Instead of a single linear chat, you can branch. One conversation splits into two independent threads — each exploring a different angle of the same problem, side by side on the canvas.
+
+**3.** Branches aren't just for one level. You can keep going — add a second branch from the root, explore a completely separate direction, and watch the canvas grow organically around your thinking.
+
+**4.** When two threads have run their course, you merge them. ProjectLoom pulls both conversations into context and generates a response that synthesises everything — no copy-pasting, no summarising yourself.
+
+**5.** The merged result is just another node. You can keep branching from it — this time to challenge and pressure-test what you've built, using a different model if you want a different perspective.
+
+**6.** One final merge closes the loop. Every thread, every insight, every critique — combined into a single output. That's the canvas: non-linear thinking, with AI that keeps up.
+
+---
+
 ## Recording Notes
 
 - **Canvas zoom level:** around 70–80% so 3–4 cards are visible at once

@@ -48,6 +48,7 @@ import { ContextMenu, useContextMenu, ContextMenuItem } from './ContextMenu';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanvasStore, selectActiveConversationId, selectChatPanelOpen, selectUsagePanelOpen } from '@/stores/canvas-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useDemoRecordStore } from '@/stores/demo-record-store';
 import { usePreferencesStore, selectUIPreferences } from '@/stores/preferences-store';
 import { Plus } from 'lucide-react';
 import {
@@ -374,6 +375,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   // Settings panel handlers (memoized to prevent re-renders)
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const demoRecordActive = useDemoRecordStore((s) => s.active);
 
   const showDevOverlay = process.env.NODE_ENV === 'development'
     || process.env.NEXT_PUBLIC_ENABLE_DEV_OVERLAY === 'true';
@@ -552,6 +554,28 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
     return () => clearTimeout(timer);
   }, [isSidebarOpen, centerNodeWithoutZoom, onboardingActive]);
+
+  // Apply one-time viewport zoom for demo recording mode
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onDemoZoom = (event: Event) => {
+      if (!reactFlowInstance.current) return;
+      const customEvent = event as CustomEvent<{ zoom?: number; duration?: number }>;
+      const targetZoom = customEvent.detail?.zoom ?? 0.9;
+      const duration = customEvent.detail?.duration ?? 500;
+      const currentViewport = reactFlowInstance.current.getViewport();
+      reactFlowInstance.current.setViewport(
+        { ...currentViewport, zoom: targetZoom },
+        { duration },
+      );
+    };
+
+    window.addEventListener('projectloom:demoZoom', onDemoZoom as EventListener);
+    return () => {
+      window.removeEventListener('projectloom:demoZoom', onDemoZoom as EventListener);
+    };
+  }, []);
 
   // Handle node changes (position updates)
   const handleNodesChange: OnNodesChange<Node<ConversationNodeData>> = useCallback(
@@ -1249,7 +1273,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
               </ReactFlow>
 
               {/* Dev performance overlay */}
-              {showDevOverlay && (
+              {showDevOverlay && !demoRecordActive && (
                 <DevPerformanceOverlay
                   nodeCount={nodes.length}
                   edgeCount={edges.length}

@@ -3,53 +3,62 @@
 import React, { useEffect, useRef, useLayoutEffect, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { LandingCard, type LandingCardData } from './LandingCard';
+import { LandingChatPanel } from './LandingChatPanel';
 
 // =============================================================================
 // COORDINATE SYSTEM — HORIZONTAL (default)
+// Diamond: 1 parent → 2 branches → 1 merge, plus a chat panel on the right
 // =============================================================================
 
-const CANVAS_W = 960;
+const CANVAS_W = 1060;
 const CANVAS_H = 480;
-const CARD_W = 280; // Landing page card width (independent of canvas card size)
-const CARD_H = 160; // Landing page card height
+const CARD_W = 220;
+const CARD_H = 130;
+const CHAT_PANEL_W = 280;
+const CHAT_PANEL_GAP = 20;
 
 const CARD_XY = [
-  { x: 10,  y: 160 }, // 0: root
-  { x: 340, y: 40  }, // 1: tech stack
-  { x: 340, y: 282 }, // 2: finding users
-  { x: 660, y: 10  }, // 3: app router
-  { x: 660, y: 252 }, // 4: landing page
+  { x: 10,  y: 175 }, // 0: root  — vertically centred
+  { x: 260, y: 30  }, // 1: branch A (top)
+  { x: 260, y: 320 }, // 2: branch B (bottom)
+  { x: 510, y: 175 }, // 3: merge  — vertically centred
 ];
+
+// Chat panel sits to the right of the card diamond
+const CHAT_X = CARD_XY[3].x + CARD_W + CHAT_PANEL_GAP;
+const CHAT_Y = 0;
+const CHAT_H = CANVAS_H;
 
 const cy = (i: number) => CARD_XY[i].y + CARD_H / 2;
 const rx = (i: number) => CARD_XY[i].x + CARD_W;
 const lx = (i: number) => CARD_XY[i].x;
 
+// Diamond SVG paths: 0→1, 0→2 (branch), 1→3, 2→3 (merge)
 const SVG_PATHS: Record<string, string> = {
-  '0-1': `M ${rx(0)} ${cy(0)} C ${rx(0)+50} ${cy(0)}, ${lx(1)-50} ${cy(1)}, ${lx(1)} ${cy(1)}`,
-  '0-2': `M ${rx(0)} ${cy(0)} C ${rx(0)+50} ${cy(0)}, ${lx(2)-50} ${cy(2)}, ${lx(2)} ${cy(2)}`,
-  '1-3': `M ${rx(1)} ${cy(1)} C ${rx(1)+50} ${cy(1)}, ${lx(3)-50} ${cy(3)}, ${lx(3)} ${cy(3)}`,
-  '2-4': `M ${rx(2)} ${cy(2)} C ${rx(2)+50} ${cy(2)}, ${lx(4)-50} ${cy(4)}, ${lx(4)} ${cy(4)}`,
+  '0-1': `M ${rx(0)} ${cy(0)} C ${rx(0)+40} ${cy(0)}, ${lx(1)-40} ${cy(1)}, ${lx(1)} ${cy(1)}`,
+  '0-2': `M ${rx(0)} ${cy(0)} C ${rx(0)+40} ${cy(0)}, ${lx(2)-40} ${cy(2)}, ${lx(2)} ${cy(2)}`,
+  '1-3': `M ${rx(1)} ${cy(1)} C ${rx(1)+40} ${cy(1)}, ${lx(3)-40} ${cy(3)}, ${lx(3)} ${cy(3)}`,
+  '2-3': `M ${rx(2)} ${cy(2)} C ${rx(2)+40} ${cy(2)}, ${lx(3)-40} ${cy(3)}, ${lx(3)} ${cy(3)}`,
 };
 
-// phase machine — 5 cards, 2 levels of branching
-const CARD_SHOW_AT: number[] = [1, 3, 3, 5, 5];
-const LINE_SHOW_AT: Record<string, number> = { '0-1': 2, '0-2': 2, '1-3': 4, '2-4': 4 };
+// Phase machine — sequential reveal: parent+chat0 → child1+chat1 → child2+chat2 → merge+chat3
+const CARD_SHOW_AT: number[] = [1, 3, 5, 7];
+const LINE_SHOW_AT: Record<string, number> = { '0-1': 2, '0-2': 4, '1-3': 6, '2-3': 6 };
 
 // =============================================================================
-// COORDINATE SYSTEM — VERTICAL (mobile, top-down)
-// 3 levels: root at top-centre, two branches in middle, two leaves at bottom.
+// COORDINATE SYSTEM — VERTICAL (mobile, top-down diamond)
+// Root at top-centre, two branches in middle, merge at bottom.
+// No chat panel on mobile.
 // =============================================================================
 
 const V_CANVAS_W = 640;
-const V_CANVAS_H = 760;
+const V_CANVAS_H = 600;
 
 const V_CARD_XY = [
-  { x: 180, y: 10  }, // 0: root  (centre-x=320, bottom=170)
-  { x: 20,  y: 300 }, // 1: tech stack   (centre-x=160, top=300, bottom=460)
-  { x: 340, y: 300 }, // 2: finding users (centre-x=480, top=300, bottom=460)
-  { x: 20,  y: 590 }, // 3: app router   (centre-x=160)
-  { x: 340, y: 590 }, // 4: landing page  (centre-x=480)
+  { x: 210, y: 10  }, // 0: root  (centre-top)
+  { x: 30,  y: 240 }, // 1: branch A (left-mid)
+  { x: 390, y: 240 }, // 2: branch B (right-mid)
+  { x: 210, y: 460 }, // 3: merge (centre-bottom)
 ];
 
 const v_bcx = (i: number) => V_CARD_XY[i].x + CARD_W / 2;
@@ -57,29 +66,25 @@ const v_by  = (i: number) => V_CARD_XY[i].y + CARD_H;
 const v_tcx = (i: number) => V_CARD_XY[i].x + CARD_W / 2;
 const v_ty  = (i: number) => V_CARD_XY[i].y;
 
-// Cubic bezier curves with vertical control-point offsets — same technique as
-// the horizontal layout but rotated 90°. CP1 is directly below the source;
-// CP2 is directly above the target. This makes the line leave straight down
-// and arrive straight down, with a smooth arc in between.
 const V_SVG_PATHS: Record<string, string> = {
-  '0-1': `M ${v_bcx(0)} ${v_by(0)} C ${v_bcx(0)} ${v_by(0)+65}, ${v_tcx(1)} ${v_ty(1)-65}, ${v_tcx(1)} ${v_ty(1)}`,
-  '0-2': `M ${v_bcx(0)} ${v_by(0)} C ${v_bcx(0)} ${v_by(0)+65}, ${v_tcx(2)} ${v_ty(2)-65}, ${v_tcx(2)} ${v_ty(2)}`,
-  '1-3': `M ${v_bcx(1)} ${v_by(1)} C ${v_bcx(1)} ${v_by(1)+65}, ${v_tcx(3)} ${v_ty(3)-65}, ${v_tcx(3)} ${v_ty(3)}`,
-  '2-4': `M ${v_bcx(2)} ${v_by(2)} C ${v_bcx(2)} ${v_by(2)+65}, ${v_tcx(4)} ${v_ty(4)-65}, ${v_tcx(4)} ${v_ty(4)}`,
+  '0-1': `M ${v_bcx(0)} ${v_by(0)} C ${v_bcx(0)} ${v_by(0)+50}, ${v_tcx(1)} ${v_ty(1)-50}, ${v_tcx(1)} ${v_ty(1)}`,
+  '0-2': `M ${v_bcx(0)} ${v_by(0)} C ${v_bcx(0)} ${v_by(0)+50}, ${v_tcx(2)} ${v_ty(2)-50}, ${v_tcx(2)} ${v_ty(2)}`,
+  '1-3': `M ${v_bcx(1)} ${v_by(1)} C ${v_bcx(1)} ${v_by(1)+50}, ${v_tcx(3)} ${v_ty(3)-50}, ${v_tcx(3)} ${v_ty(3)}`,
+  '2-3': `M ${v_bcx(2)} ${v_by(2)} C ${v_bcx(2)} ${v_by(2)+50}, ${v_tcx(3)} ${v_ty(3)-50}, ${v_tcx(3)} ${v_ty(3)}`,
 };
 
-// phase machine — 5 cards, 2 levels of branching (same as horizontal)
-const V_CARD_SHOW_AT: number[] = [1, 3, 3, 5, 5];
-const V_LINE_SHOW_AT: Record<string, number> = { '0-1': 2, '0-2': 2, '1-3': 4, '2-4': 4 };
+// phase machine — same sequential timing as horizontal
+const V_CARD_SHOW_AT: number[] = [1, 3, 5, 7];
+const V_LINE_SHOW_AT: Record<string, number> = { '0-1': 2, '0-2': 4, '1-3': 6, '2-3': 6 };
 
 // =============================================================================
 // ANIMATION PHASE HELPERS
 // =============================================================================
 
 const isCardVisible = (i: number, phase: number, showAt: number[]) =>
-  phase >= showAt[i] && phase < 7;
+  phase >= showAt[i] && phase < 9;
 const isLineVisible = (id: string, phase: number, showAt: Record<string, number>) =>
-  phase >= showAt[id] && phase < 7;
+  phase >= showAt[id] && phase < 9;
 
 // =============================================================================
 // CARD DATA
@@ -93,27 +98,21 @@ const CARDS: LandingCardData[] = [
   },
   {
     title: 'Build it',
-    preview: 'Yes — scratch your own itch. The market is small but passionate. Ship an MVP in 2 weeks.',
+    preview: 'Yes — scratch your own itch. Ship an MVP in two weeks and charge from day one.',
     timestamp: '2d ago',
     isBranch: true,
   },
   {
     title: 'Validate first',
-    preview: 'Don\'t build yet. Post in communities, collect 10 emails, and see if anyone pays before writing a line of code.',
+    preview: 'Don\'t build yet. Post in communities, collect 10 emails, and see if anyone pays.',
     timestamp: '2d ago',
     isBranch: true,
   },
   {
-    title: 'Tech stack for the MVP',
-    preview: 'Next.js + Stripe + a simple Postgres table. Avoid complexity — charge on day one.',
+    title: 'Combined strategy',
+    preview: 'Build a lightweight MVP and validate in parallel — ship fast, but prove demand first.',
     timestamp: '1d ago',
-    isBranch: true,
-  },
-  {
-    title: 'Where to find early users',
-    preview: 'Indie Hackers, r/SideProject, and X. Be a person first, not a marketer. Share the build process.',
-    timestamp: '1d ago',
-    isBranch: true,
+    isMerge: true,
   },
 ];
 
@@ -211,7 +210,9 @@ export function HeroCanvas({ vertical = false }: { vertical?: boolean }) {
 
   const runLoop = () => {
     setPhase(0);
-    // Both layouts use the same 5-phase sequence: root → lines1 → cards1 → lines2 → cards2 → hold → fade
+    // Both layouts use the same phase sequence:
+    // root+chat0 → line to child1 → child1+chat1 → line to child2 → child2+chat2
+    // → merge lines → merge+chat3 → hold → fade
     schedule(() => {
       setPhase(1);
       schedule(() => {
@@ -223,11 +224,20 @@ export function HeroCanvas({ vertical = false }: { vertical?: boolean }) {
             schedule(() => {
               setPhase(5);
               schedule(() => {
-                setPhase(7);
-                schedule(runLoop, 1000);
-              }, 4000);
+                setPhase(6);
+                schedule(() => {
+                  setPhase(7);
+                  schedule(() => {
+                    setPhase(8);
+                    schedule(() => {
+                      setPhase(9);
+                      schedule(runLoop, 1000);
+                    }, 1000);
+                  }, 3600);
+                }, 600);
+              }, 700);
             }, 600);
-          }, 600);
+          }, 700);
         }, 700);
       }, 600);
     }, 700);
@@ -248,9 +258,9 @@ export function HeroCanvas({ vertical = false }: { vertical?: boolean }) {
   });
 
   const cardTransition = (i: number) => ({
-    duration: phase === 7 ? 0.6 : 0.45,
+    duration: phase === 9 ? 0.6 : 0.45,
     ease: 'easeOut' as const,
-    delay: phase === 7 ? 0 : (i === 1 || i === 3) ? 0 : 0.15,
+    delay: phase === 9 ? 0 : (i === 1 || i === 3) ? 0 : 0.15,
   });
 
   const lineAnim = (id: string) => ({
@@ -259,9 +269,17 @@ export function HeroCanvas({ vertical = false }: { vertical?: boolean }) {
   });
 
   const lineTransition = () => ({
-    pathLength: { duration: phase === 7 ? 0.4 : 0.65, ease: 'easeInOut' as const },
+    pathLength: { duration: phase === 9 ? 0.4 : 0.65, ease: 'easeInOut' as const },
     opacity: { duration: 0.25 },
   });
+
+  const chatStepIndex = phase >= 7
+    ? 3
+    : phase >= 5
+    ? 2
+    : phase >= 3
+    ? 1
+    : 0;
 
   return (
     <div style={styles.outer}>
@@ -304,9 +322,21 @@ export function HeroCanvas({ vertical = false }: { vertical?: boolean }) {
                 top: cardXY[i].y,
               }}
             >
-              <LandingCard data={card} />
+              <LandingCard data={card} style={{ width: CARD_W, height: CARD_H }} />
             </motion.div>
           ))}
+
+          {/* Chat panel — desktop only, fades in with the first card */}
+          {!vertical && (
+            <LandingChatPanel
+              x={CHAT_X}
+              y={CHAT_Y}
+              width={CHAT_PANEL_W}
+              height={CHAT_H}
+              visible={phase >= 1 && phase < 9}
+              messageIndex={chatStepIndex}
+            />
+          )}
         </div>
       </ScaledStage>
     </div>

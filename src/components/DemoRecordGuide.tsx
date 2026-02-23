@@ -2,8 +2,7 @@
  * Demo Recording Guide
  *
  * Orchestrates the `?demo=record` screen recording mode. Unlike OnboardingGuide,
- * this component has NO spotlight overlays — it runs silently in the background
- * and only shows a minimal floating toolbar (step label + keyboard shortcuts).
+ * this component has NO spotlight overlays — it runs silently in the background.
  *
  * It watches the canvas store for branch/merge events, advances the demo store
  * steps, and fires `pendingMessage` to trigger auto-typing in MessageInput.
@@ -12,18 +11,17 @@
  *   - NOT create the root card (done automatically)
  *   - Manually create branches (right-click → Branch)
  *   - Manually create merges (select → Merge)
- *   - Press Space to advance when a "wait" step is active (optional manual trigger)
  *
  * @version 1.0.0
  */
 
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDemoRecordStore, DEMO_PROMPTS } from '@/stores/demo-record-store';
 import { useCanvasStore } from '@/stores/canvas-store';
-import { colors, typography, spacing } from '@/lib/design-tokens';
-import { zIndex } from '@/constants/zIndex';
+
+const DEMO_PREROLL_DELAY_MS = 10000;
 
 // =============================================================================
 // MAIN COMPONENT
@@ -34,25 +32,21 @@ export function DemoRecordGuide() {
   const step = useDemoRecordStore((s) => s.step);
   const knownIdsRef = useRef<Set<string>>(new Set());
 
-  // ── Status text derived from step ──
-  const statusText = useMemo(() => {
-    const labels: Record<string, string> = {
-      'demo-idle': 'Starting demo...',
-      'demo-root-chat': '1/6  Root card',
-      'demo-wait-branch-a': 'Branch from root → pipeline advice',
-      'demo-branch-a-chat': '2/6  Branch A',
-      'demo-wait-branch-b': 'Branch from root → financial advice',
-      'demo-branch-b-chat': '3/6  Branch B',
-      'demo-wait-merge-1': 'Merge branches A + B',
-      'demo-merge-1-chat': '4/6  Merge → 90-day plan',
-      'demo-wait-branch-c': 'Branch from merge → critical review',
-      'demo-branch-c-chat': '5/6  Branch C',
-      'demo-wait-merge-2': 'Merge → final plan',
-      'demo-merge-2-chat': '6/6  Final merge',
-      'demo-complete': 'Demo complete!',
-    };
-    return labels[step] ?? step;
-  }, [step]);
+  // ── Apply slight zoom-in at demo start for recording framing ──
+  useEffect(() => {
+    if (!active || step !== 'demo-idle') return;
+    if (typeof window === 'undefined') return;
+
+    const t = setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('projectloom:demoZoom', {
+          detail: { zoom: 0.9, duration: 500 },
+        }),
+      );
+    }, DEMO_PREROLL_DELAY_MS);
+
+    return () => clearTimeout(t);
+  }, [active, step]);
 
   // ── Create root card automatically on demo start ──
   useEffect(() => {
@@ -73,7 +67,7 @@ export function DemoRecordGuide() {
         demo.setRootCardId(newCard.id);
         demo.goToStep('demo-root-chat');
       }
-    }, 800);
+    }, DEMO_PREROLL_DELAY_MS);
 
     return () => clearTimeout(t);
   }, [active, step]);
@@ -126,12 +120,12 @@ export function DemoRecordGuide() {
         if (len >= 2 && !advanced) {
           advanced = true;
           setTimeout(() => {
-            useCanvasStore.getState().closeChatPanel();
-            setTimeout(() => {
-              const rootId = useDemoRecordStore.getState().rootCardId;
-              if (rootId) useCanvasStore.getState().requestFocusNode(rootId);
-              useDemoRecordStore.getState().goToStep('demo-wait-branch-a');
-            }, 500);
+            const rootId = useDemoRecordStore.getState().rootCardId;
+            if (rootId) {
+              useCanvasStore.getState().requestFocusNode(rootId);
+              useCanvasStore.getState().openChatPanel(rootId);
+            }
+            useDemoRecordStore.getState().goToStep('demo-wait-branch-a');
           }, 1500);
         }
       },
@@ -144,11 +138,11 @@ export function DemoRecordGuide() {
       if (len >= 2 && !advanced) {
         advanced = true;
         setTimeout(() => {
-          useCanvasStore.getState().closeChatPanel();
-          setTimeout(() => {
-            if (id) useCanvasStore.getState().requestFocusNode(id);
-            useDemoRecordStore.getState().goToStep('demo-wait-branch-a');
-          }, 500);
+          if (id) {
+            useCanvasStore.getState().requestFocusNode(id);
+            useCanvasStore.getState().openChatPanel(id);
+          }
+          useDemoRecordStore.getState().goToStep('demo-wait-branch-a');
         }, 1500);
       }
     }
@@ -208,12 +202,12 @@ export function DemoRecordGuide() {
         if (len >= 2 && !advanced) {
           advanced = true;
           setTimeout(() => {
-            useCanvasStore.getState().closeChatPanel();
-            setTimeout(() => {
-              const rootId = useDemoRecordStore.getState().rootCardId;
-              if (rootId) useCanvasStore.getState().requestFocusNode(rootId);
-              useDemoRecordStore.getState().goToStep('demo-wait-branch-b');
-            }, 500);
+            const rootId = useDemoRecordStore.getState().rootCardId;
+            if (rootId) {
+              useCanvasStore.getState().requestFocusNode(rootId);
+              useCanvasStore.getState().openChatPanel(rootId);
+            }
+            useDemoRecordStore.getState().goToStep('demo-wait-branch-b');
           }, 1500);
         }
       },
@@ -225,12 +219,12 @@ export function DemoRecordGuide() {
       if (len >= 2 && !advanced) {
         advanced = true;
         setTimeout(() => {
-          useCanvasStore.getState().closeChatPanel();
-          setTimeout(() => {
-            const rootId = useDemoRecordStore.getState().rootCardId;
-            if (rootId) useCanvasStore.getState().requestFocusNode(rootId);
-            useDemoRecordStore.getState().goToStep('demo-wait-branch-b');
-          }, 500);
+          const rootId = useDemoRecordStore.getState().rootCardId;
+          if (rootId) {
+            useCanvasStore.getState().requestFocusNode(rootId);
+            useCanvasStore.getState().openChatPanel(rootId);
+          }
+          useDemoRecordStore.getState().goToStep('demo-wait-branch-b');
         }, 1500);
       }
     }
@@ -291,10 +285,7 @@ export function DemoRecordGuide() {
         if (len >= 2 && !advanced) {
           advanced = true;
           setTimeout(() => {
-            useCanvasStore.getState().closeChatPanel();
-            setTimeout(() => {
-              useDemoRecordStore.getState().goToStep('demo-wait-merge-1');
-            }, 500);
+            useDemoRecordStore.getState().goToStep('demo-wait-merge-1');
           }, 1500);
         }
       },
@@ -306,10 +297,7 @@ export function DemoRecordGuide() {
       if (len >= 2 && !advanced) {
         advanced = true;
         setTimeout(() => {
-          useCanvasStore.getState().closeChatPanel();
-          setTimeout(() => {
-            useDemoRecordStore.getState().goToStep('demo-wait-merge-1');
-          }, 500);
+          useDemoRecordStore.getState().goToStep('demo-wait-merge-1');
         }, 1500);
       }
     }
@@ -370,12 +358,12 @@ export function DemoRecordGuide() {
         if (len >= 2 && !advanced) {
           advanced = true;
           setTimeout(() => {
-            useCanvasStore.getState().closeChatPanel();
-            setTimeout(() => {
-              const mergeId = useDemoRecordStore.getState().merge1CardId;
-              if (mergeId) useCanvasStore.getState().requestFocusNode(mergeId);
-              useDemoRecordStore.getState().goToStep('demo-wait-branch-c');
-            }, 500);
+            const mergeId = useDemoRecordStore.getState().merge1CardId;
+            if (mergeId) {
+              useCanvasStore.getState().requestFocusNode(mergeId);
+              useCanvasStore.getState().openChatPanel(mergeId);
+            }
+            useDemoRecordStore.getState().goToStep('demo-wait-branch-c');
           }, 1500);
         }
       },
@@ -387,11 +375,11 @@ export function DemoRecordGuide() {
       if (len >= 2 && !advanced) {
         advanced = true;
         setTimeout(() => {
-          useCanvasStore.getState().closeChatPanel();
-          setTimeout(() => {
-            if (id) useCanvasStore.getState().requestFocusNode(id);
-            useDemoRecordStore.getState().goToStep('demo-wait-branch-c');
-          }, 500);
+          if (id) {
+            useCanvasStore.getState().requestFocusNode(id);
+            useCanvasStore.getState().openChatPanel(id);
+          }
+          useDemoRecordStore.getState().goToStep('demo-wait-branch-c');
         }, 1500);
       }
     }
@@ -450,10 +438,7 @@ export function DemoRecordGuide() {
         if (len >= 2 && !advanced) {
           advanced = true;
           setTimeout(() => {
-            useCanvasStore.getState().closeChatPanel();
-            setTimeout(() => {
-              useDemoRecordStore.getState().goToStep('demo-wait-merge-2');
-            }, 500);
+            useDemoRecordStore.getState().goToStep('demo-wait-merge-2');
           }, 1500);
         }
       },
@@ -465,10 +450,7 @@ export function DemoRecordGuide() {
       if (len >= 2 && !advanced) {
         advanced = true;
         setTimeout(() => {
-          useCanvasStore.getState().closeChatPanel();
-          setTimeout(() => {
-            useDemoRecordStore.getState().goToStep('demo-wait-merge-2');
-          }, 500);
+          useDemoRecordStore.getState().goToStep('demo-wait-merge-2');
         }, 1500);
       }
     }
@@ -530,6 +512,7 @@ export function DemoRecordGuide() {
           advanced = true;
           setTimeout(() => {
             useDemoRecordStore.getState().completeDemoRecord();
+            console.log('[DemoRecord] ✅ Demo complete — stop your screen recorder.');
           }, 2000);
         }
       },
@@ -542,6 +525,7 @@ export function DemoRecordGuide() {
         advanced = true;
         setTimeout(() => {
           useDemoRecordStore.getState().completeDemoRecord();
+          console.log('[DemoRecord] ✅ Demo complete — stop your screen recorder.');
         }, 2000);
       }
     }
@@ -561,78 +545,6 @@ export function DemoRecordGuide() {
     return () => window.removeEventListener('keydown', handler);
   }, [active]);
 
-  // Don't render anything if not active
-  if (!active) return null;
-
-  // Minimal floating toolbar in top-right
-  return (
-    <div style={styles.toolbar}>
-      <div style={styles.recDot} />
-      <span style={styles.label}>REC</span>
-      <span style={styles.separator}>|</span>
-      <span style={styles.step}>{statusText}</span>
-      <button
-        onClick={() => useDemoRecordStore.getState().completeDemoRecord()}
-        style={styles.stopBtn}
-      >
-        Stop
-      </button>
-    </div>
-  );
+  // Renders nothing — runs silently in the background
+  return null;
 }
-
-// =============================================================================
-// STYLES
-// =============================================================================
-
-const styles: Record<string, React.CSSProperties> = {
-  toolbar: {
-    position: 'fixed',
-    top: 12,
-    right: 12,
-    zIndex: zIndex.top.tooltip,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: `${spacing[2]} ${spacing[4]}`,
-    background: colors.bg.secondary,
-    border: `1px solid ${colors.border.default}`,
-    borderRadius: 8,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-    pointerEvents: 'auto',
-  },
-  recDot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    backgroundColor: '#ef4444',
-    animation: 'pulse 1.5s ease-in-out infinite',
-  },
-  label: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.xs,
-    color: '#ef4444',
-    fontWeight: 700,
-    letterSpacing: 1,
-  },
-  separator: {
-    color: colors.border.default,
-    fontSize: 14,
-  },
-  step: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.xs,
-    color: colors.fg.secondary,
-    minWidth: 180,
-  },
-  stopBtn: {
-    fontFamily: typography.fonts.body,
-    fontSize: typography.sizes.xs,
-    color: colors.fg.primary,
-    background: 'rgba(255,255,255,0.08)',
-    border: `1px solid ${colors.border.default}`,
-    borderRadius: 4,
-    padding: '2px 10px',
-    cursor: 'pointer',
-  },
-};

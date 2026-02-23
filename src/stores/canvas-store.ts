@@ -65,6 +65,20 @@ const ONBOARDING_STEP_TITLES: Record<string, string> = {
   'auto-chat-3': 'Final Decision Synthesis',
 };
 
+const DEMO_RECORD_STEP_TITLES: Record<string, string> = {
+  'demo-root-chat': 'Freelance Transition',
+  'demo-branch-a-chat': 'Client Pipeline',
+  'demo-branch-b-chat': 'Runway & Pricing',
+  'demo-merge-1-chat': '90-Day Launch Plan',
+  'demo-branch-c-chat': 'Risk Review',
+  'demo-merge-2-chat': 'Final Transition Plan',
+};
+
+const SCRIPTED_STEP_TITLES: Record<string, string> = {
+  ...ONBOARDING_STEP_TITLES,
+  ...DEMO_RECORD_STEP_TITLES,
+};
+
 // =============================================================================
 // CYCLE PREVENTION UTILITIES
 // =============================================================================
@@ -276,7 +290,7 @@ async function generateAITitle(
     console.log('[Auto-Title] generateAITitle called:', { conversationId, model });
 
     if (onboardingStep) {
-      const scriptedTitle = ONBOARDING_STEP_TITLES[onboardingStep]
+      const scriptedTitle = SCRIPTED_STEP_TITLES[onboardingStep]
         ?? generateConversationTitle({ userText: userMessage, assistantText: assistantMessage });
 
       await new Promise((resolve) => setTimeout(resolve, 900));
@@ -2505,11 +2519,14 @@ export const useCanvasStore = create<WorkspaceState>()(
       const onboardingStep = typeof metadata?.custom?.onboardingStep === 'string'
         ? metadata.custom.onboardingStep
         : undefined;
+      const scriptedStepTitle = onboardingStep
+        ? SCRIPTED_STEP_TITLES[onboardingStep]
+        : undefined;
 
       // Use a temporary title while AI title is being generated
       const firstUserText = conversation.content.find(msg => msg.role === 'user')?.content || '';
       const temporaryTitle = shouldGenerateAITitle
-        ? generateConversationTitle({ userText: firstUserText, assistantText: content })
+        ? (scriptedStepTitle ?? generateConversationTitle({ userText: firstUserText, assistantText: content }))
         : conversation.metadata.title;
 
       const updatedConversation = {

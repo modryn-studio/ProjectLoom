@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, type TargetAndTransition, type VariantLabels, type Transition } from 'framer-motion';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Zap } from 'lucide-react';
 import { colors, typography, spacing, effects } from '@/lib/design-tokens';
 
 // =============================================================================
@@ -14,6 +14,7 @@ export interface LandingCardData {
   preview: string;
   timestamp: string;
   isBranch?: boolean;
+  isMerge?: boolean;
 }
 
 interface LandingCardProps {
@@ -36,7 +37,9 @@ interface LandingCardProps {
  * No React Flow handles, no Zustand, no interactivity.
  */
 export function LandingCard({ data, style, initial, animate, exit, transition }: LandingCardProps) {
-  const borderStyle: React.CSSProperties = data.isBranch
+  const borderStyle: React.CSSProperties = data.isMerge
+    ? { borderColor: colors.semantic.success, borderWidth: 2, boxShadow: effects.shadow.card }
+    : data.isBranch
     ? { borderColor: colors.accent.emphasis, borderWidth: 2, boxShadow: effects.shadow.card }
     : {};
 
@@ -50,7 +53,12 @@ export function LandingCard({ data, style, initial, animate, exit, transition }:
     >
       {/* Header: icon + title */}
       <div style={cardStyles.header}>
-        {data.isBranch && (
+        {data.isMerge && (
+          <span style={cardStyles.branchIcon}>
+            <Zap size={14} color={colors.semantic.success} />
+          </span>
+        )}
+        {data.isBranch && !data.isMerge && (
           <span style={cardStyles.branchIcon}>
             <GitBranch size={14} color={colors.accent.emphasis} />
           </span>
@@ -142,9 +150,9 @@ const cardStyles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     margin: 0,
     overflow: 'hidden',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
+    display: 'block',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
     wordBreak: 'break-word',
   },
 
