@@ -23,6 +23,7 @@ import { ChatPanelHeader } from './ChatPanelHeader';
 import { MessageThread } from './MessageThread';
 import { MessageInput } from './MessageInput';
 import { SidePanel } from './SidePanel';
+import { useBranchSuggestionStore } from '@/stores/branch-suggestion-store';
 import type { MessageAttachment, MessageMetadata } from '@/types';
 
 // =============================================================================
@@ -103,6 +104,10 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
     onboardingStep?: string;
   } | null>(null);
 
+  // Abort controller for in-flight branch-suggestion classifier.
+  // Cancelled whenever a new message is sent so stale suggestions never appear.
+  const branchClassifierAbortRef = useRef<AbortController | null>(null);
+
   // Stable ID for useChat — must NOT change when the user switches conversation cards.
   // If we passed `activeConversationId` as the id, useChat would abort the in-flight
   // HTTP request and wipe chatMessages every time the user switches cards mid-stream.
@@ -167,7 +172,8 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
   const currentModel = useMemo(() => {
     if (!activeConversationId) return null;
 
-    if (conversationModel) return conversationModel;
+    // Skip a persisted model ID that no longer exists in AVAILABLE_MODELS (e.g. after an upgrade)
+    if (conversationModel && getModelById(conversationModel)) return conversationModel;
 
     // Check which providers have keys
     const hasAnthropicKey = !!apiKeyManager.getKey('anthropic');
@@ -387,12 +393,16 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
         } : {}),
       };
 
-      // Persist AI message to store using CAPTURED conversationId and model
+      // Persist AI message to store using CAPTURED conversationId and model.
+      // Pass message.id so the stored message keeps the same id as the streaming
+      // graft, preventing AnimatePresence from triggering an exit/enter animation
+      // (which causes a visible flash when streaming completes).
       addAIMessage(
         metadata.conversationId,
         messageText,
         metadata.model,
-        aiMessageMetadata
+        aiMessageMetadata,
+        message.id
       );
 
       // Track usage from message metadata (sent by server via messageMetadata)
@@ -469,6 +479,65 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
         });
       }
       
+      // ── Async branch suggestion classifier ──
+      // Fire-and-forget: never blocks the chat experience.
+      // Suppressed during onboarding, demo recording, and when conversation
+      // has fewer than 2 messages (nothing to classify yet).
+      const isOnboardingMsg = !!metadata.onboardingStep;
+      const isDemoRecordMsg = !!useDemoRecordStore.getState().active;
+      const conversationForSuggest = useCanvasStore.getState().conversations.get(metadata.conversationId);
+      const hasEnoughMessages = conversationForSuggest && conversationForSuggest.content.length >= 2;
+
+      if (!isOnboardingMsg && !isDemoRecordMsg && hasEnoughMessages) {
+        const anthropicKey = apiKeyManager.getKey('anthropic') ?? undefined;
+        const openaiKey = apiKeyManager.getKey('openai') ?? undefined;
+        const recentMessages = conversationForSuggest.content
+          .slice(-6)
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+        // Abort any previous classifier still in flight, then create a fresh controller
+        if (branchClassifierAbortRef.current) {
+          branchClassifierAbortRef.current.abort();
+        }
+        const abortController = new AbortController();
+        branchClassifierAbortRef.current = abortController;
+        const snapshotConversationId = metadata.conversationId;
+
+        fetch('/api/suggest-branch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: abortController.signal,
+          body: JSON.stringify({
+            messages: recentMessages,
+            model: metadata.model,
+            anthropicKey,
+            openaiKey,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data: { branches: Array<{ title: string; seedPrompt: string }> | null }) => {
+            // Guard: ignore if the user has already switched cards or sent another message
+            const currentActiveId = useCanvasStore.getState().activeConversationId;
+            if (currentActiveId !== snapshotConversationId) return;
+
+            if (data.branches && data.branches.length >= 2) {
+              useBranchSuggestionStore.getState().setSuggestion({
+                conversationId: snapshotConversationId,
+                messageIndex: (conversationForSuggest.content.length - 1),
+                branches: data.branches,
+              });
+              console.log('[ChatPanel] Branch suggestion detected:', data.branches.map((b) => b.title));
+            }
+          })
+          .catch((err) => {
+            // Aborted fetches throw — that's expected, not an error
+            if (err?.name === 'AbortError') return;
+            // Non-critical — silently ignore
+            console.warn('[ChatPanel] Branch suggestion failed (non-blocking):', err);
+          });
+      }
+
       // Clean up metadata ref (primary cleanup location)
       if (streamingRequestMetadataRef.current?.requestId === metadata.requestId) {
         streamingRequestMetadataRef.current = null;
@@ -627,6 +696,12 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       role: msg.role as 'user' | 'assistant' | 'system',
       parts: [{ type: 'text' as const, text: inlineTextAttachments(msg) }],
     })));
+
+    // 5½. Cancel any in-flight branch-suggestion classifier from the previous turn
+    if (branchClassifierAbortRef.current) {
+      branchClassifierAbortRef.current.abort();
+      branchClassifierAbortRef.current = null;
+    }
 
     // 6. Build request body (inline — don't rely on stale memoized chatBody)
     const isOnboarding = Boolean(onboardingStep);
@@ -976,8 +1051,9 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
             },
           } : (metadata.onboardingStep ? { custom: { onboardingStep: metadata.onboardingStep } } : undefined);
           
-          // Save partial message using CAPTURED values
-          addAIMessage(metadata.conversationId, lastMessageText, metadata.model, partialWebSearchMetadata);
+          // Save partial message using CAPTURED values.
+          // Pass lastMessage.id to keep the stored id stable and avoid a flash.
+          addAIMessage(metadata.conversationId, lastMessageText, metadata.model, partialWebSearchMetadata, lastMessage.id);
           
           // Don't clear metadata here - let onFinish/onError handle cleanup
           // This prevents race condition where metadata is cleared before onFinish gets it

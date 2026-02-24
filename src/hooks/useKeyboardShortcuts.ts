@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 
 // =============================================================================
 // TYPES
@@ -65,9 +65,22 @@ export function useKeyboardShortcuts({
   enabled = true,
   handlers,
 }: UseKeyboardShortcutsOptions): void {
+  // Store the latest handlers in a ref so the event listener never needs
+  // to be removed/re-added when the caller passes a new inline object.
+  const handlersRef = useRef(handlers);
+  // useLayoutEffect keeps the ref in sync synchronously after each render,
+  // which is the correct React pattern for "latest value" refs.
+  useLayoutEffect(() => {
+    handlersRef.current = handlers;
+  });
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!enabled) return;
+      // Always read from the ref to get the latest callbacks without stale closure
+      const { onDelete, onEscape, onUndo, onRedo, onExpand, onOpenChat, onBranch,
+              onAddConversation, onZoomIn, onZoomOut, onFitView, onResetZoom,
+              onSelectAll, onShowShortcuts, onSearch, onSuggestLayout } = handlersRef.current;
 
       // Don't trigger shortcuts when typing in inputs (except Ctrl/Cmd+B for branching)
       const target = event.target as HTMLElement;
@@ -87,12 +100,12 @@ export function useKeyboardShortcuts({
         case 'Backspace':
           // Prevent browser back navigation on Backspace
           event.preventDefault();
-          handlers.onDelete?.();
+          onDelete?.();
           break;
 
         case 'Escape':
           event.preventDefault();
-          handlers.onEscape?.();
+          onEscape?.();
           break;
 
         case 'z':
@@ -101,10 +114,10 @@ export function useKeyboardShortcuts({
             event.preventDefault();
             if (event.shiftKey) {
               // Ctrl+Shift+Z: Redo
-              handlers.onRedo?.();
+              onRedo?.();
             } else {
               // Ctrl+Z: Undo
-              handlers.onUndo?.();
+              onUndo?.();
             }
           }
           break;
@@ -114,7 +127,7 @@ export function useKeyboardShortcuts({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+Y: Redo (Windows/Linux)
-            handlers.onRedo?.();
+            onRedo?.();
           }
           break;
 
@@ -122,7 +135,7 @@ export function useKeyboardShortcuts({
           // Space: Open chat panel for selected card
           // Only if not in an input field (already handled above)
           event.preventDefault();
-          handlers.onExpand?.();
+          onExpand?.();
           break;
 
         case 'Enter':
@@ -131,7 +144,7 @@ export function useKeyboardShortcuts({
           // Note: Ctrl+Enter for send is handled in MessageInput component
           if (!event.ctrlKey && !event.metaKey) {
             event.preventDefault();
-            handlers.onOpenChat?.();
+            onOpenChat?.();
           }
           break;
 
@@ -140,7 +153,7 @@ export function useKeyboardShortcuts({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+B: Branch from selected card
-            handlers.onBranch?.();
+            onBranch?.();
           }
           break;
 
@@ -148,26 +161,26 @@ export function useKeyboardShortcuts({
         case 'N':
           event.preventDefault();
           // N: Add new conversation
-          handlers.onAddConversation?.();
+          onAddConversation?.();
           break;
 
         // View controls
         case '+':
         case '=':
           event.preventDefault();
-          handlers.onZoomIn?.();
+          onZoomIn?.();
           break;
 
         case '-':
           event.preventDefault();
-          handlers.onZoomOut?.();
+          onZoomOut?.();
           break;
 
         case '0':
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+0: Fit all cards in view
-            handlers.onFitView?.();
+            onFitView?.();
           }
           break;
 
@@ -175,7 +188,7 @@ export function useKeyboardShortcuts({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+1: Reset zoom to 100%
-            handlers.onResetZoom?.();
+            onResetZoom?.();
           }
           break;
 
@@ -185,21 +198,21 @@ export function useKeyboardShortcuts({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+A: Select all cards
-            handlers.onSelectAll?.();
+            onSelectAll?.();
           }
           break;
 
         // Help & Search
         case '?':
           event.preventDefault();
-          handlers.onShowShortcuts?.();
+          onShowShortcuts?.();
           break;
 
         case '/':
           if (event.shiftKey) {
             event.preventDefault();
             // Shift+/: Show shortcuts (same as ?)
-            handlers.onShowShortcuts?.();
+            onShowShortcuts?.();
           }
           break;
 
@@ -208,7 +221,7 @@ export function useKeyboardShortcuts({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+F: Search canvas
-            handlers.onSearch?.();
+            onSearch?.();
           }
           break;
 
@@ -217,7 +230,7 @@ export function useKeyboardShortcuts({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             // Ctrl+L: Suggest layout
-            handlers.onSuggestLayout?.();
+            onSuggestLayout?.();
           }
           break;
 
@@ -225,7 +238,7 @@ export function useKeyboardShortcuts({
           break;
       }
     },
-    [enabled, handlers]
+    [enabled] // handlers intentionally excluded — latest value read via handlersRef
   );
 
   useEffect(() => {

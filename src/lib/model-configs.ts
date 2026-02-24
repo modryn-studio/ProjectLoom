@@ -56,6 +56,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
     temperature: 1.0,
     maxTokens: 8192,
     systemPrompt: undefined,
+    reasoning: true,
   },
   'openai/gpt-5.2': {
     temperature: 0.7,

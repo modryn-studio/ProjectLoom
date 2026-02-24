@@ -249,9 +249,6 @@ function ConversationCardComponent({
         animate={{
           scale: dragging ? 1.02 : 1,
           opacity: 1,
-          width: card.size.minWidth,
-          minHeight: card.size.collapsedHeight,
-          maxHeight: card.size.collapsedHeight,
           boxShadow: isActiveInChatPanel
             ? effects.glow.cardActive
             : selected || isSelected
@@ -271,6 +268,11 @@ function ConversationCardComponent({
         }}
         style={{
           ...cardStyles.container,
+          // Fixed dimensions as static style — never animated — prevents the
+          // width-shrink flash when onlyRenderVisibleElements remounts the node.
+          width: card.size.minWidth,
+          minHeight: card.size.collapsedHeight,
+          maxHeight: card.size.collapsedHeight,
           cursor: resolvedTheme === 'light'
             ? (dragging ? 'url(/grabbing.cur), grabbing' : 'url(/grab.cur), grab')
             : (dragging ? 'grabbing' : 'grab'),

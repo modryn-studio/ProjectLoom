@@ -170,7 +170,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
             }}
           >
             <Headphones size={14} style={{ marginRight: 8, flexShrink: 0 }} />
-            <span>Listen: The full story behind ProjectLoom</span>
+            <span>Listen: A deep dive into ProjectLoom</span>
             <span style={styles.announcementPill}>20 min</span>
             <ArrowRight size={13} style={{ marginLeft: 6, flexShrink: 0 }} />
           </a>

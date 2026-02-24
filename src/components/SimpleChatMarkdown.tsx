@@ -5,13 +5,79 @@
  * Handles the most common formatting without the complexity of full markdown parsing.
  */
 
-import React, { memo } from 'react';
+import React, { memo, useState, useCallback } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { colors, spacing, effects, typography } from '@/lib/design-tokens';
 
 interface SimpleChatMarkdownProps {
   content: string;
   style?: React.CSSProperties;
 }
+
+/** Fenced code block with a hover-reveal copy button */
+const CodeBlock = memo(function CodeBlock({ code }: { code: string }) {
+  const [hovered, setHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [code]);
+
+  return (
+    <div
+      style={{ position: 'relative', margin: `${spacing[3]} 0` }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Copy button */}
+      <button
+        onClick={handleCopy}
+        title="Copy code"
+        style={{
+          position: 'absolute',
+          top: spacing[2],
+          right: spacing[2],
+          display: 'flex',
+          alignItems: 'center',
+          gap: spacing[1],
+          padding: `${spacing[1]} ${spacing[2]}`,
+          background: colors.bg.tertiary,
+          border: `1px solid ${colors.border.default}`,
+          borderRadius: effects.border.radius.sm,
+          cursor: 'pointer',
+          fontSize: typography.sizes.xs,
+          color: copied ? colors.accent.primary : colors.fg.secondary,
+          opacity: hovered || copied ? 1 : 0,
+          transition: 'opacity 0.15s ease, color 0.15s ease',
+          pointerEvents: hovered || copied ? 'auto' : 'none',
+          zIndex: 1,
+        }}
+      >
+        {copied
+          ? <><Check size={12} /><span>Copied!</span></>
+          : <><Copy size={12} /><span>Copy</span></>}
+      </button>
+
+      <pre style={{
+        margin: 0,
+        padding: spacing[3],
+        paddingRight: '72px', // keep text from underlapping button
+        backgroundColor: colors.bg.inset,
+        border: `1px solid ${colors.border.default}`,
+        borderRadius: effects.border.radius.default,
+        overflowX: 'auto',
+        fontSize: typography.sizes.xs,
+        lineHeight: 1.5,
+        fontFamily: typography.fonts.code,
+      }}>
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+});
 
 export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
   content,
@@ -35,19 +101,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           i++;
         }
         elements.push(
-          <pre key={`code-${i}`} style={{ 
-            margin: `${spacing[3]} 0`,
-            padding: spacing[3],
-            backgroundColor: colors.bg.inset,
-            border: `1px solid ${colors.border.default}`,
-            borderRadius: effects.border.radius.default,
-            overflowX: 'auto',
-            fontSize: typography.sizes.xs,
-            lineHeight: 1.5,
-            fontFamily: typography.fonts.code,
-          }}>
-            <code>{codeLines.join('\n')}</code>
-          </pre>
+          <CodeBlock key={`code-${i}`} code={codeLines.join('\n')} />
         );
         i++;
         continue;
@@ -82,6 +136,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
       // Lists
       const listMatch = line.match(/^(\s*)([-*+]|\d+\.)\s+(.+)$/);
       if (listMatch) {
+        const isOrdered = /^\d+\./.test(listMatch[2]);
         const items: React.ReactNode[] = [];
         
         while (i < lines.length) {
@@ -96,15 +151,16 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           );
           i++;
         }
-        
+
+        const ListTag = isOrdered ? 'ol' : 'ul';
         elements.push(
-          <ul key={`ul-${i}`} style={{ 
+          <ListTag key={`list-${i}`} style={{ 
             margin: `${spacing[2]} 0`,
             paddingLeft: spacing[5],
             listStylePosition: 'outside',
           }}>
             {items}
-          </ul>
+          </ListTag>
         );
         continue;
       }
@@ -141,7 +197,8 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           tableRows.push(headerCells);
           const columnCount = headerCells.length;
           
-          // Skip separator row
+          // Skip separator row — save header position first so we can fall back to it
+          const tableHeaderLine = i;
           i += 2;
           
           // Parse data rows
@@ -159,9 +216,14 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           
           // Only render if we have at least a header row + 1 data row
           if (tableRows.length < 2) {
-            // Not a valid table, let it fall through to text rendering
-            i = i - tableRows.length + 1; // reset to after header
-            // fall through to regular text
+            // Not a valid table — render the header line as plain text.
+            // i is already past the separator; the separator is discarded.
+            elements.push(
+              <div key={`p-${tableHeaderLine}`} style={{ lineHeight: 1.6, fontSize: typography.sizes.sm }}>
+                {formatInline(lines[tableHeaderLine])}
+              </div>
+            );
+            continue;
           } else {
           // Render table
           elements.push(

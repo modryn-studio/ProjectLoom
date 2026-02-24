@@ -13,6 +13,8 @@ import { useOnboardingStore } from '@/stores/onboarding-store';
 import { useToast } from '@/stores/toast-store';
 import type { Conversation, InheritedContextEntry, Message, MessageAttachment } from '@/types';
 import { InlineMessageEditor } from './InlineMessageEditor';
+import { useBranchSuggestionStore } from '@/stores/branch-suggestion-store';
+import { BranchSuggestionCard } from './BranchSuggestionCard';
 
 /** Extract text content from a UIMessage (v6 uses parts instead of content) */
 function getStreamingMessageText(message: UIMessage): string {
@@ -280,6 +282,11 @@ export function MessageThread({
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
 
+  // Branch suggestion from AI classifier
+  const branchSuggestion = useBranchSuggestionStore(
+    (s) => s.suggestions.get(conversation.id) ?? null,
+  );
+
   // Reset scroll state when switching to a different conversation.
   // Without this, isPinnedToBottomRef retains the previous card's scroll
   // position, causing auto-scroll to not work in the new card.
@@ -462,6 +469,15 @@ export function MessageThread({
             );
           })}
       </AnimatePresence>
+
+      {/* Branch suggestion card — shown when AI classifier detects a fork */}
+      {branchSuggestion && !isStreaming && (
+        <BranchSuggestionCard
+          conversationId={conversation.id}
+          messageIndex={branchSuggestion.messageIndex}
+          branches={branchSuggestion.branches}
+        />
+      )}
       
       {/* Pending response indicator - shown before streaming starts */}
       {showPendingResponse && (
@@ -603,14 +619,16 @@ const MessageBubble = memo(function MessageBubble({
   const handleCopyClickLocal = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(message.content);
+      // Use webSearchData.content so we copy the cleaned text (sources section stripped)
+      // rather than the raw message which includes the hidden citation block.
+      await navigator.clipboard.writeText(webSearchData.content);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error('[MessageBubble] Failed to copy:', err);
       toast.error('Failed to copy');
     }
-  }, [message.content, toast]);
+  }, [webSearchData.content, toast]);
 
   const handleEditClickLocal = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
