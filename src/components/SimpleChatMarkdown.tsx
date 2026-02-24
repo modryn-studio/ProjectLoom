@@ -302,9 +302,11 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
             );
             continue;
           } else {
-          // Render table
+          // Render table — key on tableHeaderLine (start of table) so it stays
+          // stable as rows stream in; keying on post-table `i` caused a full
+          // remount on every new row received during streaming.
           elements.push(
-            <div key={`table-${tableHeaderLine}`} style={{
+            <div key={`table-wrapper-${tableHeaderLine}`} style={{
               overflowX: 'auto',
               margin: `${spacing[3]} 0`,
             }}>
