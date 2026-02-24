@@ -35,9 +35,11 @@ const MERGE_CARD_OFFSET_X = 300;
 export function MultiSelectFloatingBar() {
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds);
   const nodes = useCanvasStore((s) => s.nodes);
+  const conversations = useCanvasStore((s) => s.conversations);
   const createMergeNode = useCanvasStore((s) => s.createMergeNode);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
+  const setDraftMessage = useCanvasStore((s) => s.setDraftMessage);
   const reactFlow = useReactFlow();
   const onboardingActive = useOnboardingStore((s) => s.active);
   const onboardingStep = useOnboardingStore((s) => s.step);
@@ -104,6 +106,18 @@ export function MultiSelectFloatingBar() {
 
     if (mergeNode) {
       analytics.mergeCompleted(selectedIds.length);
+
+      // Auto-fill a synthesis prompt so the user just hits send
+      const cardTitles = selectedIds
+        .map((id) => conversations.get(id)?.metadata.title)
+        .filter(Boolean);
+
+      const autoPrompt = cardTitles.length === 2
+        ? `I explored "${cardTitles[0]}" and "${cardTitles[1]}" as separate directions. Compare the two paths and synthesize the key tradeoffs into a recommendation.`
+        : `I explored these ${cardTitles.length} directions separately: ${cardTitles.map((t) => `"${t}"`).join(', ')}. Synthesize the key findings and give me a final recommendation.`;
+
+      setDraftMessage(mergeNode.id, autoPrompt);
+
       // Open the chat panel for the new merge card
       openChatPanel(mergeNode.id);
       requestFocusNode(mergeNode.id);
@@ -111,9 +125,11 @@ export function MultiSelectFloatingBar() {
   }, [
     selectedIds,
     nodes,
+    conversations,
     createMergeNode,
     openChatPanel,
     requestFocusNode,
+    setDraftMessage,
     onboardingActive,
     onboardingStep,
     onboardingRootCardId,

@@ -479,6 +479,8 @@ interface WorkspaceState {
   chatPanelOpen: boolean;
   activeConversationId: string | null;
   draftMessages: Map<string, string>;
+  /** One-shot signal for pushing text into a visible MessageInput without a card switch. */
+  inputInjection: { cardId: string; text: string; seq: number } | null;
   
   // Last used model (persisted)
   lastUsedModel: string | null;
@@ -550,6 +552,12 @@ interface WorkspaceState {
   closeChatPanel: () => void;
   setDraftMessage: (conversationId: string, content: string) => void;
   getDraftMessage: (conversationId: string) => string;
+  /**
+   * Immediately push text into the visible MessageInput for `cardId`, even when
+   * that card's conversation ID has not changed (e.g. edge-draw merge promotion).
+   * Also calls setDraftMessage so the text persists if the panel is closed/reopened.
+   */
+  injectInputValue: (cardId: string, text: string) => void;
   sendMessage: (content: string, attachments?: import('@/types').MessageAttachment[]) => Promise<void>;
   editMessage: (conversationId: string, messageIndex: number, newContent: string, newAttachments?: import('@/types').MessageAttachment[]) => void;
   // Actions - Usage Panel
@@ -740,6 +748,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     chatPanelOpen: false,
     activeConversationId: null,
     draftMessages: new Map(),
+    inputInjection: null,
     
     // Last used model (persisted)
     lastUsedModel: null,
@@ -2159,13 +2168,20 @@ export const useCanvasStore = create<WorkspaceState>()(
         return null;
       }
 
-      // Build inherited context from all parents
+      // Build inherited context from all parents.
+      // Mirror branchFromMessage: spread each source card's own inheritedContext first
+      // so that grandparent/ancestor entries cascade into the merge node. Without this,
+      // the UI banner and buildStructuralMetadata only see the two direct parents —
+      // not the full ancestry chain — even though the AI does get ancestor messages
+      // via collectInheritedMessages in getConversationMessages.
       const now = new Date();
       const inheritedContext: Record<string, InheritedContextEntry> = {};
       sourceCardIds.forEach(cardId => {
         const conv = conversations.get(cardId);
         if (conv && Array.isArray(conv.content)) {
-          // Always use full context
+          // Cascade ancestor entries from this source card (same as branchFromMessage)
+          Object.assign(inheritedContext, conv.inheritedContext);
+          // Then write this source card's own messages as its direct entry
           inheritedContext[cardId] = {
             mode: 'full',
             messages: conv.content,
@@ -2396,6 +2412,14 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     getDraftMessage: (conversationId: string) => {
       return get().draftMessages.get(conversationId) || '';
+    },
+
+    injectInputValue: (cardId: string, text: string) => {
+      // Persist so the draft is available if the panel is closed and reopened
+      get().setDraftMessage(cardId, text);
+      // Bump seq to signal MessageInput to update even when conversationId is unchanged
+      const prev = get().inputInjection;
+      set({ inputInjection: { cardId, text, seq: (prev?.seq ?? 0) + 1 } });
     },
 
     requestDeleteConversation: (conversationIds: string[]) => {
@@ -2839,20 +2863,50 @@ export const useCanvasStore = create<WorkspaceState>()(
         if (isMerge && conversation.parentCardIds.length > 1) {
           // Merge node: label inherited messages by parent source
           let allInheritedMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
-          
+
+          // Pass 1: collect all unique ancestor (grandparent+) messages across all parents.
+          // Shared ancestors (e.g. both branches forked from the same root) are deduplicated
+          // so we only include them once, under a single shared-context header.
+          const seenAncestorContent = new Set<string>();
+          const sharedAncestorMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+
+          for (const parentId of conversation.parentCardIds) {
+            const parentConv = conversations.get(parentId);
+            if (parentConv && parentConv.parentCardIds.length > 0) {
+              const ancestorMsgs = collectInheritedMessages(
+                parentConv,
+                conversations,
+                new Set([conversation.id]),
+              );
+              for (const msg of ancestorMsgs) {
+                const key = `${msg.role}::${msg.content}`;
+                if (seenAncestorContent.has(key)) continue;
+                seenAncestorContent.add(key);
+                sharedAncestorMessages.push(msg);
+              }
+            }
+          }
+
+          if (sharedAncestorMessages.length > 0) {
+            allInheritedMessages.push({
+              role: 'system',
+              content: '--- Shared background context (common ancestors) ---',
+            });
+            allInheritedMessages.push(...sharedAncestorMessages);
+          }
+
+          // Pass 2: each parent's own messages, labeled by source.
           for (const parentId of conversation.parentCardIds) {
             const parentConv = conversations.get(parentId);
             const parentName = parentConv?.metadata.title || 'Unknown';
             const inheritedEntry = conversation.inheritedContext[parentId];
 
             if (inheritedEntry?.messages?.length) {
-              // Add parent label
               allInheritedMessages.push({
                 role: 'system',
                 content: `--- Messages from parent: "${parentName}" ---`,
               });
 
-              // Add parent's messages (skip empty-content turns)
               for (const msg of inheritedEntry.messages) {
                 if (!msg.content?.trim()) continue;
                 allInheritedMessages.push({ role: msg.role, content: msg.content });

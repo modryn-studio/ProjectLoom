@@ -642,6 +642,24 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
 
       // Route through the store so parent counts and inherited context stay in sync
       onConnect(connection);
+
+      // Re-read updated state — the target card may have just *become* a merge node
+      // (when a second edge is drawn into a normal card, onConnect promotes it).
+      // Only fire when the merge card has no messages yet.
+      const store = useCanvasStore.getState();
+      const updatedMerge = store.conversations.get(connection.target);
+      if (updatedMerge && updatedMerge.isMergeNode && updatedMerge.content.length === 0) {
+        const cardTitles = updatedMerge.parentCardIds
+          .map((id) => store.conversations.get(id)?.metadata.title)
+          .filter(Boolean);
+
+        if (cardTitles.length >= 2) {
+          const autoPrompt = cardTitles.length === 2
+            ? `I explored "${cardTitles[0]}" and "${cardTitles[1]}" as separate directions. Compare the two paths and synthesize the key tradeoffs into a recommendation.`
+            : `I explored these ${cardTitles.length} directions separately: ${cardTitles.map((t) => `"${t}"`).join(', ')}. Synthesize the key findings and give me a final recommendation.`;
+          store.injectInputValue(connection.target, autoPrompt);
+        }
+      }
     },
     [onConnect]
   );
