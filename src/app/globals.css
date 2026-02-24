@@ -139,8 +139,8 @@
 
   --fg-primary: #D4D4D8;
   --fg-secondary: #A1A1AA;
-  --fg-tertiary: #71717A;
-  --fg-quaternary: #52525B;
+  --fg-tertiary: #909099;  /* was #71717A — bumped for ~4.5:1 contrast on dark bg */
+  --fg-quaternary: #71717A; /* was #52525B — barely visible; now uses old tertiary value */
 
   --border-default: #2A2A2E;
   --border-muted: #1C1C1F;
@@ -198,8 +198,8 @@
 
     --fg-primary: #D4D4D8;
     --fg-secondary: #A1A1AA;
-    --fg-tertiary: #71717A;
-    --fg-quaternary: #52525B;
+    --fg-tertiary: #909099;  /* was #71717A — bumped for ~4.5:1 contrast on dark bg */
+    --fg-quaternary: #71717A; /* was #52525B — barely visible; now uses old tertiary value */
 
     --border-default: #2A2A2E;
     --border-muted: #1C1C1F;
