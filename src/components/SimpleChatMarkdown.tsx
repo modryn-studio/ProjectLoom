@@ -14,6 +14,76 @@ interface SimpleChatMarkdownProps {
   style?: React.CSSProperties;
 }
 
+/**
+ * Linkify inline markdown: bold, italic, inline code, links, and plain URLs.
+ * Defined at module level so CodeBlock can use it too.
+ */
+function formatInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+
+  // Combined regex for all inline patterns including plain URLs
+  // Matches: **bold**, *italic*, `code`, [text](url), and plain URLs
+  const pattern = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(\`(.+?)\`)|(\[(.+?)\]\((.+?)\))|(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[2]) {
+      parts.push(<strong key={key++}>{match[2]}</strong>);
+    } else if (match[4]) {
+      parts.push(<em key={key++}>{match[4]}</em>);
+    } else if (match[6]) {
+      parts.push(
+        <code key={key++} style={{
+          fontFamily: typography.fonts.code,
+          backgroundColor: colors.bg.inset,
+          border: `1px solid ${colors.border.default}`,
+          borderRadius: effects.border.radius.sm,
+          padding: `2px ${spacing[1]}`,
+          fontSize: '0.9em',
+        }}>
+          {match[6]}
+        </code>
+      );
+    } else if (match[8] && match[9]) {
+      parts.push(
+        <a key={key++} href={match[9]} target="_blank" rel="noopener noreferrer" style={{
+          color: colors.accent.primary,
+          textDecoration: 'underline',
+          cursor: 'pointer',
+        }}>
+          {match[8]}
+        </a>
+      );
+    } else if (match[10]) {
+      const url = match[10];
+      parts.push(
+        <a key={key++} href={url} target="_blank" rel="noopener noreferrer" style={{
+          color: colors.accent.primary,
+          textDecoration: 'underline',
+          cursor: 'pointer',
+          wordBreak: 'break-all',
+        }}>
+          {url}
+        </a>
+      );
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
 /** Fenced code block with a hover-reveal copy button */
 const CodeBlock = memo(function CodeBlock({ code }: { code: string }) {
   const [hovered, setHovered] = useState(false);
@@ -73,7 +143,14 @@ const CodeBlock = memo(function CodeBlock({ code }: { code: string }) {
         lineHeight: 1.5,
         fontFamily: typography.fonts.code,
       }}>
-        <code>{code}</code>
+        <code>
+          {code.split('\n').map((line, idx, arr) => (
+            <React.Fragment key={idx}>
+              {formatInline(line)}
+              {idx < arr.length - 1 && '\n'}
+            </React.Fragment>
+          ))}
+        </code>
       </pre>
     </div>
   );
@@ -310,80 +387,6 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
     }
 
     return elements;
-  };
-
-  // Format inline elements (bold, italic, code, links)
-  const formatInline = (text: string): React.ReactNode => {
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let key = 0;
-
-    // Combined regex for all inline patterns including plain URLs
-    // Matches: **bold**, *italic*, `code`, [text](url), and plain URLs
-    const pattern = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|(\[(.+?)\]\((.+?)\))|(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
-    let match;
-
-    while ((match = pattern.exec(text)) !== null) {
-      // Add text before match
-      if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index));
-      }
-
-      if (match[2]) {
-        // Bold: **text**
-        parts.push(<strong key={key++}>{match[2]}</strong>);
-      } else if (match[4]) {
-        // Italic: *text*
-        parts.push(<em key={key++}>{match[4]}</em>);
-      } else if (match[6]) {
-        // Inline code: `text`
-        parts.push(
-          <code key={key++} style={{
-            fontFamily: typography.fonts.code,
-            backgroundColor: colors.bg.inset,
-            border: `1px solid ${colors.border.default}`,
-            borderRadius: effects.border.radius.sm,
-            padding: `2px ${spacing[1]}`,
-            fontSize: '0.9em',
-          }}>
-            {match[6]}
-          </code>
-        );
-      } else if (match[8] && match[9]) {
-        // Markdown link: [text](url)
-        parts.push(
-          <a key={key++} href={match[9]} target="_blank" rel="noopener noreferrer" style={{
-            color: colors.accent.primary,
-            textDecoration: 'underline',
-            cursor: 'pointer',
-          }}>
-            {match[8]}
-          </a>
-        );
-      } else if (match[10]) {
-        // Plain URL: https://example.com
-        const url = match[10];
-        parts.push(
-          <a key={key++} href={url} target="_blank" rel="noopener noreferrer" style={{
-            color: colors.accent.primary,
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            wordBreak: 'break-all',
-          }}>
-            {url}
-          </a>
-        );
-      }
-
-      lastIndex = pattern.lastIndex;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex));
-    }
-
-    return parts.length > 0 ? parts : text;
   };
 
   return (
