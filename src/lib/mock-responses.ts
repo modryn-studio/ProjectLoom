@@ -107,97 +107,81 @@ You don't need certainty. You need clarity on what matters most to you *right no
 /**
  * Scripted responses for the demo recording mode (?demo=record).
  * These match the prompts in DEMO_PROMPTS in demo-record-store.ts and
- * form a coherent freelance-transition narrative for the marketing video.
+ * form a coherent "difficult conversation with manager" narrative for the
+ * marketing video. 4-card structure: root → 2 branches → merge.
  */
 const DEMO_RECORD_RESPONSES: Record<string, string> = {
-  'demo-root-chat': `Four years of agency experience is a strong foundation — you've got a portfolio, process knowledge, and exposure to real client work. Going freelance is absolutely viable from here.
+  'demo-root-chat': `Being passed over despite strong reviews is genuinely difficult — and more common than it should be. The good news is this is a very winnable conversation if you approach it right.
 
-The two things that make or break this transition aren't talent — they're **pipeline** (do you have a way to find clients before you quit?) and **runway** (can you survive 3–6 months before income stabilises?).
+Two things will determine whether this goes well:
 
-These are worth thinking through separately. Let's explore both.`,
+**Your case** — what you say, the evidence you bring, and how you frame it. Most people either come in too emotional or too vague. You need neither.
 
-  'demo-branch-a-chat': `The goal is to have paying work lined up — or at least warm leads — before you hand in your notice.
+**Your composure** — how you handle their reaction in real time. Managers get defensive, deflect, or make vague promises. Your ability to stay grounded through that is what separates a productive conversation from a damaging one.
 
-**Start now, while employed:**
-- Tell 3–5 people in your network you're "taking on select freelance projects" — word of mouth is your best first channel
-- Post 2–3 case studies on LinkedIn and Dribbble this month. Clients Google you before they reach out.
-- Take one small project on the side. Even a $500 logo build proves you can operate independently.
+These are worth preparing separately. Let's explore both angles.`,
 
-**Before you quit, aim to have:**
-- At least one paying retainer or a signed project contract
-- A simple portfolio site with a clear "hire me" CTA
-- A defined niche — "UI/UX for SaaS products" closes faster than "I do design"
+  'demo-branch-a-chat': `Let's build a case that's hard to dismiss.
 
-Two to three months of side-hustle groundwork can dramatically reduce the risk of your first 90 days.`,
+**Opening line (memorize this):**
+*"I want to talk about my career trajectory here. I've had consistently strong reviews, and I want to understand what the path to promotion looks like for me specifically."*
 
-  'demo-branch-b-chat': `**Runway:** Aim for 6 months of personal expenses saved before you quit. Calculate your monthly burn (rent, food, subscriptions, health insurance) and multiply by six. This is your safety net — not your spending money.
+This is non-confrontational but direct. You're not accusing — you're asking for clarity.
 
-**Pricing:**
-- With 4 years of agency experience, $75–$120/hr is a defensible range depending on your location and niche
-- Project-based pricing often earns more: a $5,000 website project at 40 hours = $125/hr effective rate
-- Retainers are gold — $2,000–$4,000/month for ongoing design support gives you predictable income
+**Evidence to bring:**
+- Your last 2–3 performance reviews (pull exact quotes)
+- Specific examples of work that exceeded your current role's scope
+- Any metrics: revenue impact, team contributions, projects delivered
+- If peers were promoted, note what they had that you can demonstrate too
 
-**The first mistake most freelancers make:** underpricing to win work. You're not competing with offshore rates — you're selling expertise, communication, and reliability. Price accordingly.
+**The structure that works:**
+1. State the pattern: "I've been here X years with strong reviews each cycle"
+2. Ask the question: "What specifically would I need to demonstrate to be promoted?"
+3. Listen carefully — their answer reveals whether there's a real path or not
+4. Pin it down: "Can we set a timeline and specific milestones so I can work toward this?"
 
-A single mid-sized client on retainer can replace your salary. That's your first goal.`,
+**The trap to avoid:** Don't compare yourself to others who got promoted. The moment you say "but they got promoted," the conversation becomes about them, not you.`,
 
-  'demo-merge-1-chat': `Here's your 90-day freelance launch plan, built from both threads:
+  'demo-branch-b-chat': `This is the part most people skip — and it's the part that actually decides how the conversation goes.
 
-**Month 1 — Build the foundation (while still employed)**
-- Calculate your 6-month runway number; start saving aggressively if you're not there yet
-- Publish 2 portfolio case studies on LinkedIn and Dribbble
-- Reach out to 5 former colleagues or clients: "I'm taking on freelance work — know anyone who needs design help?"
-- Take one small paid project to prove the model
+**Before the meeting:**
+- Write down your worst-case fear (they say no, they get angry, they dismiss you). Now ask: *could I survive that?* Yes. You could. Naming the fear shrinks it.
+- Decide on your emotional floor: "No matter what happens, I will stay calm and professional." This is a commitment, not a hope.
 
-**Month 2 — Create optionality**
-- Launch your portfolio site with a hire-me page and clear niche statement
-- Aim for one signed contract or retainer before quitting
-- Open a separate business bank account; set up invoicing (Wave or HoneyBook)
+**During the conversation:**
+- **If they get defensive:** Don't match their energy. Pause, then say: *"I'm not trying to create conflict — I genuinely want to understand the path forward."*
+- **If they dismiss your concerns:** Don't argue. Ask a question instead: *"Help me understand — what would need to change for this to be the right time?"*
+- **If they make vague promises:** Pin it down gently: *"I appreciate that. Can we put a specific timeline on this so we're both aligned?"*
 
-**Month 3 — Make the leap**
-- Hand in notice once you have runway + at least one client
-- Set a weekly revenue target ($X/week to cover expenses + reinvest)
-- Schedule one outreach touchpoint per day for the first 30 days post-quit
+**The physiological trick:**
+When you feel your heart rate spike, slow your speech by 30%. Deliberately. This sends a calm signal to your brain and forces you out of fight-or-flight. It also makes you sound more authoritative.
 
-**Success metric:** By day 90, you have one retainer client and a pipeline of 2–3 warm leads. Everything else is gravy.`,
+**After the meeting:**
+Send a brief email summarizing what was discussed and any commitments made. This creates accountability without being aggressive.`,
 
-  'demo-branch-c-chat': `This is a solid foundation, but here are the gaps worth addressing:
+  'demo-merge-1-chat': `Here's your complete conversation plan — preparation and composure woven together so you can actually follow this tomorrow.
 
-**What's missing:**
-- **Legal & contracts** — you have no mention of a client contract template. One client who doesn't pay can wreck your runway. Get a contract before you do any work.
-- **Tax planning** — as a freelancer you'll owe quarterly estimated taxes. Set aside 25–30% of every payment immediately or you'll face a nasty surprise in April.
-- **Health insurance** — this is often the #1 reason people don't go freelance. Price it out now; it's usually $300–$500/month depending on coverage.
+**1 hour before — Set the foundation**
+- Review your evidence packet: last 2–3 reviews, key achievements, scope-exceeding contributions
+- Read through your opening line once: *"I want to talk about my career trajectory here…"*
+- Do the fear-naming exercise: write your worst case, acknowledge you'd survive it, let it go
+- Commit to your emotional floor: calm, professional, no matter what
 
-**Risks to the plan:**
-- The "one retainer client" milestone creates a single point of failure. If they churn, you're back to zero. Aim for 2–3 smaller clients over 1 large one.
-- Word of mouth is slow. The plan underinvests in outbound — consider cold email to 10 dream clients per week from day one.
+**The conversation — Follow this structure**
 
-**Mindset gap:**
-- Freelancing is emotionally harder than it looks. Build in time for slow weeks — they will happen, and spiralling into anxiety kills productivity.`,
+| Step | What you say | How you stay grounded |
+|------|-------------|----------------------|
+| **Open** | *"I want to understand the path to promotion for me specifically."* | Speak 30% slower than feels natural |
+| **Present evidence** | Share 2–3 specific achievements that exceed your current role | Stick to facts — no emotion, no comparison to peers |
+| **Ask the key question** | *"What specifically would I need to demonstrate?"* | Pause after asking. Let silence work for you. |
+| **Handle defensiveness** | *"I'm not trying to create conflict — I want to understand the path forward."* | If heart rate spikes, slow your speech further |
+| **Pin down next steps** | *"Can we set a timeline and milestones so I'm working toward something concrete?"* | Frame as collaboration, not ultimatum |
 
-  'demo-merge-2-chat': `Here's the updated plan with all gaps addressed:
+**After the meeting — Lock it in**
+- Send a follow-up email within 2 hours summarizing commitments and timeline
+- If the conversation revealed there's no real path → that's valuable information too. You now know where you stand.
 
-**Month 1 — Build the foundation**
-- Calculate 6-month runway; hit that number before quitting
-- Publish 2 portfolio case studies; reach out to 5 past contacts
-- Take one paid project; use it to test a **client contract template** (free at HelloSign or Bonsai)
-- Research health insurance options and factor the cost into your pricing
-
-**Month 2 — De-risk the launch**
-- Launch portfolio site with niche focus
-- Target 2–3 clients at smaller retainers rather than one large one
-- Begin 10 cold outreach emails/week to ideal clients alongside warm referrals
-- Set up business banking + invoicing; configure 28% tax hold on every payment
-
-**Month 3 — Make the leap**
-- Quit once you have: runway ✓, 2 clients or signed contracts ✓, legal/financial structure ✓
-- Week 1 post-quit: send 50 outreach emails (blitz mode)
-- Build a weekly review habit: pipeline status, revenue vs target, one improvement
-
-**What's different from v1:**
-Legal structure and contracts are now week-1 tasks, not afterthoughts. Tax planning is built into pricing. Client concentration risk is explicitly managed. Outbound is scheduled, not aspirational.
-
-This is a plan you can actually execute — not just a list of good intentions.`,
+**The insight that makes this work:** Your preparation gives you confidence to stay calm. Your calm gives you the clarity to use your evidence well. They reinforce each other — that's why both threads matter.`,
 };
 
 // =============================================================================

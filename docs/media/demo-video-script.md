@@ -1,199 +1,174 @@
-# Demo Video Script — ProjectLoom
+﻿# Demo Video Script - ProjectLoom
 
-Last updated: February 22, 2026
+Last updated: February 23, 2026
 
-**Scenario:** Going freelance as a UI/UX designer  
-**Why this works:** Universal career decision, two genuinely different angles worth exploring, a plan worth reviewing, and a clear payoff when everything gets combined. Non-technical audience immediately understands the stakes.
+**Scenario:** Difficult conversation with your manager about being passed over for promotion
+**Why this works:** Universally relatable high-stakes situation, two genuinely different angles (rational preparation vs emotional composure), and a clear payoff when the merge synthesizes both into a single actionable plan. Non-technical audience immediately understands the stakes.
 
-**Runtime target:** 45–90 seconds of recording (can be cut down in editing)
+**Runtime target:** 30-60 seconds of recording (can be cut down in editing)
+**Canvas structure:** 4 cards - tighter, punchier, more impactful than a 6-card tree.
 
 ---
 
 ## Canvas Structure
 
 ```
-[Root: Should I go freelance?]
-        |           |
-  [Branch A]   [Branch B]
-  Client       Financial
-  Pipeline     Planning
-        \         /
-       [Merge 1: 90-Day Plan]
-              |         \
-         [Branch C]      \
-         Critical         \
-         Review      [Merge 2: Final Plan]
+[Root: Passed over for promotion]
+            |              |
+     [Branch A]      [Branch B]
+     Building         Staying
+     the Case         Composed
+            \            /
+         [Merge: Conversation Plan]
 ```
 
 ---
 
-## Card 1 — Root Card (auto-typed)
+## Card 1 - Root Card (auto-typed)
+
+**Title:** Promotion Conversation
 
 **User prompt:**
-> I'm a UI/UX designer with 4 years of agency experience. I'm seriously thinking about going freelance. Is this a good move, and where do I even start?
+> I need to have a difficult conversation with my manager about being consistently passed over for promotion despite strong performance reviews. How do I approach this without damaging the relationship?
 
 **AI response:**
-> Four years of agency experience is a strong foundation — you've got a portfolio, process knowledge, and exposure to real client work. Going freelance is absolutely viable from here.
+> Being passed over despite strong reviews is genuinely difficult - and more common than it should be. The good news is this is a very winnable conversation if you approach it right.
 >
-> The two things that make or break this transition aren't talent — they're **pipeline** (do you have a way to find clients before you quit?) and **runway** (can you survive 3–6 months before income stabilises?).
+> Two things will determine whether this goes well:
 >
-> These are worth thinking through separately. Let's explore both.
+> **Your case** - what you say, the evidence you bring, and how you frame it. Most people either come in too emotional or too vague. You need neither.
+>
+> **Your composure** - how you handle their reaction in real time. Managers get defensive, deflect, or make vague promises. Your ability to stay grounded through that is what separates a productive conversation from a damaging one.
+>
+> These are worth preparing separately. Let's explore both angles.
 
 ---
 
-## Card 2 — Branch A: Client Pipeline (auto-typed after user creates branch)
+## Card 2 - Branch A: Building the Case (auto-typed after user creates branch)
+
+**Title:** Building the Case
 
 **User prompt:**
-> How do I build a client pipeline before I quit my job?
+> Help me prepare the direct case - what specifically should I say, what evidence should I bring, and how do I open the conversation?
 
 **AI response:**
-> The goal is to have paying work lined up — or at least warm leads — before you hand in your notice.
+> Let's build a case that's hard to dismiss.
 >
-> **Start now, while employed:**
-> - Tell 3–5 people in your network you're "taking on select freelance projects" — word of mouth is your best first channel
-> - Post 2–3 case studies on LinkedIn and Dribbble this month. Clients Google you before they reach out.
-> - Take one small project on the side. Even a $500 logo build proves you can operate independently.
+> **Opening line (memorize this):**
+> *"I want to talk about my career trajectory here. I've had consistently strong reviews, and I want to understand what the path to promotion looks like for me specifically."*
 >
-> **Before you quit, aim to have:**
-> - At least one paying retainer or a signed project contract
-> - A simple portfolio site with a clear "hire me" CTA
-> - A defined niche — "UI/UX for SaaS products" closes faster than "I do design"
+> This is non-confrontational but direct. You're not accusing - you're asking for clarity.
 >
-> Two to three months of side-hustle groundwork can dramatically reduce the risk of your first 90 days.
+> **Evidence to bring:**
+> - Your last 2-3 performance reviews (pull exact quotes)
+> - Specific examples of work that exceeded your current role's scope
+> - Any metrics: revenue impact, team contributions, projects delivered
+> - If peers were promoted, note what they had that you can demonstrate too
+>
+> **The structure that works:**
+> 1. State the pattern: "I've been here X years with strong reviews each cycle"
+> 2. Ask the question: "What specifically would I need to demonstrate to be promoted?"
+> 3. Listen carefully - their answer reveals whether there's a real path or not
+> 4. Pin it down: "Can we set a timeline and specific milestones so I can work toward this?"
+>
+> **The trap to avoid:** Don't compare yourself to others who got promoted. The moment you say "but they got promoted," the conversation becomes about them, not you.
 
 ---
 
-## Card 3 — Branch B: Financial Planning (auto-typed after user creates second branch from root)
+## Card 3 - Branch B: Staying Composed (auto-typed after user creates second branch from root)
+
+**Title:** Staying Composed
 
 **User prompt:**
-> How much money do I need saved, and how should I price my work?
+> How do I manage myself emotionally during this conversation? What if they get defensive or dismiss my concerns?
 
 **AI response:**
-> **Runway:** Aim for 6 months of personal expenses saved before you quit. Calculate your monthly burn (rent, food, subscriptions, health insurance) and multiply by six. This is your safety net — not your spending money.
+> This is the part most people skip - and it's the part that actually decides how the conversation goes.
 >
-> **Pricing:**
-> - With 4 years of agency experience, $75–$120/hr is a defensible range depending on your location and niche
-> - Project-based pricing often earns more: a $5,000 website project at 40 hours = $125/hr effective rate
-> - Retainers are gold — $2,000–$4,000/month for ongoing design support gives you predictable income
+> **Before the meeting:**
+> - Write down your worst-case fear (they say no, they get angry, they dismiss you). Now ask: *could I survive that?* Yes. You could. Naming the fear shrinks it.
+> - Decide on your emotional floor: "No matter what happens, I will stay calm and professional." This is a commitment, not a hope.
 >
-> **The first mistake most freelancers make:** underpricing to win work. You're not competing with offshore rates — you're selling expertise, communication, and reliability. Price accordingly.
+> **During the conversation:**
+> - **If they get defensive:** Don't match their energy. Pause, then say: *"I'm not trying to create conflict - I genuinely want to understand the path forward."*
+> - **If they dismiss your concerns:** Don't argue. Ask a question instead: *"Help me understand - what would need to change for this to be the right time?"*
+> - **If they make vague promises:** Pin it down gently: *"I appreciate that. Can we put a specific timeline on this so we're both aligned?"*
 >
-> A single mid-sized client on retainer can replace your salary. That's your first goal.
+> **The physiological trick:**
+> When you feel your heart rate spike, slow your speech by 30%. Deliberately. This sends a calm signal to your brain and forces you out of fight-or-flight. It also makes you sound more authoritative.
+>
+> **After the meeting:**
+> Send a brief email summarizing what was discussed and any commitments made. This creates accountability without being aggressive.
 
 ---
 
-## Card 4 — Merge 1: 90-Day Plan (auto-typed after user merges Branch A + Branch B)
+## Card 4 - Merge: Conversation Plan (auto-typed after user merges Branch A + Branch B)
+
+**Title:** Conversation Plan
 
 **User prompt:**
-> Combine the client pipeline strategy and the financial advice into a concrete 90-day action plan for making this transition.
+> Combine the preparation strategy with the emotional management advice into a single conversation plan I can actually follow tomorrow.
 
 **AI response:**
-> Here's your 90-day freelance launch plan, built from both threads:
+> Here's your complete conversation plan - preparation and composure woven together so you can actually follow this tomorrow.
 >
-> **Month 1 — Build the foundation (while still employed)**
-> - Calculate your 6-month runway number; start saving aggressively if you're not there yet
-> - Publish 2 portfolio case studies on LinkedIn and Dribbble
-> - Reach out to 5 former colleagues or clients: "I'm taking on freelance work — know anyone who needs design help?"
-> - Take one small paid project to prove the model
+> **1 hour before - Set the foundation**
+> - Review your evidence packet: last 2-3 reviews, key achievements, scope-exceeding contributions
+> - Read through your opening line once: *"I want to talk about my career trajectory here..."*
+> - Do the fear-naming exercise: write your worst case, acknowledge you'd survive it, let it go
+> - Commit to your emotional floor: calm, professional, no matter what
 >
-> **Month 2 — Create optionality**
-> - Launch your portfolio site with a hire-me page and clear niche statement
-> - Aim for one signed contract or retainer before quitting
-> - Open a separate business bank account; set up invoicing (Wave or HoneyBook)
+> **The conversation - Follow this structure**
 >
-> **Month 3 — Make the leap**
-> - Hand in notice once you have runway + at least one client
-> - Set a weekly revenue target ($X/week to cover expenses + reinvest)
-> - Schedule one outreach touchpoint per day for the first 30 days post-quit
+> | Step | What you say | How you stay grounded |
+> |------|-------------|----------------------|
+> | **Open** | *"I want to understand the path to promotion for me specifically."* | Speak 30% slower than feels natural |
+> | **Present evidence** | Share 2-3 specific achievements that exceed your current role | Stick to facts - no emotion, no comparison to peers |
+> | **Ask the key question** | *"What specifically would I need to demonstrate?"* | Pause after asking. Let silence work for you. |
+> | **Handle defensiveness** | *"I'm not trying to create conflict - I want to understand the path forward."* | If heart rate spikes, slow your speech further |
+> | **Pin down next steps** | *"Can we set a timeline and milestones so I'm working toward something concrete?"* | Frame as collaboration, not ultimatum |
 >
-> **Success metric:** By day 90, you have one retainer client and a pipeline of 2–3 warm leads. Everything else is gravy.
+> **After the meeting - Lock it in**
+> - Send a follow-up email within 2 hours summarizing commitments and timeline
+> - If the conversation revealed there's no real path - that's valuable information too. You now know where you stand.
+>
+> **The insight that makes this work:** Your preparation gives you confidence to stay calm. Your calm gives you the clarity to use your evidence well. They reinforce each other - that's why both threads matter.
 
 ---
 
-## Card 5 — Branch C: Critical Review (auto-typed after user branches from Merge 1)
-*(Optionally switch to a different model here — e.g. switch from Claude to GPT-4o to show the model selector)*
+## Voiceover Script (Clueso)
 
-**User prompt:**
-> Review this 90-day plan critically. What are the gaps, risks, and things I haven't thought about?
+No text overlays — the voiceover carries all context while the canvas stays clean.
 
-**AI response:**
-> This is a solid foundation, but here are the gaps worth addressing:
->
-> **What's missing:**
-> - **Legal & contracts** — you have no mention of a client contract template. One client who doesn't pay can wreck your runway. Get a contract before you do any work.
-> - **Tax planning** — as a freelancer you'll owe quarterly estimated taxes. Set aside 25–30% of every payment immediately or you'll face a nasty surprise in April.
-> - **Health insurance** — this is often the #1 reason people don't go freelance. Price it out now; it's usually $300–$500/month depending on coverage.
->
-> **Risks to the plan:**
-> - The "one retainer client" milestone creates a single point of failure. If they churn, you're back to zero. Aim for 2–3 smaller clients over 1 large one.
-> - Word of mouth is slow. The plan underinvests in outbound — consider cold email to 10 dream clients per week from day one.
->
-> **Mindset gap:**
-> - Freelancing is emotionally harder than it looks. Build in time for slow weeks — they will happen, and spiralling into anxiety kills productivity.
+> This is ProjectLoom — an AI canvas where each conversation lives as its own card.
 
----
+*(root card appears, prompt types, AI responds)*
 
-## Card 6 — Merge 2: Final Updated Plan (auto-typed after user merges Merge 1 + Branch C)
+> Instead of one linear chat, you branch — two separate threads exploring different angles of the same problem.
 
-**User prompt:**
-> Update the 90-day plan to address the gaps and risks identified in the review. Give me the complete, final version.
+*(branch A created and answered, branch B created and answered)*
 
-**AI response:**
-> Here's the updated plan with all gaps addressed:
->
-> **Month 1 — Build the foundation**
-> - Calculate 6-month runway; hit that number before quitting
-> - Publish 2 portfolio case studies; reach out to 5 past contacts
-> - Take one paid project; use it to test a **client contract template** (free at HelloSign or Bonsai)
-> - Research health insurance options and factor the cost into your pricing
->
-> **Month 2 — De-risk the launch**
-> - Launch portfolio site with niche focus
-> - Target 2–3 clients at smaller retainers rather than one large one
-> - Begin 10 cold outreach emails/week to ideal clients alongside warm referrals
-> - Set up business banking + invoicing; configure 28% tax hold on every payment
->
-> **Month 3 — Make the leap**
-> - Quit once you have: runway ✓, 2 clients or signed contracts ✓, legal/financial structure ✓
-> - Week 1 post-quit: send 50 outreach emails (blitz mode)
-> - Build a weekly review habit: pipeline status, revenue vs target, one improvement
->
-> **What's different from v1:**
-> Legal structure and contracts are now week-1 tasks, not afterthoughts. Tax planning is built into pricing. Client concentration risk is explicitly managed. Outbound is scheduled, not aspirational.
->
-> This is a plan you can actually execute — not just a list of good intentions.
+> When you're ready, you merge. ProjectLoom pulls both threads into context and synthesises everything into a single response.
 
----
+*(merge card appears, prompt types, AI responds with the full conversation plan)*
 
-## Clueso Transcript (Sync Points)
-
-**1.** This is ProjectLoom — an AI canvas where each conversation lives as its own node. You type a question, the AI responds, and that exchange becomes a card you can build on.
-
-**2.** Instead of a single linear chat, you can branch. One conversation splits into two independent threads — each exploring a different angle of the same problem, side by side on the canvas.
-
-**3.** Branches aren't just for one level. You can keep going — add a second branch from the root, explore a completely separate direction, and watch the canvas grow organically around your thinking.
-
-**4.** When two threads have run their course, you merge them. ProjectLoom pulls both conversations into context and generates a response that synthesises everything — no copy-pasting, no summarising yourself.
-
-**5.** The merged result is just another node. You can keep branching from it — this time to challenge and pressure-test what you've built, using a different model if you want a different perspective.
-
-**6.** One final merge closes the loop. Every thread, every insight, every critique — combined into a single output. That's the canvas: non-linear thinking, with AI that keeps up.
+> Non-linear thinking, with AI that keeps up.
 
 ---
 
 ## Recording Notes
 
-- **Canvas zoom level:** around 70–80% so 3–4 cards are visible at once
-- **Cursor movements:** slow and deliberate between cards — let the viewer's eye follow
-- **Branch moment:** right-click on a message → "Branch from here" — pause half a beat before clicking so it reads on screen
-- **Model switch:** open the model selector on Card 5 before typing the prompt — just a 2-second visible interaction
-- **Merge moment:** Shift-click both cards → floating bar appears → click Merge — this is the money shot, don't rush it
-- **Do not show the API key setup modal** — use mock responses mode (no key needed)
-- **Recommended resolution:** 1280×800 or 1440×900 — wide enough to show the canvas layout, not so wide the cards look tiny
+- **Canvas zoom level:** around 70-80% so all 4 cards are visible at once
+- **Cursor movements:** slow and deliberate between cards - let the viewer's eye follow
+- **Branch moment:** right-click on a message -> "Branch from here" - pause half a beat before clicking so it reads on screen
+- **Merge moment:** Shift-click both cards -> floating bar appears -> click Merge - this is the money shot, don't rush it
+- **No text overlays** - voiceover carries all context, canvas stays clean
+- **Do not show the API key setup modal** - use mock responses mode (no key needed)
+- **Recommended resolution:** 1280x800 or 1440x900 - wide enough to show the canvas layout, not so wide the cards look tiny
 
 ## Implementation Notes (for dev mode)
 
 - Use `?demo=record` URL flag to load this script into auto-type mode
 - Each step pauses after AI response and waits for user action (branch/merge click)
-- Model switch on Card 5 can be real UI interaction — just pre-select GPT-4o in the selector
-- All responses served from `mock-responses.ts` keyed by demo step — no API key needed, no network latency
+- All responses served from `mock-responses.ts` keyed by demo step - no API key needed, no network latency
+- 4-card flow: root -> branch A -> branch B -> merge (3 user actions: branch, branch, merge)

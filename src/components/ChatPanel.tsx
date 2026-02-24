@@ -13,7 +13,7 @@ import { apiKeyManager } from '@/lib/api-key-manager';
 import { detectProvider, getDefaultModel, getModelById } from '@/lib/vercel-ai-integration';
 import { useUsageStore } from '@/stores/usage-store';
 import { useOnboardingStore } from '@/stores/onboarding-store';
-import { useDemoRecordStore } from '@/stores/demo-record-store';
+import { useDemoRecordStore, DEMO_PROMPTS } from '@/stores/demo-record-store';
 import { useTrialStore, selectIsTrialActive, selectIsTrialExhausted } from '@/stores/trial-store';
 import { analytics } from '@/lib/analytics';
 import { canUserCloseChatPanel } from '@/lib/onboarding-guards';
@@ -487,6 +487,22 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       const isDemoRecordMsg = !!useDemoRecordStore.getState().active;
       const conversationForSuggest = useCanvasStore.getState().conversations.get(metadata.conversationId);
       const hasEnoughMessages = conversationForSuggest && conversationForSuggest.content.length >= 2;
+
+      // Demo recording: inject hardcoded branch suggestion for root card (no API call needed).
+      // We know exactly what the two branches are, and the real API can't be reached without keys.
+      if (isDemoRecordMsg && hasEnoughMessages) {
+        const demoState = useDemoRecordStore.getState();
+        if (demoState.step === 'demo-root-chat' && demoState.rootCardId === metadata.conversationId) {
+          useBranchSuggestionStore.getState().setSuggestion({
+            conversationId: metadata.conversationId,
+            messageIndex: (conversationForSuggest?.content.length ?? 1) - 1,
+            branches: [
+              { title: 'Building the Case', seedPrompt: DEMO_PROMPTS['demo-branch-a-chat'] },
+              { title: 'Staying Composed', seedPrompt: DEMO_PROMPTS['demo-branch-b-chat'] },
+            ],
+          });
+        }
+      }
 
       if (!isOnboardingMsg && !isDemoRecordMsg && hasEnoughMessages) {
         const anthropicKey = apiKeyManager.getKey('anthropic') ?? undefined;

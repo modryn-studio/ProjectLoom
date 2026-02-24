@@ -7,12 +7,14 @@
  * It watches the canvas store for branch/merge events, advances the demo store
  * steps, and fires `pendingMessage` to trigger auto-typing in MessageInput.
  *
+ * 4-card structure: root → 2 branches → merge ("difficult conversation" scenario).
+ *
  * The user is expected to:
  *   - NOT create the root card (done automatically)
  *   - Manually create branches (right-click → Branch)
  *   - Manually create merges (select → Merge)
  *
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 'use client';
@@ -72,11 +74,15 @@ export function DemoRecordGuide() {
     return () => clearTimeout(t);
   }, [active, step]);
 
-  // ── Auto-chat steps: fire pendingMessage when entering a chat step ──
+  // ── Auto-chat steps: open panel; auto-type ONLY for root card ──
+  // Branch cards are pre-filled by BranchSuggestionCard (setDraftMessage).
+  // The merge card is pre-filled by injectInputValue when the node is created.
+  // Auto-typing on top of pre-filled text would look like someone retyping it —
+  // instead we just focus the panel and let the user hit send.
   useEffect(() => {
     if (!active) return;
-    const prompt = DEMO_PROMPTS[step];
-    if (!prompt) return;
+    const chatSteps = new Set(['demo-root-chat', 'demo-branch-a-chat', 'demo-branch-b-chat', 'demo-merge-1-chat']);
+    if (!chatSteps.has(step)) return;
 
     const demo = useDemoRecordStore.getState();
     let targetCardId: string | null = null;
@@ -85,15 +91,18 @@ export function DemoRecordGuide() {
     else if (step === 'demo-branch-a-chat') targetCardId = demo.branchACardId;
     else if (step === 'demo-branch-b-chat') targetCardId = demo.branchBCardId;
     else if (step === 'demo-merge-1-chat') targetCardId = demo.merge1CardId;
-    else if (step === 'demo-branch-c-chat') targetCardId = demo.branchCCardId;
-    else if (step === 'demo-merge-2-chat') targetCardId = demo.merge2CardId;
 
     if (!targetCardId) return;
 
-    // Open chat panel for this card
+    // Always open the chat panel for this card
     useCanvasStore.getState().openChatPanel(targetCardId);
 
-    // Short delay to let the chat panel mount
+    // Only auto-type for root card — all others are already pre-filled
+    if (step !== 'demo-root-chat') return;
+
+    const prompt = DEMO_PROMPTS[step];
+    if (!prompt) return;
+
     const t = setTimeout(() => {
       useDemoRecordStore.getState().setPendingMessage({
         cardId: targetCardId!,
@@ -233,38 +242,45 @@ export function DemoRecordGuide() {
   }, [active, step]);
 
   // ── Auto-advance: demo-wait-branch-b → demo-branch-b-chat ──
+  // Branch B may already exist if both branches were created simultaneously via
+  // BranchSuggestionCard accept. Check immediately at mount, then subscribe for
+  // the case where the user creates branch B manually after the fact.
   useEffect(() => {
     if (!active || step !== 'demo-wait-branch-b') return;
     let advanced = false;
 
-    knownIdsRef.current = new Set(useCanvasStore.getState().conversations.keys());
+    const rootId = useDemoRecordStore.getState().rootCardId;
+    const branchAId = useDemoRecordStore.getState().branchACardId;
+    if (!rootId || !branchAId) return;
 
+    const tryAdvance = () => {
+      if (advanced) return;
+      const state = useCanvasStore.getState();
+      for (const [id, conv] of state.conversations) {
+        if (
+          id !== branchAId
+          && !conv.isMergeNode
+          && conv.parentCardIds.length === 1
+          && conv.parentCardIds[0] === rootId
+        ) {
+          advanced = true;
+          useDemoRecordStore.getState().setBranchBCardId(id);
+          useDemoRecordStore.getState().goToStep('demo-branch-b-chat');
+          return;
+        }
+      }
+    };
+
+    // Immediate check — B may already exist (created simultaneously with A)
+    tryAdvance();
+    if (advanced) return;
+
+    // Otherwise subscribe for manual branch creation
+    knownIdsRef.current = new Set(useCanvasStore.getState().conversations.keys());
     const unsub = useCanvasStore.subscribe(
       (s) => s.conversations.size,
       (size, prevSize) => {
-        if (size > prevSize && !advanced) {
-          const state = useCanvasStore.getState();
-          const rootId = useDemoRecordStore.getState().rootCardId;
-          const branchAId = useDemoRecordStore.getState().branchACardId;
-          if (!rootId || !branchAId) return;
-
-          for (const [id, conv] of state.conversations) {
-            if (!knownIdsRef.current.has(id)) {
-              knownIdsRef.current.add(id);
-              const isExpectedBranch = id !== branchAId
-                && !conv.isMergeNode
-                && conv.parentCardIds.length === 1
-                && conv.parentCardIds[0] === rootId;
-
-              if (isExpectedBranch) {
-                advanced = true;
-                useDemoRecordStore.getState().setBranchBCardId(id);
-                useDemoRecordStore.getState().goToStep('demo-branch-b-chat');
-                break;
-              }
-            }
-          }
-        }
+        if (size > prevSize) tryAdvance();
       },
     );
     return unsub;
@@ -343,7 +359,7 @@ export function DemoRecordGuide() {
     return unsub;
   }, [active, step]);
 
-  // ── Auto-advance: demo-merge-1-chat → demo-wait-branch-c ──
+  // ── Auto-advance: demo-merge-1-chat → demo-complete ──
   useEffect(() => {
     if (!active || step !== 'demo-merge-1-chat') return;
     let advanced = false;
@@ -358,159 +374,6 @@ export function DemoRecordGuide() {
         if (len >= 2 && !advanced) {
           advanced = true;
           setTimeout(() => {
-            const mergeId = useDemoRecordStore.getState().merge1CardId;
-            if (mergeId) {
-              useCanvasStore.getState().requestFocusNode(mergeId);
-              useCanvasStore.getState().openChatPanel(mergeId);
-            }
-            useDemoRecordStore.getState().goToStep('demo-wait-branch-c');
-          }, 1500);
-        }
-      },
-    );
-
-    const id = useDemoRecordStore.getState().merge1CardId;
-    if (id) {
-      const len = useCanvasStore.getState().conversations.get(id)?.content?.length ?? 0;
-      if (len >= 2 && !advanced) {
-        advanced = true;
-        setTimeout(() => {
-          if (id) {
-            useCanvasStore.getState().requestFocusNode(id);
-            useCanvasStore.getState().openChatPanel(id);
-          }
-          useDemoRecordStore.getState().goToStep('demo-wait-branch-c');
-        }, 1500);
-      }
-    }
-
-    return unsub;
-  }, [active, step]);
-
-  // ── Auto-advance: demo-wait-branch-c → demo-branch-c-chat ──
-  useEffect(() => {
-    if (!active || step !== 'demo-wait-branch-c') return;
-    let advanced = false;
-
-    knownIdsRef.current = new Set(useCanvasStore.getState().conversations.keys());
-
-    const unsub = useCanvasStore.subscribe(
-      (s) => s.conversations.size,
-      (size, prevSize) => {
-        if (size > prevSize && !advanced) {
-          const state = useCanvasStore.getState();
-          const merge1Id = useDemoRecordStore.getState().merge1CardId;
-          if (!merge1Id) return;
-
-          for (const [id, conv] of state.conversations) {
-            if (!knownIdsRef.current.has(id)) {
-              knownIdsRef.current.add(id);
-              const isExpectedBranch = !conv.isMergeNode
-                && conv.parentCardIds.length === 1
-                && conv.parentCardIds[0] === merge1Id;
-
-              if (isExpectedBranch) {
-                advanced = true;
-                useDemoRecordStore.getState().setBranchCCardId(id);
-                useDemoRecordStore.getState().goToStep('demo-branch-c-chat');
-                break;
-              }
-            }
-          }
-        }
-      },
-    );
-    return unsub;
-  }, [active, step]);
-
-  // ── Auto-advance: demo-branch-c-chat → demo-wait-merge-2 ──
-  useEffect(() => {
-    if (!active || step !== 'demo-branch-c-chat') return;
-    let advanced = false;
-
-    const unsub = useCanvasStore.subscribe(
-      (s) => {
-        const id = useDemoRecordStore.getState().branchCCardId;
-        if (!id) return 0;
-        return s.conversations.get(id)?.content?.length ?? 0;
-      },
-      (len) => {
-        if (len >= 2 && !advanced) {
-          advanced = true;
-          setTimeout(() => {
-            useDemoRecordStore.getState().goToStep('demo-wait-merge-2');
-          }, 1500);
-        }
-      },
-    );
-
-    const id = useDemoRecordStore.getState().branchCCardId;
-    if (id) {
-      const len = useCanvasStore.getState().conversations.get(id)?.content?.length ?? 0;
-      if (len >= 2 && !advanced) {
-        advanced = true;
-        setTimeout(() => {
-          useDemoRecordStore.getState().goToStep('demo-wait-merge-2');
-        }, 1500);
-      }
-    }
-
-    return unsub;
-  }, [active, step]);
-
-  // ── Auto-advance: demo-wait-merge-2 → demo-merge-2-chat ──
-  useEffect(() => {
-    if (!active || step !== 'demo-wait-merge-2') return;
-    let advanced = false;
-
-    knownIdsRef.current = new Set(useCanvasStore.getState().conversations.keys());
-
-    const unsub = useCanvasStore.subscribe(
-      (s) => s.conversations.size,
-      (size, prevSize) => {
-        if (size > prevSize && !advanced) {
-          const state = useCanvasStore.getState();
-          const merge1Id = useDemoRecordStore.getState().merge1CardId;
-          const branchCId = useDemoRecordStore.getState().branchCCardId;
-          if (!merge1Id || !branchCId) return;
-
-          for (const [id, conv] of state.conversations) {
-            if (!knownIdsRef.current.has(id) && conv.isMergeNode) {
-              knownIdsRef.current.add(id);
-              const parentSet = new Set(conv.parentCardIds);
-              const isExpectedMerge = conv.parentCardIds.length === 2
-                && parentSet.has(merge1Id)
-                && parentSet.has(branchCId);
-
-              if (isExpectedMerge) {
-                advanced = true;
-                useDemoRecordStore.getState().setMerge2CardId(id);
-                useDemoRecordStore.getState().goToStep('demo-merge-2-chat');
-                break;
-              }
-            }
-          }
-        }
-      },
-    );
-    return unsub;
-  }, [active, step]);
-
-  // ── Auto-advance: demo-merge-2-chat → demo-complete ──
-  useEffect(() => {
-    if (!active || step !== 'demo-merge-2-chat') return;
-    let advanced = false;
-
-    const unsub = useCanvasStore.subscribe(
-      (s) => {
-        const id = useDemoRecordStore.getState().merge2CardId;
-        if (!id) return 0;
-        return s.conversations.get(id)?.content?.length ?? 0;
-      },
-      (len) => {
-        if (len >= 2 && !advanced) {
-          advanced = true;
-          setTimeout(() => {
             useDemoRecordStore.getState().completeDemoRecord();
             console.log('[DemoRecord] ✅ Demo complete — stop your screen recorder.');
           }, 2000);
@@ -518,7 +381,7 @@ export function DemoRecordGuide() {
       },
     );
 
-    const id = useDemoRecordStore.getState().merge2CardId;
+    const id = useDemoRecordStore.getState().merge1CardId;
     if (id) {
       const len = useCanvasStore.getState().conversations.get(id)?.content?.length ?? 0;
       if (len >= 2 && !advanced) {

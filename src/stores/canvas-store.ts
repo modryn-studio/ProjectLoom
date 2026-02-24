@@ -34,6 +34,9 @@ import { generateConversationTitle } from '@/utils/formatters';
 let saveTimeout: NodeJS.Timeout | null = null;
 const SAVE_DEBOUNCE_MS = 300;
 
+// Throttle quota-exceeded toasts so we only show one per session
+let quotaToastShown = false;
+
 // History configuration
 const MAX_HISTORY_LENGTH = 50;
 
@@ -64,12 +67,10 @@ const ONBOARDING_STEP_TITLES: Record<string, string> = {
 };
 
 const DEMO_RECORD_STEP_TITLES: Record<string, string> = {
-  'demo-root-chat': 'Freelance Transition',
-  'demo-branch-a-chat': 'Client Pipeline',
-  'demo-branch-b-chat': 'Runway & Pricing',
-  'demo-merge-1-chat': '90-Day Launch Plan',
-  'demo-branch-c-chat': 'Risk Review',
-  'demo-merge-2-chat': 'Final Transition Plan',
+  'demo-root-chat': 'Promotion Conversation',
+  'demo-branch-a-chat': 'Building the Case',
+  'demo-branch-b-chat': 'Staying Composed',
+  'demo-merge-1-chat': 'Conversation Plan',
 };
 
 const SCRIPTED_STEP_TITLES: Record<string, string> = {
@@ -1600,6 +1601,26 @@ export const useCanvasStore = create<WorkspaceState>()(
       saveTimeout = setTimeout(() => {
         const { nodes, edges, conversations, workspaces, activeWorkspaceId, draftMessages } = get();
 
+        // Strip base64 data URLs from message attachments before persisting.
+        // Base64 image data is only needed while sending to the AI; keeping it in
+        // localStorage quickly exceeds the 5 MB quota and silently breaks saves.
+        // Attachment metadata (id, name, contentType) is preserved so message
+        // history remains fully intact — only the raw image bytes are dropped.
+        const stripAttachmentData = (convList: Conversation[]): Conversation[] =>
+          convList.map(conv => ({
+            ...conv,
+            content: conv.content.map(msg =>
+              msg.attachments?.some(a => a.url.startsWith('data:'))
+                ? {
+                    ...msg,
+                    attachments: msg.attachments.map(a =>
+                      a.url.startsWith('data:') ? { ...a, url: '' } : a
+                    ),
+                  }
+                : msg
+            ),
+          }));
+
         // Build positions map
         const positions: Record<string, Position> = {};
         nodes.forEach((node) => {
@@ -1625,9 +1646,11 @@ export const useCanvasStore = create<WorkspaceState>()(
           draftMessagesObj[id] = draft;
         });
 
+        const strippedConversations = stripAttachmentData(Array.from(conversations.values()));
+
         const data: StorageData = {
           schemaVersion: CURRENT_SCHEMA_VERSION,
-          conversations: Array.from(conversations.values()),
+          conversations: strippedConversations,
           positions,
           connections,
           lastUsedModel: get().lastUsedModel,
@@ -1639,11 +1662,12 @@ export const useCanvasStore = create<WorkspaceState>()(
           },
         };
 
-        storage.save(data);
+        const canvasSaved = storage.save(data);
         
         // Save workspaces (v4 - flat, no hierarchy).
         // Always save, even when empty — otherwise a "delete all workspaces" action
         // won't persist and the old list revives on next page load.
+        let workspaceSaved = false;
         {
           const updatedWorkspaces = workspaces.map(w => {
             if (w.id === activeWorkspaceId) {
@@ -1651,7 +1675,7 @@ export const useCanvasStore = create<WorkspaceState>()(
                 ...w,
                 // Reconcile conv.position from live node positions so workspace
                 // switches restore cards to their current dragged locations
-                conversations: Array.from(conversations.values()).map(conv => ({
+                conversations: strippedConversations.map(conv => ({
                   ...conv,
                   position: positions[conv.id] ?? conv.position,
                 })),
@@ -1661,7 +1685,15 @@ export const useCanvasStore = create<WorkspaceState>()(
             }
             return w;
           });
-          workspaceStorage.save({ workspaces: updatedWorkspaces, activeWorkspaceId });
+          workspaceSaved = workspaceStorage.save({ workspaces: updatedWorkspaces, activeWorkspaceId });
+        }
+
+        if ((!canvasSaved || !workspaceSaved) && !quotaToastShown) {
+          quotaToastShown = true;
+          useToastStore.getState().warning(
+            'Storage is full — changes may not be saved. Try removing image attachments from older messages to free up space.',
+            { duration: 8000 }
+          );
         }
 
       }, SAVE_DEBOUNCE_MS);

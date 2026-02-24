@@ -17,16 +17,13 @@ That's it. The system takes over from there.
 
 ---
 
-## Your 6 actions
+## Your 3 actions
 
 | Step | What you do |
 |------|-------------|
 | After card 1 | Right-click root → **Branch from here** |
 | After card 2 | Right-click root → **Branch from here** again |
 | After card 3 | Shift-click both branches → **Merge** |
-| After card 4 | Right-click merge card → **Branch from here** |
-| After card 5 | Shift-click merge card + branch C → **Merge** |
-| After card 6 | Done — stop recording |
 
 ---
 

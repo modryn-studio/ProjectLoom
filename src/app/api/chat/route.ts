@@ -226,19 +226,44 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    // ── Demo Recording mock response (always, regardless of API keys) ──
+    // Demo recording MUST use scripted responses — we're building a marketing
+    // video and need deterministic, perfectly formatted output. Never route
+    // demo recording to a real LLM even if the developer has keys configured.
+    if (demoRecord) {
+      const stepId = body.demoRecordStep;
+      console.log(`[chat/route] [${reqId}] 🎬 Demo record mode — step: ${stepId ?? 'none'}`);
+      const scriptedResponse = stepId ? getDemoRecordResponse(stepId) : null;
+      const userText = lastUserPreview ?? '';
+      const mockText = scriptedResponse ?? getMockResponse(userText);
+      const chunks = chunkResponse(mockText);
+
+      const stream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          const partId = generateId();
+          writer.write({ type: 'text-start', id: partId });
+          for (const chunk of chunks) {
+            writer.write({ type: 'text-delta', delta: chunk, id: partId });
+            await new Promise((r) => setTimeout(r, 7 + Math.random() * 12));
+          }
+          writer.write({ type: 'text-end', id: partId });
+          writer.write({ type: 'finish', finishReason: 'stop' });
+        },
+      });
+
+      return createUIMessageStreamResponse({ stream });
+    }
+
     if (!anthropicKey && !openaiKey) {
-      // ── Onboarding / Demo Recording mock response ──
-      // When no API key is set and the client signals onboarding or demo mode,
+      // ── Onboarding mock response ──
+      // When no API key is set and the client signals onboarding mode,
       // return a canned streaming response so the user can experience
       // the full interaction loop without paying for API calls.
-      if (onboarding || demoRecord) {
-        const stepId = demoRecord ? body.demoRecordStep : body.onboardingStep;
-        const modeLabel = demoRecord ? '🎬 Demo record' : '🎓 Onboarding';
-        console.log(`[chat/route] [${reqId}] ${modeLabel} mode — step: ${stepId ?? 'none'}`);
+      if (onboarding) {
+        const stepId = body.onboardingStep;
+        console.log(`[chat/route] [${reqId}] 🎓 Onboarding mode — step: ${stepId ?? 'none'}`);
         // Use step-keyed scripted response if available, else fall back to intent detection
-        const scriptedResponse = stepId
-          ? (demoRecord ? getDemoRecordResponse(stepId) : getOnboardingResponse(stepId))
-          : null;
+        const scriptedResponse = stepId ? getOnboardingResponse(stepId) : null;
         const userText = lastUserPreview ?? '';
         const mockText = scriptedResponse ?? getMockResponse(userText);
         const chunks = chunkResponse(mockText);
