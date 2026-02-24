@@ -237,11 +237,11 @@ export function MessageInput({
   // Load draft when conversation changes (only when not using external input)
   useEffect(() => {
     if (externalSetInput) {
-      // When using useChat, sync draft to external input
+      // When using useChat, sync draft to external input.
+      // Always call externalSetInput — even with '' — so switching cards clears
+      // any leftover text from the previous card.
       const draft = useCanvasStore.getState().getDraftMessage(conversationId);
-      if (draft) {
-        externalSetInput(draft);
-      }
+      externalSetInput(draft);
     }
     
     // Auto-focus the textarea on conversation change (not on streaming state change)
@@ -250,6 +250,22 @@ export function MessageInput({
     if (textareaRef.current && !isTouchDevice) {
       textareaRef.current.focus();
     }
+  }, [conversationId, externalSetInput]);
+
+  // Respond to injectInputValue() calls that arrive while this card is already open.
+  // The conversationId may not have changed (e.g. edge-draw merge promotion), so we
+  // can't rely on the effect above — subscribe directly to the injection signal instead.
+  useEffect(() => {
+    if (!externalSetInput) return;
+    const unsub = useCanvasStore.subscribe(
+      (state) => state.inputInjection,
+      (injection) => {
+        if (injection && injection.cardId === conversationId) {
+          externalSetInput(injection.text);
+        }
+      },
+    );
+    return unsub;
   }, [conversationId, externalSetInput]);
 
   // Auto-resize textarea based on content
@@ -289,46 +305,38 @@ export function MessageInput({
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  // Shared handler: validate and convert a list of File objects into attachments.
+  const processFiles = useCallback((files: File[]) => {
     if (!files.length) return;
-    
+
     setAttachmentError(null);
-    
-    const currentCount = attachments.length;
-    const remaining = MAX_ATTACHMENTS - currentCount;
-    
+
+    const remaining = MAX_ATTACHMENTS - attachments.length;
     if (files.length > remaining) {
       setAttachmentError(`Maximum ${MAX_ATTACHMENTS} attachments per message.`);
       return;
     }
-    
-    // Validate file types and sizes
+
     for (const file of files) {
       if (!isAcceptedFile(file)) {
         setAttachmentError(`Unsupported format: ${file.name}. Use images (PNG, JPEG, WebP, GIF) or text files (.txt, .md).`);
         return;
       }
-      
       const isImage = isImageFile(file);
       const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_TEXT_SIZE;
       const sizeLabel = isImage ? '5MB' : '500KB';
-      
       if (file.size > maxSize) {
         setAttachmentError(`${file.name} exceeds ${sizeLabel} limit for ${isImage ? 'images' : 'text files'}.`);
         return;
       }
     }
-    
-    // Convert files to attachments (different handling for images vs text)
-    const readers = files.map(file => {
-      return new Promise<MessageAttachment>((resolve, reject) => {
+
+    const readers = files.map(file =>
+      new Promise<MessageAttachment>((resolve, reject) => {
         const isImage = isImageFile(file);
         const reader = new FileReader();
-        
         reader.onload = () => {
           if (isImage) {
-            // Images: use data URL for display
             resolve({
               id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
               contentType: normalizeContentType(file),
@@ -336,7 +344,6 @@ export function MessageInput({
               url: reader.result as string,
             });
           } else {
-            // Text files: encode as base64 data URL
             const textContent = reader.result as string;
             const base64Content = btoa(unescape(encodeURIComponent(textContent)));
             const contentType = normalizeContentType(file);
@@ -348,32 +355,50 @@ export function MessageInput({
             });
           }
         };
-        
-        reader.onerror = () => {
-          reject(new Error(`Failed to read file: ${file.name}`));
-        };
-        
-        // Read as appropriate format
+        reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
         if (isImage) {
           reader.readAsDataURL(file);
         } else {
           reader.readAsText(file);
         }
-      });
-    });
-    
-    Promise.all(readers)
-      .then((results) => {
-        onAttachmentsChange?.([...attachments, ...results]);
       })
-      .catch((error) => {
-        console.error('[MessageInput] Failed to read file:', error);
+    );
+
+    Promise.all(readers)
+      .then(results => onAttachmentsChange?.([...attachments, ...results]))
+      .catch(err => {
+        console.error('[MessageInput] Failed to read file:', err);
         setAttachmentError('Failed to read file. Please try again.');
       });
-    
-    // Reset input so re-selecting same file works
-    e.target.value = '';
   }, [attachments, onAttachmentsChange]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    processFiles(Array.from(e.target.files || []));
+    // Reset so re-selecting the same file works
+    e.target.value = '';
+  }, [processFiles]);
+
+  // Handle image paste directly into the textarea
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!supportsVision) return;
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.kind === 'file' && item.type.startsWith('image/'));
+    if (!imageItems.length) return;
+
+    // We have image data — prevent the browser from pasting a blob URL as text
+    e.preventDefault();
+
+    const files = imageItems
+      .map(item => item.getAsFile())
+      .filter((f): f is File => f !== null)
+      .map(f => {
+        // Clipboard images often have generic names like "image.png"; give a timestamped name
+        const ext = f.type.split('/')[1] ?? 'png';
+        return new File([f], `pasted-image-${Date.now()}.${ext}`, { type: f.type });
+      });
+
+    processFiles(files);
+  }, [supportsVision, processFiles]);
 
   const handleRemoveAttachment = useCallback((attachmentId: string) => {
     onAttachmentsChange?.(attachments.filter(a => a.id !== attachmentId));
@@ -539,6 +564,7 @@ export function MessageInput({
             value={inputValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={hasApiKey ? "Type a message..." : isTrialExhausted ? "Add your API key to keep chatting..." : "Type a message and add an API key to send..."}
             className="chat-textarea"
             style={{
