@@ -273,6 +273,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
   const focusNodeId = useCanvasStore((s) => s.focusNodeId);
   const clearFocusNode = useCanvasStore((s) => s.clearFocusNode);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
+  const fitViewRequest = useCanvasStore((s) => s.fitViewRequest);
 
   // Chat panel state
   const chatPanelOpen = useCanvasStore(selectChatPanelOpen);
@@ -1104,6 +1105,22 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       clearFocusNode();
     }
   }, [focusNodeId, focusOnNode, clearFocusNode]);
+
+  // Fit all cards into view when requested (e.g. demo recording after branch creation).
+  // Delay 500ms so new cards have time to render and be measured by React Flow.
+  const prevFitViewRequest = useRef(0);
+  useEffect(() => {
+    if (fitViewRequest === 0 || fitViewRequest === prevFitViewRequest.current) return;
+    prevFitViewRequest.current = fitViewRequest;
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (reactFlowInstance.current) {
+          reactFlowInstance.current.fitView(getFitViewOptions({ duration: 700 }));
+        }
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fitViewRequest, getFitViewOptions]);
 
   return (
     <div style={containerStyles}>

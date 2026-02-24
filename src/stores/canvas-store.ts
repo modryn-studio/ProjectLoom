@@ -469,6 +469,8 @@ interface WorkspaceState {
   isInitialized: boolean;
   isAnyNodeDragging: boolean;
   focusNodeId: string | null;
+  /** Increments each time a fit-view is requested; InfiniteCanvas watches and calls fitView() */
+  fitViewRequest: number;
 
   // Transient flag: suppresses Framer Motion mount animations during workspace switch
   _skipMountAnimation: boolean;
@@ -508,6 +510,7 @@ interface WorkspaceState {
   clearSelection: () => void;
   requestFocusNode: (id: string) => void;
   clearFocusNode: () => void;
+  triggerFitView: () => void;
 
   // Actions - History
   undo: () => void;
@@ -740,6 +743,7 @@ export const useCanvasStore = create<WorkspaceState>()(
     isInitialized: false,
     isAnyNodeDragging: false,
     focusNodeId: null,
+    fitViewRequest: 0,
     _skipMountAnimation: false,
     
     // Hierarchical Merge Dialog State
@@ -1180,6 +1184,10 @@ export const useCanvasStore = create<WorkspaceState>()(
 
     clearFocusNode: () => {
       set({ focusNodeId: null });
+    },
+
+    triggerFitView: () => {
+      set((s) => ({ fitViewRequest: s.fitViewRequest + 1 }));
     },
 
     // =========================================================================

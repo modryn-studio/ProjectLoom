@@ -20,6 +20,7 @@ import { colors, typography, spacing, effects, animation } from '@/lib/design-to
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useBranchSuggestionStore } from '@/stores/branch-suggestion-store';
 import type { BranchSuggestion } from '@/stores/branch-suggestion-store';
+import { useDemoRecordStore } from '@/stores/demo-record-store';
 import { track } from '@/lib/analytics';
 
 // =============================================================================
@@ -44,8 +45,10 @@ export const BranchSuggestionCard = memo(function BranchSuggestionCard({
   const branchFromMessage = useCanvasStore((s) => s.branchFromMessage);
   const openChatPanel = useCanvasStore((s) => s.openChatPanel);
   const requestFocusNode = useCanvasStore((s) => s.requestFocusNode);
+  const triggerFitView = useCanvasStore((s) => s.triggerFitView);
   const setDraftMessage = useCanvasStore((s) => s.setDraftMessage);
   const clearSuggestion = useBranchSuggestionStore((s) => s.clearSuggestion);
+  const isDemoRecord = useDemoRecordStore((s) => s.active);
 
   const handleAccept = useCallback(() => {
     // Create all branch cards
@@ -65,10 +68,14 @@ export const BranchSuggestionCard = memo(function BranchSuggestionCard({
       }
     }
 
-    // Focus the first created branch
+    // Focus the first created branch (or fit all into view during demo recording)
     if (createdIds.length > 0) {
-      openChatPanel(createdIds[0]);
-      requestFocusNode(createdIds[0]);
+      if (isDemoRecord) {
+        triggerFitView();
+      } else {
+        openChatPanel(createdIds[0]);
+        requestFocusNode(createdIds[0]);
+      }
     }
 
     // Clear the suggestion
@@ -78,7 +85,7 @@ export const BranchSuggestionCard = memo(function BranchSuggestionCard({
     track('branch_suggestion_accepted', {
       branchCount: branches.length,
     });
-  }, [branches, branchFromMessage, conversationId, messageIndex, openChatPanel, requestFocusNode, setDraftMessage, clearSuggestion]);
+  }, [branches, branchFromMessage, conversationId, messageIndex, openChatPanel, requestFocusNode, triggerFitView, isDemoRecord, setDraftMessage, clearSuggestion]);
 
   const handleDismiss = useCallback(() => {
     clearSuggestion(conversationId);
