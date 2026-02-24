@@ -305,6 +305,17 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           // Render table — key on tableHeaderLine (start of table) so it stays
           // stable as rows stream in; keying on post-table `i` caused a full
           // remount on every new row received during streaming.
+          //
+          // Streaming-smoothness: if the table reaches the very end of the current
+          // content (i === lines.length) the last row may still be mid-character.
+          // We drop it so only complete rows are shown — avoids the "last cell
+          // jumps around" artefact. The complete row appears once its trailing `|`
+          // arrives and the next token pushes it into the settled rows bucket.
+          const isTableAtTail = i === lines.length;
+          const visibleRows = isTableAtTail && tableRows.length > 2
+            ? tableRows.slice(0, -1)  // drop last (potentially mid-character) row
+            : tableRows;
+
           elements.push(
             <div key={`table-wrapper-${tableHeaderLine}`} style={{
               overflowX: 'auto',
@@ -314,18 +325,31 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
                 width: '100%',
                 borderCollapse: 'collapse',
                 fontSize: typography.sizes.sm,
+                // table-layout:fixed prevents the browser from re-measuring all
+                // column widths on every streaming token, eliminating layout
+                // reflows and the resulting visual choppiness.
+                tableLayout: 'fixed',
               }}>
+                {/* Equal-width columns — avoids column thrashing during stream */}
+                <colgroup>
+                  {visibleRows[0].map((_, idx) => (
+                    <col key={idx} style={{ width: `${100 / visibleRows[0].length}%` }} />
+                  ))}
+                </colgroup>
                 <thead style={{
                   backgroundColor: colors.bg.inset,
                   borderBottom: `2px solid ${colors.border.default}`,
                 }}>
                   <tr>
-                    {tableRows[0].map((cell, idx) => (
+                    {visibleRows[0].map((cell, idx) => (
                       <th key={idx} style={{
                         padding: `${spacing[2]} ${spacing[3]}`,
                         textAlign: 'left',
                         fontWeight: typography.weights.semibold,
                         color: colors.fg.primary,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                       }}>
                         {formatInline(cell)}
                       </th>
@@ -333,7 +357,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
                   </tr>
                 </thead>
                 <tbody>
-                  {tableRows.slice(1).map((row, rowIdx) => (
+                  {visibleRows.slice(1).map((row, rowIdx) => (
                     <tr key={rowIdx} style={{
                       borderBottom: `1px solid ${colors.border.default}`,
                     }}>
@@ -341,6 +365,9 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
                         <td key={cellIdx} style={{
                           padding: `${spacing[2]} ${spacing[3]}`,
                           color: colors.fg.secondary,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}>
                           {formatInline(cell)}
                         </td>
