@@ -17,6 +17,11 @@ import { GitBranch, Zap } from 'lucide-react';
 import { canBranchFromCard, canDeleteConversations } from '@/lib/onboarding-guards';
 import { analytics } from '@/lib/analytics';
 
+// Tracks which branched card IDs have already played their intro animation.
+// Module-level so it persists across remounts caused by onlyRenderVisibleElements.
+// Without this, every viewport re-entry replays the scale-in pop.
+const animatedCardIds = new Set<string>();
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -105,6 +110,19 @@ function ConversationCardComponent({
   // Root cards (no parents) don't need a left handle — nothing connects into them
   const isRootCard = conversation.parentCardIds.length === 0 && !isMergeNode;
   const skipMountAnimation = useCanvasStore(selectSkipMountAnimation);
+
+  // Only play the branch intro animation the very first time this card mounts.
+  // After that, animatedCardIds records the id so viewport re-entries (caused by
+  // onlyRenderVisibleElements unmounting/remounting) skip the scale-in pop.
+  const shouldPlayIntroRef = useRef<boolean | null>(null);
+  if (shouldPlayIntroRef.current === null) {
+    shouldPlayIntroRef.current =
+      isBranchedCard && !skipMountAnimation && !animatedCardIds.has(conversation.id);
+    if (shouldPlayIntroRef.current) {
+      animatedCardIds.add(conversation.id);
+    }
+  }
+  const shouldPlayIntro = shouldPlayIntroRef.current;
 
   // Context menu state
   const { isOpen: isContextMenuOpen, position: menuPosition, openMenu, closeMenu, dynamicItems } = useContextMenu();
@@ -245,7 +263,7 @@ function ConversationCardComponent({
       {/* Card container - fixed size, no expansion */}
       <motion.div
         ref={cardRef}
-        initial={isBranchedCard && !skipMountAnimation ? { scale: 0.5, opacity: 0 } : false}
+        initial={shouldPlayIntro ? { scale: 0.5, opacity: 0 } : false}
         animate={{
           scale: dragging ? 1.02 : 1,
           opacity: 1,
