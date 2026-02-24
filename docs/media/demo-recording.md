@@ -2,7 +2,7 @@
 
 Navigate to: [/canvas?demo=record](http://localhost:3000/canvas?demo=record)
 
-> **Dev only.** This URL is a no-op in production.
+Works in both dev and production — just append `?demo=record` to your deployment URL.
 
 That's it. The system takes over from there.
 
