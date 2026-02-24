@@ -10,6 +10,7 @@
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
@@ -146,7 +147,7 @@ export function MultiSelectFloatingBar() {
   }, selectedIds);
   const show = selectedIds.length >= 2 && barPosition !== null && canMerge;
 
-  return (
+  const bar = (
     <AnimatePresence>
       {show && barPosition && (
         <motion.div
@@ -177,6 +178,10 @@ export function MultiSelectFloatingBar() {
       )}
     </AnimatePresence>
   );
+
+  // Render into document.body to escape React Flow's CSS-transform stacking
+  // context, which otherwise blocks pointer events on the fixed-position bar.
+  return typeof document !== 'undefined' ? createPortal(bar, document.body) : null;
 }
 
 // =============================================================================
