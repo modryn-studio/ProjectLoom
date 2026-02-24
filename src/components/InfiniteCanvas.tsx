@@ -1115,7 +1115,8 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
     const timer = setTimeout(() => {
       requestAnimationFrame(() => {
         if (reactFlowInstance.current) {
-          reactFlowInstance.current.fitView(getFitViewOptions({ duration: 700 }));
+          const currentZoom = reactFlowInstance.current.getViewport().zoom;
+          reactFlowInstance.current.fitView(getFitViewOptions({ duration: 700, maxZoom: currentZoom, minZoom: currentZoom }));
         }
       });
     }, 500);
