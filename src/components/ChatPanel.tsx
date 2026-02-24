@@ -675,7 +675,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
       }
       setPendingAttachments([]);
     }
-  }, [setInput, buildCanvasContextPayload, sendMessage, isStreaming, activeConversationId, currentModel, currentKeys, setStreamingConversationId, getConversationMessages, setMessages, setPendingAttachments]);
+  }, [setInput, buildCanvasContextPayload, sendMessage, isStreaming, isTrialActive, activeConversationId, currentModel, currentKeys, setStreamingConversationId, getConversationMessages, setMessages, setPendingAttachments]);
 
   // Handle retry: remove all messages after the target user message and re-send it
   const handleRetry = useCallback(async (messageIndex: number) => {

@@ -282,11 +282,14 @@ function CanvasOverlay({
 export function OnboardingGuide() {
   const { active, step, rootCardId, branch1CardId, branch2CardId, dismissOnboarding, completeOnboarding } = useOnboardingStore();
 
-  // Track step transitions (skip the very first render when step is initialised)
+  // Track step transitions; also fire onboardingStarted on first activation
   const prevStepRef = useRef<string | null>(null);
   useEffect(() => {
     if (!active) return;
-    if (prevStepRef.current !== null && prevStepRef.current !== step) {
+    if (prevStepRef.current === null) {
+      // First time onboarding becomes active
+      analytics.onboardingStarted();
+    } else if (prevStepRef.current !== step) {
       analytics.onboardingStepReached(step);
     }
     prevStepRef.current = step;

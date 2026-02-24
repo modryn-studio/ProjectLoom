@@ -7,6 +7,7 @@ import { FeedbackModal } from './FeedbackModal';
 
 import { usePreferencesStore, selectUIPreferences, selectTheme } from '@/stores/preferences-store';
 import { apiKeyManager, type ProviderType, type StorageType } from '@/lib/api-key-manager';
+import { useTrialStore } from '@/stores/trial-store';
 import { STORAGE_KEYS, createBackupPayload, applyBackupPayload } from '@/lib/storage';
 import { launchOnboardingInDemoWorkspace } from '@/lib/onboarding-demo-workspace';
 import { useToast } from '@/stores/toast-store';
@@ -153,16 +154,21 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
   }, [loadPreferences]);
 
   useEffect(() => {
-    if (isOpen && !keysLoaded) {
+    if (!isOpen) {
+      // Reset so keys are reloaded fresh on next open
+      setKeysLoaded(false);
+      return;
+    }
+    if (!keysLoaded) {
       const savedAnthropicKey = apiKeyManager.getKey('anthropic');
       const savedOpenaiKey = apiKeyManager.getKey('openai');
       const currentStoragePreference = apiKeyManager.getStoragePreference();
 
       if (savedAnthropicKey) setAnthropicKey(savedAnthropicKey);
       if (savedOpenaiKey) setOpenaiKey(savedOpenaiKey);
-       
+
       setStoragePreference(currentStoragePreference);
-       
+
       setKeysLoaded(true);
     }
   }, [isOpen, keysLoaded]);
@@ -203,6 +209,8 @@ export function SettingsPanel({ isOpen, onClose, isMobile = false }: SettingsPan
       if (typeof window !== 'undefined') {
         localStorage.setItem('projectloom:keys-configured', 'true');
       }
+      // Dismiss trial mode — user now has their own key
+      useTrialStore.getState().dismiss();
     }
   }, []);
 

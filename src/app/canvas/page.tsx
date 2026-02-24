@@ -132,8 +132,6 @@ function CanvasWrapper() {
       is_first_visit: !hasSeenOnboarding(),
       has_api_key: apiKeyManager.hasAnyKey(),
     });
-  // run exactly once after initialization
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized]);
 
   // Start guided onboarding for first-time desktop users

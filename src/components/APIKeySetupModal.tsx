@@ -170,7 +170,7 @@ export function APIKeySetupModal({ isOpen, onClose, onSuccess }: APIKeySetupModa
     } finally {
       setIsSaving(false);
     }
-  }, [anthropicKey.value, openaiKey.value, storagePreference, validateKey, onSuccess, onClose]);
+  }, [anthropicKey.value, openaiKey.value, storagePreference, validateKey, isTrialExhausted, onSuccess, onClose]);
 
   // Handle escape key
   useEffect(() => {
