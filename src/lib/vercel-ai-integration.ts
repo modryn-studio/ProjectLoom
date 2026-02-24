@@ -32,7 +32,7 @@ export interface ModelDefinition {
 
 /**
  * Available AI models
- * Updated for Feb 2026 model lineup
+ * Updated for Feb 2026 model lineup (Sonnet 4.6 — Feb 17, 2026)
  */
 export const AVAILABLE_MODELS: ModelDefinition[] = [
   // ── Anthropic Claude (direct API via @ai-sdk/anthropic) ───────────────────
@@ -47,8 +47,8 @@ export const AVAILABLE_MODELS: ModelDefinition[] = [
     description: '200K context. Fastest and most affordable Claude.',
   },
   {
-    id: 'anthropic/claude-sonnet-4-5',
-    name: 'Claude Sonnet 4.5',
+    id: 'anthropic/claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
     provider: 'anthropic',
     maxTokens: 200000,
     supportsStreaming: true,
@@ -240,7 +240,7 @@ export function getErrorAction(suggestion: AIErrorResponse['suggestion']): {
 export const MODEL_PRICING = {
   // Anthropic Claude (direct API)
   'anthropic/claude-haiku-4-5': { input: 1, output: 5 },
-  'anthropic/claude-sonnet-4-5': { input: 3, output: 15 },
+  'anthropic/claude-sonnet-4-6': { input: 3, output: 15 },
   'anthropic/claude-opus-4-6': { input: 5, output: 25 },
 
   // OpenAI (direct API)

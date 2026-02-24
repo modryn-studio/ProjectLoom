@@ -4,7 +4,7 @@
  * Creates Vercel AI SDK model instances for Anthropic and OpenAI providers.
  * Replaces the old Perplexity Agent API gateway with direct provider connections.
  * 
- * Model IDs use the 'provider/model' format: 'anthropic/claude-sonnet-4-5', 'openai/gpt-5.2'
+ * Model IDs use the 'provider/model' format: 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2'
  * The factory strips the prefix and routes to the correct provider SDK.
  * 
  * @version 1.0.0
@@ -49,7 +49,7 @@ export function detectProvider(modelId: string): ProviderType {
 
 /**
  * Strip the provider prefix from a model ID.
- * 'anthropic/claude-sonnet-4-5' → 'claude-sonnet-4-5'
+ * 'anthropic/claude-sonnet-4-6' → 'claude-sonnet-4-6'
  * 'openai/gpt-5.2' → 'gpt-5.2'
  */
 function stripPrefix(modelId: string): string {
@@ -64,7 +64,7 @@ function stripPrefix(modelId: string): string {
 /**
  * Create a Vercel AI SDK LanguageModel for the given model ID.
  * 
- * @param modelId - Full model ID (e.g. 'anthropic/claude-sonnet-4-5', 'openai/gpt-5.2')
+ * @param modelId - Full model ID (e.g. 'anthropic/claude-sonnet-4-6', 'openai/gpt-5.2')
  * @param keys - API keys for each provider (only the relevant one is used)
  * @returns LanguageModel instance ready for streamText/generateText
  * @throws If the provider key is missing or the model prefix is unknown

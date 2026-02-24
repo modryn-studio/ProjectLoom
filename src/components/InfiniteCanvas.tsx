@@ -423,6 +423,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       const payload = createBackupPayload();
       const json = JSON.stringify(payload, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const dateStamp = payload.exportedAt.slice(0, 10);
@@ -437,9 +438,7 @@ export function InfiniteCanvas({ isMobile = false }: InfiniteCanvasProps) {
       window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_AUTO_EXPORT, payload.exportedAt);
       window.localStorage.setItem(STORAGE_KEYS.BACKUP_LAST_EXPORT, payload.exportedAt);
       useToastStore.getState().info('Daily backup saved.', { duration: 4000 });
-    }
-
-    if (needsBackup && canRemind) {
+    } else if (needsBackup && canRemind) {
       window.localStorage.setItem(STORAGE_KEYS.BACKUP_REMINDER_LAST_SHOWN, new Date().toISOString());
       useToastStore.getState().info('Backup reminder: export your ProjectLoom data.', {
         action: { label: 'Open Settings', onClick: openSettings },

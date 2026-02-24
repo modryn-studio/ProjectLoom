@@ -182,7 +182,7 @@ export function ChatPanel({ isMobile = false }: ChatPanelProps) {
 
     // During onboarding or demo recording, use a placeholder model ID so the request can proceed
     if (useOnboardingStore.getState().active || useDemoRecordStore.getState().active) {
-      return 'anthropic/claude-sonnet-4-5';
+      return 'anthropic/claude-sonnet-4-6';
     }
 
     // Trial mode — default to GPT-5 Mini (server enforces this regardless)
