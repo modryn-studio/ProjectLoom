@@ -304,7 +304,7 @@ export const SimpleChatMarkdown = memo(function SimpleChatMarkdown({
           } else {
           // Render table
           elements.push(
-            <div key={`table-wrapper-${i}`} style={{
+            <div key={`table-${tableHeaderLine}`} style={{
               overflowX: 'auto',
               margin: `${spacing[3]} 0`,
             }}>
