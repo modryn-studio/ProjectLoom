@@ -141,10 +141,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       </nav>
 
       {/* ─── HERO: video + tagline + CTA ─── */}
-      <section style={{
-        ...styles.hero,
-        ...(isMobile && { paddingTop: 56 }),
-      }}>
+      <section style={styles.hero}>
         {/* Video */}
         <div style={{
           ...styles.videoWrapper,
@@ -166,7 +163,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         {/* Tagline + CTA — padded so they breathe inside the full-bleed section */}
         <div style={{
           ...styles.heroTextBlock,
-          ...(isMobile && { padding: '0 16px', width: '100%' }),
+          ...(isMobile && { padding: '32px 16px 0', width: '100%' }),
         }}>
           <h1 style={{
             ...styles.tagline,
@@ -316,10 +313,9 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 32,
-    paddingTop: 72,
-    paddingBottom: 48,
+    justifyContent: 'flex-start',
+    paddingTop: 56, // exact nav height so video starts flush below it
+    paddingBottom: 64,
     // No horizontal padding — video is full-bleed; text block handles its own padding
   },
 
@@ -328,22 +324,18 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     alignItems: 'center',
     gap: 24,
-    padding: '0 24px',
+    padding: '40px 24px 0',
   },
 
   videoWrapper: {
     width: '100%',
-    borderRadius: 0,
     overflow: 'hidden',
-    backgroundColor: '#0a0a0a',
   },
 
   videoEl: {
     width: '100%',
     height: 'auto',
     display: 'block',
-    maxHeight: '65vh',
-    objectFit: 'contain',
   },
 
   tagline: {
