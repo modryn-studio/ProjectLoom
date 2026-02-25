@@ -54,6 +54,19 @@ export function LandingPage({ onEnter }: LandingPageProps) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Resolve effective theme for logo: account for system preference
+  const [systemDark, setSystemDark] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setSystemDark(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  const effectiveDark = mounted
+    ? theme === 'dark' || (theme === 'system' && systemDark)
+    : true; // SSR safe default — dark banner until hydration
+
   // Mobile breakpoint
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -134,7 +147,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           ...(isMobile && { padding: '12px 16px' }),
         }}>
           <Image
-            src={mounted && theme === 'light' ? bannerLight : bannerDark}
+            src={effectiveDark ? bannerDark : bannerLight}
             alt="ProjectLoom"
             style={styles.wordmark}
             priority
