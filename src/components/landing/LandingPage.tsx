@@ -144,12 +144,12 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       {/* ─── HERO: video + tagline + CTA ─── */}
       <section style={{
         ...styles.hero,
-        ...(isMobile && { paddingTop: 56, paddingLeft: 16, paddingRight: 16 }),
+        ...(isMobile && { paddingTop: 56 }),
       }}>
         {/* Video */}
         <div style={{
           ...styles.videoWrapper,
-          ...(isMobile && { borderRadius: '12px' }),
+          ...(isMobile && { borderRadius: 0 }),
         }}>
           <video
             autoPlay
@@ -164,32 +164,36 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           </video>
         </div>
 
-        {/* Tagline */}
-        <h1 style={{
-          ...styles.tagline,
-          ...(isMobile && { fontSize: 'clamp(1.5rem, 6vw, 2rem)' }),
+        {/* Tagline + CTA — padded so they breathe inside the full-bleed section */}
+        <div style={{
+          ...styles.heroTextBlock,
+          ...(isMobile && { padding: '0 16px', width: '100%' }),
         }}>
-          Explore every angle.{' '}
-          <span style={{ color: colors.accent.primary }}>Lose nothing.</span>
-        </h1>
+          <h1 style={{
+            ...styles.tagline,
+            ...(isMobile && { fontSize: 'clamp(1.5rem, 6vw, 2rem)' }),
+          }}>
+            Explore every angle.{' '}
+            <span style={{ color: colors.accent.primary }}>Lose nothing.</span>
+          </h1>
 
-        {/* CTA */}
-        <button
-          onClick={onEnter}
-          style={{
-            ...styles.heroCTA,
-            ...(isMobile && { width: '100%', justifyContent: 'center' }),
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--accent-secondary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
-          }}
-        >
-          Try it on your real problem
-          <ArrowRight size={18} style={{ marginLeft: 8 }} />
-        </button>
+          <button
+            onClick={onEnter}
+            style={{
+              ...styles.heroCTA,
+              ...(isMobile && { width: '100%', justifyContent: 'center' }),
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--accent-secondary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--accent-primary)';
+            }}
+          >
+            Try it on your real problem
+            <ArrowRight size={18} style={{ marginLeft: 8 }} />
+          </button>
+        </div>
       </section>
 
       {/* ─── PODCAST ─── */}
@@ -346,14 +350,20 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 32,
     paddingTop: 72,
     paddingBottom: 48,
-    paddingLeft: 24,
-    paddingRight: 24,
+    // No horizontal padding — video is full-bleed; text block handles its own padding
+  },
+
+  heroTextBlock: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 24,
+    padding: '0 24px',
   },
 
   videoWrapper: {
     width: '100%',
-    maxWidth: 1100,
-    borderRadius: '16px',
+    borderRadius: 0,
     overflow: 'hidden',
     border: `1px solid ${colors.border.default}`,
     backgroundColor: '#0a0a0a',
