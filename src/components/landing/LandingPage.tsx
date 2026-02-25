@@ -347,13 +347,17 @@ const styles: Record<string, React.CSSProperties> = {
 
   videoWrapper: {
     width: '100%',
+    maxHeight: '65vh',
     overflow: 'hidden',
   },
 
   videoEl: {
     width: '100%',
-    height: 'auto',
+    height: '100%',
+    maxHeight: '65vh',
     display: 'block',
+    objectFit: 'cover' as const,
+    objectPosition: 'center top',
   },
 
   tagline: {
