@@ -155,11 +155,20 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       </nav>
 
       {/* ─── HERO: video + tagline + CTA ─── */}
-      <section style={styles.hero}>
+      <section style={{
+        ...styles.hero,
+        ...(isMobile && { paddingTop: 'var(--nav-height, 53px)' as unknown as number, paddingBottom: 0 }),
+      }}>
         {/* Video */}
         <div style={{
           ...styles.videoWrapper,
-          ...(isMobile && { borderRadius: 0 }),
+          ...(isMobile && {
+            width: '100%',
+            maxWidth: 'none',
+            borderRadius: 0,
+            border: 'none',
+            boxShadow: 'none',
+          }),
         }}>
           <video
             autoPlay
@@ -177,7 +186,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         {/* Tagline + CTA — padded so they breathe inside the full-bleed section */}
         <div style={{
           ...styles.heroTextBlock,
-          ...(isMobile && { padding: '28px 16px 48px' }),
+          ...(isMobile && { padding: '24px 20px 48px' }),
         }}>
           <h1 style={{
             ...styles.tagline,
@@ -330,8 +339,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    paddingTop: 'var(--nav-height, 57px)' as unknown as number,
-    // No minHeight — content dictates height; no paddingBottom — heroTextBlock owns it
+    paddingTop: 'calc(var(--nav-height, 57px) + 24px)' as unknown as number,
+    paddingBottom: 16,
   },
 
   heroTextBlock: {
@@ -339,16 +348,20 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     alignItems: 'center',
     gap: 24,
-    padding: '40px 24px 64px',
+    padding: '32px 24px 56px',
     maxWidth: 680,
     width: '100%',
     margin: '0 auto',
   },
 
   videoWrapper: {
-    width: '100%',
-    maxHeight: '65vh',
+    width: 'calc(100% - 48px)',
+    maxWidth: 1100,
+    margin: '0 auto',
+    borderRadius: 12,
     overflow: 'hidden',
+    border: '1px solid var(--border-default)',
+    boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
   },
 
   videoEl: {
