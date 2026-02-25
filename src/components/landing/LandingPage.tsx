@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Headphones } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import bannerLight from '../../../assets/banner_trans_light.png';
 import bannerDark from '../../../assets/banner_trans_dark.png';
@@ -25,7 +25,6 @@ interface LandingPageProps {
 const HERO_VIDEO_URL = '/hero-demo.mp4';
 const HERO_VIDEO_POSTER_URL = '/hero-demo-poster.png';
 const PODCAST_AUDIO_URL = process.env.NEXT_PUBLIC_PODCAST_AUDIO_URL ?? '/podcast.m4a';
-const PODCAST_EXTERNAL_URL = process.env.NEXT_PUBLIC_PODCAST_EXTERNAL_URL ?? '';
 const CANONICAL_SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(/\/$/, '');
 
 // =============================================================================
@@ -201,42 +200,13 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         id="podcast"
         style={{
           ...styles.podcastSection,
-          ...(isMobile && { padding: '48px 16px 56px' }),
+          ...(isMobile && { padding: '40px 16px 56px' }),
         }}
       >
-        <div style={{
-          ...styles.podcastCard,
-          ...(isMobile && { flexDirection: 'column', gap: 24 }),
-        }}>
-          <div style={styles.podcastIconWrap}>
-            <Headphones size={32} strokeWidth={1.5} color='var(--accent-primary)' />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={styles.podcastEyebrow}>AI-generated overview · 20 min</p>
-            <h3 style={styles.podcastTitle}>The story behind ProjectLoom</h3>
-            <p style={styles.podcastDesc}>
-              Why linear chat is broken, how the canvas changes the way you think,
-              and where this is going.
-            </p>
-            <audio controls style={styles.podcastAudio} preload="metadata">
-              <source src={PODCAST_AUDIO_URL} type="audio/mp4" />
-              Your browser does not support HTML5 audio.{' '}
-              <a href={PODCAST_AUDIO_URL} style={styles.inlineMediaLink}>Open the podcast audio</a>.
-            </audio>
-            <p style={styles.mediaHelperText}>
-              Prefer Spotify/YouTube style playback?{' '}
-              <a
-                href={PODCAST_EXTERNAL_URL || PODCAST_AUDIO_URL}
-                style={styles.inlineMediaLink}
-                target={PODCAST_EXTERNAL_URL ? '_blank' : undefined}
-                rel={PODCAST_EXTERNAL_URL ? 'noopener noreferrer' : undefined}
-              >
-                Open podcast directly
-              </a>
-              .
-            </p>
-          </div>
-        </div>
+        <p style={styles.podcastLabel}>NotebookLM Audio Overview · 20 min</p>
+        <audio controls style={styles.podcastAudio} preload="metadata">
+          <source src={PODCAST_AUDIO_URL} type="audio/mp4" />
+        </audio>
       </section>
 
       {/* ─── FINAL CTA ─── */}
@@ -365,9 +335,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     borderRadius: 0,
     overflow: 'hidden',
-    border: `1px solid ${colors.border.default}`,
     backgroundColor: '#0a0a0a',
-    boxShadow: '0 32px 100px rgba(0,0,0,0.25)',
   },
 
   videoEl: {
@@ -408,76 +376,26 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* ── Podcast ── */
   podcastSection: {
-    maxWidth: 1100,
+    maxWidth: 600,
     margin: '0 auto',
-    padding: '64px 24px 80px',
-  },
-
-  podcastCard: {
+    padding: '48px 24px 64px',
     display: 'flex',
-    flexDirection: 'row' as const,
-    gap: 32,
-    alignItems: 'flex-start',
-    padding: '40px 48px',
-    borderRadius: '16px',
-    backgroundColor: colors.bg.secondary,
-    border: `1px solid ${colors.border.default}`,
-  },
-
-  podcastIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: '16px',
-    backgroundColor: 'var(--accent-muted)',
-    display: 'flex',
+    flexDirection: 'column' as const,
     alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+    gap: 16,
   },
 
-  podcastEyebrow: {
+  podcastLabel: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
+    color: colors.fg.tertiary,
+    margin: 0,
+    textAlign: 'center' as const,
     fontFamily: typography.fonts.body,
-    color: colors.accent.primary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.1em',
-    margin: '0 0 8px',
-  },
-
-  podcastTitle: {
-    fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
-    fontWeight: typography.weights.bold,
-    fontFamily: typography.fonts.heading,
-    color: colors.fg.primary,
-    margin: '0 0 10px',
-    letterSpacing: '-0.015em',
-  },
-
-  podcastDesc: {
-    fontSize: typography.sizes.base,
-    color: colors.fg.secondary,
-    lineHeight: 1.6,
-    margin: '0 0 24px',
   },
 
   podcastAudio: {
     width: '100%',
     accentColor: 'var(--accent-primary)',
-  },
-
-  mediaHelperText: {
-    fontSize: typography.sizes.sm,
-    color: colors.fg.tertiary,
-    lineHeight: 1.5,
-    margin: '16px auto 0',
-    maxWidth: 1100,
-  },
-
-  inlineMediaLink: {
-    color: colors.accent.primary,
-    textDecorationColor: colors.accent.primary,
-    textUnderlineOffset: '2px',
   },
 
   /* ── Final CTA ── */
