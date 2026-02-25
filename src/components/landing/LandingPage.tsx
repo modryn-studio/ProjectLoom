@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import bannerLight from '../../../assets/banner_trans_light.png';
@@ -65,6 +65,20 @@ export function LandingPage({ onEnter }: LandingPageProps) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
+  // Measure nav height and expose as --nav-height so the hero padding
+  // is always exact regardless of zoom level or mobile/desktop nav size.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const update = () =>
+      document.documentElement.style.setProperty('--nav-height', `${nav.offsetHeight}px`);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, []);
+
   // Structured data
   const mediaSchema = useMemo(() => {
     const resolveMediaUrl = (pathOrUrl: string) => {
@@ -114,7 +128,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       )}
 
       {/* ─── NAV ─── */}
-      <nav style={styles.nav}>
+      <nav ref={navRef} style={styles.nav}>
         <div style={{
           ...styles.navInner,
           ...(isMobile && { padding: '12px 16px' }),
@@ -314,7 +328,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 56, // exact nav height so video starts flush below it
+    paddingTop: 'var(--nav-height, 57px)' as unknown as number,
     paddingBottom: 64,
     // No horizontal padding — video is full-bleed; text block handles its own padding
   },
