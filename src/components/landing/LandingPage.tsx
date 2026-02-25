@@ -177,7 +177,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
         {/* Tagline + CTA — padded so they breathe inside the full-bleed section */}
         <div style={{
           ...styles.heroTextBlock,
-          ...(isMobile && { padding: '32px 16px 0', width: '100%' }),
+          ...(isMobile && { padding: '28px 16px 48px' }),
         }}>
           <h1 style={{
             ...styles.tagline,
@@ -207,23 +207,26 @@ export function LandingPage({ onEnter }: LandingPageProps) {
       </section>
 
       {/* ─── PODCAST ─── */}
-      <section
-        id="podcast"
-        style={{
-          ...styles.podcastSection,
-          ...(isMobile && { padding: '40px 16px 56px' }),
-        }}
-      >
-        <p style={styles.podcastLabel}>NotebookLM Audio Overview · 20 min</p>
-        <audio controls style={styles.podcastAudio} preload="metadata">
-          <source src={PODCAST_AUDIO_URL} type="audio/mp4" />
-        </audio>
-      </section>
+      <div style={styles.sectionDivider}>
+        <section
+          id="podcast"
+          style={{
+            ...styles.podcastSection,
+            ...(isMobile && { padding: '40px 16px 48px' }),
+          }}
+        >
+          <p style={styles.podcastLabel}>NotebookLM Audio Overview · 20 min</p>
+          <audio controls style={styles.podcastAudio} preload="metadata">
+            <source src={PODCAST_AUDIO_URL} type="audio/mp4" />
+          </audio>
+        </section>
+      </div>
 
       {/* ─── FINAL CTA ─── */}
+      <div style={styles.sectionDivider}>
       <section style={{
         ...styles.finalCTA,
-        ...(isMobile && { padding: '60px 24px 80px' }),
+        ...(isMobile && { padding: '48px 20px 64px' }),
       }}>
         <div style={{ textAlign: 'center' }}>
           <h2 style={styles.ctaTitle}>Your conversations deserve more than a scroll bar</h2>
@@ -249,6 +252,7 @@ export function LandingPage({ onEnter }: LandingPageProps) {
           </button>
         </div>
       </section>
+      </div>
 
       {/* ─── FOOTER ─── */}
       <footer style={styles.footer}>
@@ -323,14 +327,11 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* ── Hero ── */
   hero: {
-    minHeight: '100svh',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'flex-start',
     paddingTop: 'var(--nav-height, 57px)' as unknown as number,
-    paddingBottom: 64,
-    // No horizontal padding — video is full-bleed; text block handles its own padding
+    // No minHeight — content dictates height; no paddingBottom — heroTextBlock owns it
   },
 
   heroTextBlock: {
@@ -338,7 +339,10 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     alignItems: 'center',
     gap: 24,
-    padding: '40px 24px 0',
+    padding: '40px 24px 64px',
+    maxWidth: 680,
+    width: '100%',
+    margin: '0 auto',
   },
 
   videoWrapper: {
@@ -380,11 +384,17 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: `0 4px 20px var(--accent-muted)`,
   },
 
+  /* ── Section divider (full-width border-top) ── */
+  sectionDivider: {
+    width: '100%',
+    borderTop: `1px solid ${colors.border.default}`,
+  },
+
   /* ── Podcast ── */
   podcastSection: {
-    maxWidth: 600,
+    maxWidth: 640,
     margin: '0 auto',
-    padding: '48px 24px 64px',
+    padding: '48px 24px 56px',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
@@ -406,8 +416,8 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* ── Final CTA ── */
   finalCTA: {
-    padding: '80px 24px 100px',
-    maxWidth: 700,
+    padding: '64px 24px 80px',
+    maxWidth: 680,
     margin: '0 auto',
   },
 
