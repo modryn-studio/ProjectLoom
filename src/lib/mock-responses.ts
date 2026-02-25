@@ -169,13 +169,11 @@ Send a brief email summarizing what was discussed and any commitments made. This
 
 **The conversation — Follow this structure**
 
-| Step | What you say | How you stay grounded |
-|------|-------------|----------------------|
-| **Open** | *"I want to understand the path to promotion for me specifically."* | Speak 30% slower than feels natural |
-| **Present evidence** | Share 2–3 specific achievements that exceed your current role | Stick to facts — no emotion, no comparison to peers |
-| **Ask the key question** | *"What specifically would I need to demonstrate?"* | Pause after asking. Let silence work for you. |
-| **Handle defensiveness** | *"I'm not trying to create conflict — I want to understand the path forward."* | If heart rate spikes, slow your speech further |
-| **Pin down next steps** | *"Can we set a timeline and milestones so I'm working toward something concrete?"* | Frame as collaboration, not ultimatum |
+1. **Open** — *"I want to understand the path to promotion for me specifically."* Speak 30% slower than feels natural.
+2. **Present evidence** — Share 2–3 specific achievements that exceed your current role. Stick to facts — no emotion, no comparison to peers.
+3. **Ask the key question** — *"What specifically would I need to demonstrate?"* Pause after asking. Let silence work for you.
+4. **Handle defensiveness** — *"I'm not trying to create conflict — I want to understand the path forward."* If your heart rate spikes, slow your speech further.
+5. **Pin down next steps** — *"Can we set a timeline and milestones so I'm working toward something concrete?"* Frame it as collaboration, not an ultimatum.
 
 **After the meeting — Lock it in**
 - Send a follow-up email within 2 hours summarizing commitments and timeline
