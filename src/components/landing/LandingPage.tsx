@@ -353,11 +353,8 @@ const styles: Record<string, React.CSSProperties> = {
 
   videoEl: {
     width: '100%',
-    height: '100%',
-    maxHeight: '65vh',
+    height: 'auto',
     display: 'block',
-    objectFit: 'cover' as const,
-    objectPosition: 'center top',
   },
 
   tagline: {
