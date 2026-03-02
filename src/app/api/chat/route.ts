@@ -140,6 +140,16 @@ function handleProviderError(error: unknown): Response {
     );
   }
 
+  // Overloaded (Anthropic 529)
+  if (err.status === 529 || (err as { type?: string }).type === 'overloaded_error' || err.message?.toLowerCase().includes('overloaded')) {
+    return createErrorResponse(
+      'Anthropic is currently overloaded. Please try again in a moment.',
+      'OVERLOADED',
+      529,
+      { recoverable: true, retryAfter: 10 }
+    );
+  }
+
   // Context length exceeded
   if (err.status === 400 && err.message?.includes('context_length')) {
     return createErrorResponse(
@@ -529,6 +539,7 @@ export async function POST(req: Request): Promise<Response> {
     const result = streamText({
       model: aiModel,
       system: finalSystemPrompt,
+      maxRetries: 0, // Fail fast — let the client decide to retry rather than burning 30s on silent SDK retries
       ...temperatureConfig,
       ...tokenConfig,
       // Provider-native web search tools (Anthropic webSearch / OpenAI Responses API)
@@ -642,7 +653,13 @@ export async function POST(req: Request): Promise<Response> {
       })(),
       onError: (error) => {
         console.error('[Chat API Stream Error]', error);
-        return error instanceof Error ? error.message : 'An error occurred';
+        // error may be a plain object (e.g. { type: 'overloaded_error', message: 'Overloaded' })
+        // rather than an Error instance, so check both shapes.
+        const errObj = error as { type?: string; message?: string };
+        if (errObj.type === 'overloaded_error' || errObj.message?.toLowerCase().includes('overloaded')) {
+          return 'Anthropic is currently overloaded. Please try again in a moment.';
+        }
+        return error instanceof Error ? error.message : (errObj.message ?? 'An error occurred');
       },
     });
 
