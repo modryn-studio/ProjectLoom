@@ -28,7 +28,6 @@
 | agent/route.ts | Node | Runs cleanup/branch/summarize agents with guardrails |
 | generate-title/route.ts | Edge | 3-5 word auto titles via `generateText` |
 | summarize/route.ts | Node | Structured conversation summaries |
-| web-search/route.ts | Node | Tavily API integration |
 
 All routes use `createRouteLogger()` with 5-char reqId, BYOK key extraction, and `provider-factory.ts` for model creation.
 
@@ -64,7 +63,7 @@ All routes use `createRouteLogger()` with 5-char reqId, BYOK key extraction, and
 
 **Persistence**: storage.ts — `VersionedStorage<T>` with schema migrations, checksums, backup/restore. knowledge-base-db.ts — IndexedDB for KB file content.
 
-**Other**: api-key-manager.ts (singleton, base64 obfuscation), rag-utils.ts (TF-IDF fallback), language-utils.ts (franc-min detection, RTL, CJK font selection), design-tokens.ts (483L complete design system), search-orchestration.ts (pre-LLM web search heuristics), mock-responses.ts (intent-based + step-keyed scripted mock responses for onboarding, no API key required), onboarding-demo-workspace.ts (demo workspace isolation).
+**Other**: api-key-manager.ts (singleton, base64 obfuscation), rag-utils.ts (TF-IDF fallback), language-utils.ts (franc-min detection, RTL, CJK font selection), design-tokens.ts (483L complete design system), mock-responses.ts (intent-based + step-keyed scripted mock responses for onboarding, no API key required), onboarding-demo-workspace.ts (demo workspace isolation).
 
 ### Types (index.ts)
 Core types: `Message`, `Conversation` (position, parentCardIds, branchPoint, inheritedContext, isMergeNode, mergeMetadata, model), `Workspace` (flat, with optional `tags` array), `EdgeConnection` with `EdgeRelationType`, `WorkspaceContext` (instructions + knowledgeBaseFiles), merge config (MAX_PARENTS: 5).

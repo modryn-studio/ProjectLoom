@@ -120,7 +120,7 @@ export function getWebSearchTools(
       if (!keys.anthropic) return {};
       const anthropic = createAnthropic({ apiKey: keys.anthropic });
       return {
-        web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+        web_search: anthropic.tools.webSearch_20260209({ maxUses: 5 }),
       } as ToolSet;
     }
 

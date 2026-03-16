@@ -17,7 +17,7 @@ ProjectLoom lets you explore every angle of an AI conversation without starting 
 - **Merging** — pull multiple conversation threads into a single node (up to 5 parents)
 - **Inherited context** — child cards automatically receive context from their ancestors
 - **Knowledge base** — attach documents to a workspace; the AI has access to them in every conversation
-- **Web search** — ground responses in live search results via Tavily
+- **Web search** — ground responses in live search results (provider-native: Anthropic and OpenAI)
 - **Canvas context** — the AI knows where in the DAG it sits and what surrounds it
 - **Auto-titles** — cards name themselves based on conversation content
 - **Light / dark theme** — instant switch, no flash
