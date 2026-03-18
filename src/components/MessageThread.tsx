@@ -192,26 +192,30 @@ export function MessageThread({
   // AI SDK v6: tool parts have type 'tool-${toolName}' with state/input/output.
   // 'searching' = tool call in flight (no text yet); 'done' = output received, text streaming in.
   type StreamingWebSearchState = 'searching' | 'done' | 'none';
-  const streamingWebSearch = useMemo((): StreamingWebSearchState => {
-    if (!isStreaming || streamingMessages.length === 0) return 'none';
+  const streamingWebSearch = useMemo((): { state: StreamingWebSearchState; query: string } => {
+    if (!isStreaming || streamingMessages.length === 0) return { state: 'none', query: '' };
     const lastMsg = streamingMessages[streamingMessages.length - 1];
-    if (lastMsg?.role !== 'assistant') return 'none';
-    type V6ToolPart = { type: string; state: string };
+    if (lastMsg?.role !== 'assistant') return { state: 'none', query: '' };
+    type V6ToolPart = { type: string; state: string; input?: { query?: string } };
     let hasActiveSearch = false;
     let hasCompletedSearch = false;
+    let activeQuery = '';
     for (const part of lastMsg.parts) {
       if (part.type.startsWith('tool-')) {
         const toolName = part.type.slice(5); // Strip 'tool-' prefix
         if (toolName === 'web_search') {
           const tp = part as unknown as V6ToolPart;
-          if (tp.state === 'input-streaming' || tp.state === 'input') hasActiveSearch = true;
+          if (tp.state === 'input-streaming' || tp.state === 'input') {
+            hasActiveSearch = true;
+            activeQuery = tp.input?.query ?? '';
+          }
           if (tp.state === 'output') hasCompletedSearch = true;
         }
       }
     }
-    if (hasActiveSearch) return 'searching';
-    if (hasCompletedSearch) return 'done';
-    return 'none';
+    if (hasActiveSearch) return { state: 'searching', query: activeQuery };
+    if (hasCompletedSearch) return { state: 'done', query: '' };
+    return { state: 'none', query: '' };
   }, [isStreaming, streamingMessages]);
 
   // Always use conversation.content as the display source of truth.
@@ -250,7 +254,10 @@ export function MessageThread({
             timestamp: new Date(),
             metadata: {
               isStreaming: true,
-              ...(streamingWebSearch !== 'none' ? { streamingWebSearch } : {}),
+              ...(streamingWebSearch.state !== 'none' ? {
+                streamingWebSearch: streamingWebSearch.state,
+                streamingWebSearchQuery: streamingWebSearch.query,
+              } : {}),
             },
           },
         ];
@@ -545,6 +552,9 @@ const MessageBubble = memo(function MessageBubble({
   const streamingWebSearchState = (!isUser && !isSystem)
     ? (message.metadata as { streamingWebSearch?: string } | undefined)?.streamingWebSearch ?? null
     : null;
+  const streamingWebSearchQuery = (!isUser && !isSystem)
+    ? (message.metadata as { streamingWebSearchQuery?: string } | undefined)?.streamingWebSearchQuery ?? ''
+    : '';
 
   const webSearchMetadata = useMemo(() => {
     if (isUser || isSystem) return null;
@@ -687,7 +697,11 @@ const MessageBubble = memo(function MessageBubble({
               style={bubbleStyles.searchingIndicator}
             >
               <Globe size={13} className="animate-pulse" style={{ flexShrink: 0 }} />
-              <span>Searching the web…</span>
+              <span>
+                {streamingWebSearchQuery
+                  ? <>Searching for <em>&ldquo;{streamingWebSearchQuery}&rdquo;</em>…</>
+                  : 'Searching the web…'}
+              </span>
             </motion.div>
           ) : (
             <>
